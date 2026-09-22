@@ -2,4 +2,4 @@
 
 https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools
 
-`sudo apt install clang-format clang-tidy`
+`sudo apt install clang-format clang-tidy libgtest-dev`
