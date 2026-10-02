@@ -12,7 +12,7 @@ BUILD_DIR = build
 
 TEST_EXECUTABLE = run_tests
 
-OBJS = $(BUILD_DIR)/main.o
+OBJS = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(wildcard $(SRC_DIR)/*.c))
 OBJS_NO_MAIN = $(filter-out $(BUILD_DIR)/main.o, $(OBJS))
 
 TEST_SRCS = $(wildcard $(TEST_DIR)/*.cpp)
