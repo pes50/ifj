@@ -6,6 +6,8 @@ CXX = g++
 CXXFLAGS = -Wall -Wextra -std=c++17 -I$(SRC_DIR) -pthread
 GTEST_LIBS = -lgtest -lgtest_main -pthread
 
+LDFLAGS_TEST = -Wl,--wrap=get_token
+
 SRC_DIR = src
 TEST_DIR = test
 BUILD_DIR = build
@@ -32,7 +34,7 @@ test: $(TEST_EXECUTABLE)
 	./$(TEST_EXECUTABLE)
 
 $(TEST_EXECUTABLE): $(TEST_OBJS) $(OBJS_NO_MAIN)
-	$(CXX) $(CXXFLAGS) $^ -o $@ $(GTEST_LIBS)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(GTEST_LIBS) $(LDFLAGS_TEST)
 
 $(BUILD_DIR)/test_%.o: $(TEST_DIR)/%.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
