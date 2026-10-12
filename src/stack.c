@@ -11,6 +11,11 @@
 #include "stack.h"
 #include <stdlib.h>
 
+struct t_stack {
+  t_stack_element *head;
+  unsigned int size;
+};
+
 t_stack *create_stack() { return calloc(1, sizeof(t_stack)); }
 
 bool stack_push(t_stack *stack, void *data) {
@@ -52,10 +57,17 @@ bool stack_pop(t_stack *stack, void **data) {
   return true;
 }
 
-t_stack_element *stack_head(t_stack *stack) {
+t_stack_element *stack_get_top(t_stack *stack) {
   if (stack == NULL || stack->size == 0) {
     return NULL;
   }
 
   return stack->head;
+}
+
+unsigned int stack_get_size(t_stack *stack) {
+  if (stack == NULL) {
+    return 0;
+  }
+  return stack->size;
 }

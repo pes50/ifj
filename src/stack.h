@@ -21,10 +21,7 @@ typedef struct element {
 /**
  * @brief Represents stack
  */
-typedef struct {
-  t_stack_element *head;
-  unsigned int size;
-} t_stack;
+typedef struct t_stack t_stack;
 
 /**
  * @brief Allocates and initializes a new empty stack
@@ -63,4 +60,13 @@ bool stack_pop(t_stack *stack, void **data);
  *
  * @return A pointer to the top element, or NULL if stack is empty or NULL
  */
-t_stack_element *stack_head(t_stack *stack);
+t_stack_element *stack_get_top(t_stack *stack);
+
+/**
+ * @brief Returns element count in the stack
+ *
+ * @param stack A pointer to the target stack
+ *
+ * @return Element count, 0 if stack is NULL
+ */
+unsigned int stack_get_size(t_stack *stack);
