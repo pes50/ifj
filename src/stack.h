@@ -8,6 +8,9 @@
  *
 \*****************************************************************************/
 
+#ifndef STACK_H
+#define STACK_H
+
 #include <stdbool.h>
 
 /**
@@ -70,3 +73,5 @@ t_stack_element *stack_get_top(t_stack *stack);
  * @return Element count, 0 if stack is NULL
  */
 unsigned int stack_get_size(t_stack *stack);
+
+#endif
