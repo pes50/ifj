@@ -11,7 +11,21 @@
 #include "symtable.h"
 #include <string.h>
 
-err_code_t ht_init_data(hashtable_t *hashtable, size_t item_cnt) {
+/********************\
+ * Helper functions *
+\********************/
+
+/**
+ * @brief Allocates memory for the hashtable data array and
+ * initializes items as empty
+ *
+ * @param hashtable Pointer to table in which data array is to be initialized
+ * @param item_cnt Wanted capacity
+ *
+ * @return INTERNAL_ERR if memory allocation failed,
+ *         NO_ERR otherwise
+ */
+static err_code_t ht_init_data(hashtable_t *hashtable, size_t item_cnt) {
   // allocates memory for items of the hash table
   hashtable->data = (ht_item_t *)malloc(item_cnt * sizeof(ht_item_t));
   // checks whether allocation have failed
@@ -28,26 +42,30 @@ err_code_t ht_init_data(hashtable_t *hashtable, size_t item_cnt) {
   return NO_ERR;
 }
 
-err_code_t ht_init(hashtable_t **hashtable, size_t item_cnt) {
-  // allocates memory for the hashtable stucture
-  *hashtable = (hashtable_t *)malloc(sizeof(hashtable_t));
-  // check whether allocation have failed
-  if (*hashtable == NULL) {
-    return INTERNAL_ERR;
+/**
+ * @brief Deallocates all memory held by the hash table's data array
+ *
+ * @param hashtable Pointer to the hash table whose data should be deallocated
+ */
+static void ht_data_destruct(hashtable_t *hashtable) {
+  // if hashtable has a initialized data array it is freed
+  if (hashtable->data != NULL) {
+    free(hashtable->data);
+    hashtable->data = NULL;
   }
-
-  // allocate memory for hash table items and initialize them as empty
-  if (ht_init_data(*hashtable, item_cnt) == INTERNAL_ERR) {
-    return INTERNAL_ERR;
-  }
-
-  // initialize hashtable helper data
-  (*hashtable)->capacity = item_cnt;
-  (*hashtable)->item_cnt = 0;
-  return NO_ERR;
+  return;
 }
 
-err_code_t ht_resize(hashtable_t *hashtable, size_t item_cnt) {
+/**
+ * @brief Resizes current hash table to set number of items
+ *
+ * @param hashtable Hash table to be resized
+ * @param item_cnt Wanted number of hash table items
+ *
+ * @return INTERNAL_ERR if memory allocation failed
+ *         NO_ERR otherwise
+ */
+static err_code_t ht_resize(hashtable_t *hashtable, size_t item_cnt) {
   // saves old hash table to a temporary variable and initializes new array of
   // the wanted size
   hashtable_t old_table = *hashtable;
@@ -84,13 +102,47 @@ err_code_t ht_resize(hashtable_t *hashtable, size_t item_cnt) {
   return NO_ERR;
 }
 
-void ht_data_destruct(hashtable_t *hashtable) {
-  // if hashtable has a initialized data array it is freed
-  if ((hashtable)->data != NULL) {
-    free((hashtable)->data);
-    (hashtable)->data = NULL;
+/**
+ * @brief Calculates the load factor (items/capacity) of a hash table
+ *
+ * @param hashtable Hash table to calculate load factor of
+ * @param [out] load_factor Return pointer with the table's load factor
+ *
+ * @return INTERNAL_ERR if hashtable->capacity = 0 (division by zero)
+ *         or if hashtable->capacity < hashtable->item_cnt
+ *         NO_ERR otherwise
+ */
+static err_code_t ht_load_factor(hashtable_t *hashtable, double *load_factor) {
+  if (hashtable->capacity == 0 || hashtable->capacity < hashtable->item_cnt) {
+    return INTERNAL_ERR;
   }
-  return;
+
+  *load_factor = (double)hashtable->item_cnt / hashtable->capacity;
+
+  return NO_ERR;
+}
+
+/***************************************\
+ * Hash table interface implementation *
+\***************************************/
+
+err_code_t ht_init(hashtable_t **hashtable, size_t item_cnt) {
+  // allocates memory for the hashtable stucture
+  *hashtable = (hashtable_t *)malloc(sizeof(hashtable_t));
+  // check whether allocation have failed
+  if (*hashtable == NULL) {
+    return INTERNAL_ERR;
+  }
+
+  // allocate memory for hash table items and initialize them as empty
+  if (ht_init_data(*hashtable, item_cnt) == INTERNAL_ERR) {
+    return INTERNAL_ERR;
+  }
+
+  // initialize hashtable helper data
+  (*hashtable)->capacity = item_cnt;
+  (*hashtable)->item_cnt = 0;
+  return NO_ERR;
 }
 
 void ht_destruct(hashtable_t **hashtable) {
@@ -108,12 +160,11 @@ size_t ht_hash_function(const char *identificator) {
   size_t hash_value = HASH_FUNCTION_OFFSET_BASIS;
   size_t character = 0;
 
-  // TODO will it have ending character or do we need to save id length
   while (identificator[character] != '\0') {
     // fnv1-a - firstly xor current character with the hash value, then multiply
     // by the prime
-    hash_value ^= (unsigned char)identificator[character];
-    hash_value *= HASH_FUNCTION_PRIME;
+    hash_value = hash_value ^ (unsigned char)identificator[character];
+    hash_value = hash_value * HASH_FUNCTION_PRIME;
 
     // keep only 32 bits even if size_t was larger on given architecture
     hash_value = hash_value & HASH_FUNCTION_32_BIT_MASK;
@@ -125,7 +176,6 @@ size_t ht_hash_function(const char *identificator) {
   return hash_value;
 }
 
-// TODO check whether it came all the way around when it should be impossible?
 err_code_t ht_insert_item(hashtable_t *hashtable, token_t token) {
   if (token.length < 1) {
     return INTERNAL_ERR;
@@ -140,7 +190,7 @@ err_code_t ht_insert_item(hashtable_t *hashtable, token_t token) {
   // while there are occupied spaces keep going further in the table
   while (hashtable->data[hash_value].state == FULL) {
     hash_value++;
-    hash_value %= hashtable->capacity;
+    hash_value = hash_value % hashtable->capacity;
   }
   // after empty (or deleted) space was found, save the data there
   hashtable->data[hash_value].identificator = (char *)token.value;
@@ -200,21 +250,11 @@ err_code_t ht_delete_item(hashtable_t *hashtable, const char *identificator) {
     return INTERNAL_ERR;
   }
   if (err_code == UNDEF_SYMBOL_ERR) {
-    return INTERNAL_ERR; // TODO which error code should this be?
+    return INTERNAL_ERR;
   }
 
   // sets the item state as DELETED and corrects hashtable item count
   hashtable->data[item_idx].state = DELETED;
   (hashtable->item_cnt)--;
-  return NO_ERR;
-}
-
-err_code_t ht_load_factor(hashtable_t *hashtable, double *load_factor) {
-  if (hashtable->capacity == 0 || hashtable->capacity < hashtable->item_cnt) {
-    return INTERNAL_ERR;
-  }
-
-  *load_factor = (double)hashtable->item_cnt / hashtable->capacity;
-
   return NO_ERR;
 }

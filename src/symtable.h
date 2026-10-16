@@ -16,6 +16,10 @@
 #include "token.h"
 #include <stdlib.h>
 
+/*********************************\
+ * Constants and types definitons *
+\*********************************/
+
 // 2^12 (to save memory because of scopes)
 #define HT_INITIAL_CAPACITY 4096
 
@@ -38,7 +42,7 @@ typedef enum { EMPTY, FULL, DELETED } hashtable_item_state;
  */
 typedef struct {
   hashtable_item_state state;
-  char *identificator; // TODO don't forget to allocate memory for the id
+  char *identificator;
   // TODO rest of values
 } ht_item_t;
 
@@ -51,17 +55,9 @@ typedef struct {
   size_t capacity;
 } hashtable_t;
 
-/**
- * @brief Allocates memory for the hashtable data array and
- * initializes items as empty
- *
- * @param hashtable Pointer to table in which data array is to be initialized
- * @param item_cnt Wanted capacity
- *
- * @return INTERNAL_ERR if memory allocation failed,
- *         NO_ERR otherwise
- */
-err_code_t ht_init_data(hashtable_t *hashtable, size_t item_cnt);
+/*************************************\
+ * Interface functions specification *
+\*************************************/
 
 /**
  * @brief Allocates memory for the hash table and initializes items
@@ -74,24 +70,6 @@ err_code_t ht_init_data(hashtable_t *hashtable, size_t item_cnt);
  *         NO_ERR otherwise
  */
 err_code_t ht_init(hashtable_t **hashtable, size_t item_cnt);
-
-/**
- * @brief Resizes current hash table to set number of items
- *
- * @param hashtable Hash table to be resized
- * @param item_cnt Wanted number of hash table items
- *
- * @return INTERNAL_ERR if memory allocation failed
- *         NO_ERR otherwise
- */
-err_code_t ht_resize(hashtable_t *hashtable, size_t item_cnt);
-
-/**
- * @brief Deallocates all memory held by the hash table's data array
- *
- * @param hashtable Pointer to the hash table whose data should be deallocated
- */
-void ht_data_destruct(hashtable_t *hashtable);
 
 /**
  * @brief Deallocates all memory held by the hash table
@@ -119,12 +97,11 @@ size_t ht_hash_function(const char *identificator);
  *                      or memory allocation during resizing failed
  *                      or the capacity is 0
  *                      or the capacity is smaller then item_cnt
- *         REDEF_SYMBOL_ERR if symbol of that id is already in the symbol
- * table, NO_ERR otherwise
- *
+ *         REDEF_SYMBOL_ERR if symbol with the same id
+ *                          is already in the hash table
+ *         NO_ERR otherwise
  */
-err_code_t ht_insert_item(hashtable_t *hashtable,
-                          token_t token); // TODO replace placeholder
+err_code_t ht_insert_item(hashtable_t *hashtable, token_t token);
 
 /**
  * @brief Finds symbol in the hash table by it's identificator
@@ -149,21 +126,9 @@ err_code_t ht_find_item(hashtable_t *hashtable, const char *identificator,
  *
  * @return INTERNAL_ERR if id of the symbol is empty string
  *                      or the hashtable has capacity = 0
- *         TODO --what err code-- if symbol of that id is not in hashtable,
+ *                      or symbol of that id is not in hashtable,
  *         NO_ERR otherwise
  */
 err_code_t ht_delete_item(hashtable_t *hashtable, const char *identificator);
-
-/**
- * @brief Calculates the load factor (items/capacity) of a hash table
- *
- * @param hashtable Hash table to calculate load factor of
- * @param [out] load_factor Return pointer with the table's load factor
- *
- * @return INTERNAL_ERR if hashtable->capacity = 0 (division by zero)
- *         or if hashtable->capacity < hashtable->item_cnt
- *         NO_ERR otherwise
- */
-err_code_t ht_load_factor(hashtable_t *hashtable, double *load_factor);
 
 #endif

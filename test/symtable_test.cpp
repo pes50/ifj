@@ -53,8 +53,6 @@ protected:
     token_t token;
     token.type = TOK_IDENTIFIER;
 
-    // TODO dont know how to write nicer (token.value is const char*)
-
     token.value = "identificator0";
     token.length = 14;
     ht_insert_item(hashtable, token);
@@ -108,22 +106,6 @@ TEST_F(NullHashTablePointerFixture, HashFunction) {
   EXPECT_EQ(hash, 0x8be5a7a6);
 }
 
-TEST_F(EmptyHashTableFixture, EmptyHashTableLoadFactor) {
-  double load_factor;
-  EXPECT_EQ(ht_load_factor(hashtable, &load_factor), NO_ERR);
-  EXPECT_EQ(load_factor, 0.0);
-}
-
-TEST_F(EmptyHashTableFixture, HashTableInvalidLoadFactor) {
-  double load_factor;
-  hashtable->item_cnt = HT_INITIAL_CAPACITY + 1;
-  EXPECT_EQ(ht_load_factor(hashtable, &load_factor), INTERNAL_ERR);
-
-  hashtable->item_cnt = 0;
-  hashtable->capacity = 0;
-  EXPECT_EQ(ht_load_factor(hashtable, &load_factor), INTERNAL_ERR);
-}
-
 TEST_F(EmptyHashTableFixture, EmptyHashTableInsertion) {
   token_t token;
   token.value = "identificator";
@@ -159,22 +141,25 @@ TEST_F(EmptyHashTableFixture, InvalidHashTableInsertion) {
   // function, the other one will too
 }
 
-TEST_F(SixtyPercentFullHashTableFixture, HashTableResize) {
-  ASSERT_EQ(ht_resize(hashtable, 20), NO_ERR);
-
-  EXPECT_EQ(hashtable->capacity, 20);
-
-  double load_factor;
-  ht_load_factor(hashtable, &load_factor);
-  EXPECT_EQ(load_factor, 6.0 / 20.0);
-}
-
 TEST_F(SixtyPercentFullHashTableFixture, HashTableAutoResizing) {
   token_t token;
   token.type = TOK_IDENTIFIER;
   token.value = "identificator6";
   token.length = 14;
 
+  EXPECT_EQ(ht_insert_item(hashtable, token), NO_ERR);
+
+  ASSERT_EQ(hashtable->capacity, 20);
+  ASSERT_EQ(hashtable->item_cnt, 7);
+
+  token.value = "identificator7";
+  EXPECT_EQ(ht_insert_item(hashtable, token), NO_ERR);
+  token.value = "identificator8";
+  EXPECT_EQ(ht_insert_item(hashtable, token), NO_ERR);
+  token.value = "identificator9";
+  EXPECT_EQ(ht_insert_item(hashtable, token), NO_ERR);
+  token.value = "identificator10";
+  token.length = 15;
   EXPECT_EQ(ht_insert_item(hashtable, token), NO_ERR);
 }
 
@@ -228,6 +213,5 @@ TEST_F(SixtyPercentFullHashTableFixture, HashTableDeleteNonExistingItem) {
   ht_delete_item(hashtable, "identificator2");
   ht_delete_item(hashtable, "identificator3");
 
-  // TODO not decided yet on the error code
   EXPECT_EQ(ht_delete_item(hashtable, "identificator3"), INTERNAL_ERR);
 }
