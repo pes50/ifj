@@ -37,6 +37,7 @@ static err_code_t ht_init_data(hashtable_t *hashtable, size_t item_cnt) {
   for (size_t index = 0; index < item_cnt; index++) {
     hashtable->data[index].state = EMPTY;
     hashtable->data[index].identificator = NULL;
+    hashtable->data[index].data = NULL;
   }
 
   return NO_ERR;
@@ -77,9 +78,6 @@ static err_code_t ht_resize(hashtable_t *hashtable, size_t item_cnt) {
     return INTERNAL_ERR;
   }
 
-  // helper variable to unify the type in insertion function
-  token_t temp_token;
-
   // goes through the old array and re-inserts all saved items to the new table
   for (size_t index = 0; index < old_table.capacity; index++) {
     // checks if there is any saved item left
@@ -88,10 +86,8 @@ static err_code_t ht_resize(hashtable_t *hashtable, size_t item_cnt) {
     }
     // inserts item from old table into the new one
     if (old_table.data[index].state == FULL) {
-      temp_token.value = old_table.data[index].identificator;
-      temp_token.type = TOK_IDENTIFIER;
-
-      if (ht_insert_item(hashtable, temp_token) == INTERNAL_ERR) {
+      if (ht_insert_item(hashtable, old_table.data[index].identificator,
+                         old_table.data[index].data) == INTERNAL_ERR) {
         return INTERNAL_ERR;
       }
       // notes that the item has been copied
@@ -176,16 +172,21 @@ size_t ht_hash_function(const char *identificator) {
   return hash_value;
 }
 
-err_code_t ht_insert_item(hashtable_t *hashtable, token_t token) {
-  if (token.length < 1) {
+err_code_t ht_insert_item(hashtable_t *hashtable, const char *identificator,
+                          void *data) {
+  // checks for invalid input
+  if (identificator == NULL || strlen(identificator) == 0 ||
+      hashtable->capacity == 0) {
     return INTERNAL_ERR;
   }
-  if (hashtable->capacity == 0) {
-    return INTERNAL_ERR;
+  size_t item_idx_dumpster;
+  // if symbol of same id is already in the table, then redefinition happened
+  if (ht_find_item(hashtable, identificator, &item_idx_dumpster) == NO_ERR) {
+    return REDEF_SYMBOL_ERR;
   }
 
   // project onto <0, table capacity>
-  size_t hash_value = ht_hash_function(token.value) % hashtable->capacity;
+  size_t hash_value = ht_hash_function(identificator) % hashtable->capacity;
 
   // while there are occupied spaces keep going further in the table
   while (hashtable->data[hash_value].state == FULL) {
@@ -193,17 +194,15 @@ err_code_t ht_insert_item(hashtable_t *hashtable, token_t token) {
     hash_value = hash_value % hashtable->capacity;
   }
   // after empty (or deleted) space was found, save the data there
-  hashtable->data[hash_value].identificator = (char *)token.value;
-  // TODO: bude potreba udelat jinak - dohodnout se s Romanem
-
+  hashtable->data[hash_value].identificator = (char *)identificator;
+  hashtable->data[hash_value].data = data;
   hashtable->data[hash_value].state = FULL;
-
   hashtable->item_cnt++;
+
   double load_factor;
   if (ht_load_factor(hashtable, &load_factor) == INTERNAL_ERR) {
     return INTERNAL_ERR;
   }
-
   if (load_factor > HT_MAX_ALLOWED_LOAD_FACTOR) {
     if (ht_resize(hashtable, hashtable->capacity * 2) == INTERNAL_ERR) {
       return INTERNAL_ERR;
@@ -215,26 +214,32 @@ err_code_t ht_insert_item(hashtable_t *hashtable, token_t token) {
 err_code_t ht_find_item(hashtable_t *hashtable, const char *identificator,
                         size_t *item_idx) {
   *item_idx = 0;
-
   // checks for invalid input
-  if (strlen(identificator) == 0) {
-    return INTERNAL_ERR;
-  }
-  if (hashtable->capacity == 0) {
+  if (identificator == NULL || strlen(identificator) == 0 ||
+      hashtable->capacity == 0) {
     return INTERNAL_ERR;
   }
 
   // project onto <0, table capacity>
   size_t hash_value = ht_hash_function(identificator) % hashtable->capacity;
 
+  // helper variable for readability
+  ht_item_t *ht_data = hashtable->data;
+
+  size_t examined_items = 0;
   // until item is found in the table that has the same id as passed
   // in parameter and is marked as FULL (not EMPTY/DELETED)
-  while (hashtable->data[hash_value].state != FULL ||
-         hashtable->data[hash_value].identificator != identificator) {
-    if (hashtable->data[hash_value].state == EMPTY) {
+  // or all the items have been examined
+  while (ht_data[hash_value].state != FULL ||
+         strcmp(ht_data[hash_value].identificator, identificator) != 0) {
+
+    if (ht_data[hash_value].state == EMPTY ||
+        examined_items > hashtable->capacity) {
       return UNDEF_SYMBOL_ERR;
     }
     hash_value++;
+    hash_value = hash_value % hashtable->capacity;
+    examined_items++;
   }
   // returns index of the item in hasthable by this pointer
   *item_idx = hash_value;
@@ -255,6 +260,8 @@ err_code_t ht_delete_item(hashtable_t *hashtable, const char *identificator) {
 
   // sets the item state as DELETED and corrects hashtable item count
   hashtable->data[item_idx].state = DELETED;
+  hashtable->data[item_idx].identificator = NULL;
+  hashtable->data[item_idx].data = NULL;
   (hashtable->item_cnt)--;
   return NO_ERR;
 }

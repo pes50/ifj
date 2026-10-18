@@ -13,7 +13,6 @@
 #define SYMTABLE_H
 
 #include "err_codes.h"
-#include "token.h"
 #include <stdlib.h>
 
 /*********************************\
@@ -42,8 +41,10 @@ typedef enum { EMPTY, FULL, DELETED } hashtable_item_state;
  */
 typedef struct {
   hashtable_item_state state;
+  // pointers to data in semantic analyzer
+  // careful when deallocating memory there
   char *identificator;
-  // TODO rest of values
+  void *data;
 } ht_item_t;
 
 /**
@@ -91,7 +92,8 @@ size_t ht_hash_function(const char *identificator);
  * @brief Inserts symbol into the hash table
  *
  * @param hashtable Hash table to insert into
- * @param token Token with the symbol to insert
+ * @param identificator Hash table key, id of the symbol
+ * @param data Structure containing data of the symbol (datatype etc.)
  *
  * @return INTERNAL_ERR if id of the symbol is empty string
  *                      or memory allocation during resizing failed
@@ -101,7 +103,8 @@ size_t ht_hash_function(const char *identificator);
  *                          is already in the hash table
  *         NO_ERR otherwise
  */
-err_code_t ht_insert_item(hashtable_t *hashtable, token_t token);
+err_code_t ht_insert_item(hashtable_t *hashtable, const char *identificator,
+                          void *data);
 
 /**
  * @brief Finds symbol in the hash table by it's identificator
