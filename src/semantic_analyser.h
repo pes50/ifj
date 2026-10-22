@@ -13,6 +13,135 @@
 #include "ast_node.h"
 
 /**
+ * @brief Creates an AST node for function declaration
+ *
+ * @param name Function identifier
+ * @param parameters A pointer to the AST node representing the first parameter
+ * @param body A pointer to the AST block node representing the function body
+ * @param return_type Type of the return value
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_function_declaration_node(char *name, t_ast_node *parameters,
+                                             t_ast_node *body,
+                                             DATA_TYPE return_type);
+
+/**
+ * @brief Creates an AST node for function call
+ *
+ * @param name Function identifier
+ * @param arguments A pointer to the AST node representing the first argument
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_function_call_node(char *name, t_ast_node *arguments);
+
+/**
+ * @brief Creates an AST node for function parameter
+ *
+ * @param name Parameter name
+ * @param data_type Type of the parameter
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_parameter_node(char *name, DATA_TYPE data_type);
+
+/**
+ * @brief Creates an AST node for code block
+ *
+ * @param statement A pointer to the AST node representing the first statement
+ * in the block
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_block_node(t_ast_node *statement);
+
+/**
+ * @brief Creates an AST node for variable declaration
+ *
+ * @param name Variable name
+ * @param data_type Type of the variable
+ * @param is_const If true, variable is declared as a constant
+ * @param expression A pointer to the AST node representing the expression to
+ * assign
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_variable_declaration_node(char *name, DATA_TYPE data_type,
+                                             bool is_const,
+                                             t_ast_node *expression);
+
+/**
+ * @brief Creates an AST node for assignment
+ *
+ * @param name A destination identifier
+ * @param expression A pointer to the AST node representing the expression to
+ * assign
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_assignment_node(char *name, t_ast_node *expression);
+
+/**
+ * @brief Creates an AST node for if statement
+ *
+ * @param condition A pointer to the AST node representing the condition
+ * expression
+ * @param true_branch  A pointer to the AST block node representing the true
+ * branch
+ * @param false_branch  A pointer to the AST block node representing the false
+ * branch
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_if_node(t_ast_node *condition, t_ast_node *true_branch,
+                           t_ast_node *false_branch);
+
+/**
+ * @brief Creates an AST node for while loop
+ *
+ * @param condition A pointer to the AST node representing the condition
+ * expression
+ * @param body  A pointer to the AST block node representing the loop body
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_while_do_node(t_ast_node *condition, t_ast_node *body);
+
+/**
+ * @brief Creates an AST node for return statement
+ *
+ * @param expression A pointer to the AST node representing the return
+ * expression
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_return_node(t_ast_node *expression);
+
+/**
+ * @brief Creates an AST node for binary operation
+ *
+ * @param operation The token type representing the binary operator
+ * @param left A pointer to the AST node representing the left operand
+ * @param right A pointer to the AST node representing the right operand
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_binary_operation_node(token_type_t operation,
+                                         t_ast_node *left, t_ast_node *right);
+
+/**
+ * @brief Creates an AST node for unary operation
+ *
+ * @param operation The token type representing the unary operator
+ * @param expression A pointer to the AST node representing the operand
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_unary_operation_node(token_type_t operation,
+                                        t_ast_node *expression);
+
+/**
  * @brief Creates an AST node from given token
  *
  * @param token A token of an identifier or a literal
