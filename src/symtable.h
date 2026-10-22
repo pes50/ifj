@@ -107,19 +107,22 @@ err_code_t ht_insert_item(hashtable_t *hashtable, const char *identificator,
                           void *data);
 
 /**
- * @brief Finds symbol in the hash table by it's identificator
+ * @brief Get's data of symbol with given identificator if it is in the table,
+ *         or return error if it is not there
  *
- * @param hashtable Hash table to look into
- * @param identificator Identificator of the given symbol
- * @param [out] item_idx Return pointer with the found item index
+ * @param hashtable Hashtable to look into
+ * @param identificator Identificator of the symbol, that we want to get data of
+ * @param [out] data Return pointer with the data
  *
  * @return INTERNAL_ERR if id of the symbol is empty string
  *                      or the hashtable has capacity = 0
+ *                      or the index of item was invalid (out of bounds)
+ *                      or the item at the index was EMPTY/DELETED
  *         UNDEF_SYMBOL_ERR if symbol of that id is not in hashtable,
  *         NO_ERR otherwise
  */
-err_code_t ht_find_item(hashtable_t *hashtable, const char *identificator,
-                        size_t *item_idx);
+err_code_t ht_get_item(hashtable_t *hashtable, const char *identificator,
+                       void **data);
 
 /**
  * @brief Deletes symbol from hash table

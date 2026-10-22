@@ -56,12 +56,12 @@ protected:
   virtual void SetUp() {
     ht_init(&hashtable, 10);
 
-    ht_insert_item(hashtable, identificator0, nullptr);
-    ht_insert_item(hashtable, identificator1, nullptr);
-    ht_insert_item(hashtable, identificator2, nullptr);
-    ht_insert_item(hashtable, identificator3, nullptr);
-    ht_insert_item(hashtable, identificator4, nullptr);
-    ht_insert_item(hashtable, identificator5, nullptr);
+    ht_insert_item(hashtable, identificator0, (char *)identificator0);
+    ht_insert_item(hashtable, identificator1, (char *)identificator1);
+    ht_insert_item(hashtable, identificator2, (char *)identificator2);
+    ht_insert_item(hashtable, identificator3, (char *)identificator3);
+    ht_insert_item(hashtable, identificator4, (char *)identificator4);
+    ht_insert_item(hashtable, identificator5, (char *)identificator5);
   }
 
   virtual void TearDown() { ht_destruct(&hashtable); }
@@ -146,34 +146,37 @@ TEST_F(SixtyPercentFullHashTableFixture, HashTableAutoResizing) {
   EXPECT_EQ(ht_insert_item(hashtable, identificator10, nullptr), NO_ERR);
 }
 
-TEST_F(SixtyPercentFullHashTableFixture, HashTableFindExistingItem) {
-  size_t item_idx;
-  ASSERT_EQ(ht_find_item(hashtable, "identificator4", &item_idx), NO_ERR);
-  EXPECT_STREQ(hashtable->data[item_idx].identificator, "identificator4");
-  EXPECT_EQ(hashtable->data[item_idx].state, FULL);
+TEST_F(SixtyPercentFullHashTableFixture, HashTableGetExistingItem) {
+  void *data;
+  ASSERT_EQ(ht_get_item(hashtable, "identificator4", &data), NO_ERR);
+  // in this fixture the data saved with the identificators as key are the
+  // identificator strings themselves
+  EXPECT_EQ(data, identificator4);
+  EXPECT_STREQ((char *)data, identificator4);
 }
 
-TEST_F(SixtyPercentFullHashTableFixture, HashTableFindNonExistingItem) {
-  size_t item_idx;
-  EXPECT_EQ(ht_find_item(hashtable, "non-existing id example", &item_idx),
+TEST_F(SixtyPercentFullHashTableFixture, HashTableGetNonExistingItem) {
+  void *data;
+  EXPECT_EQ(ht_get_item(hashtable, "non-existing id example", &data),
             UNDEF_SYMBOL_ERR);
+  EXPECT_EQ(data, nullptr);
 }
 
-TEST_F(EmptyHashTableFixture, HashTableFindInvalidId) {
-  size_t item_idx;
-  EXPECT_EQ(ht_find_item(hashtable, "", &item_idx), INTERNAL_ERR);
+TEST_F(EmptyHashTableFixture, HashTableGetInvalidId) {
+  void *data;
+  EXPECT_EQ(ht_get_item(hashtable, "", &data), INTERNAL_ERR);
+  EXPECT_EQ(data, nullptr);
 }
 
 TEST_F(SixtyPercentFullHashTableFixture, HashTableDeleteExistingItem) {
   size_t orig_item_cnt = hashtable->item_cnt;
 
-  size_t item_idx;
-  ht_find_item(hashtable, "identificator4", &item_idx);
+  void *data;
+  EXPECT_EQ(ht_get_item(hashtable, "identificator4", &data), NO_ERR);
 
   EXPECT_EQ(ht_delete_item(hashtable, "identificator4"), NO_ERR);
 
   EXPECT_EQ(hashtable->item_cnt, orig_item_cnt - 1);
-  EXPECT_EQ(hashtable->data[item_idx].state, DELETED);
 }
 
 TEST_F(SixtyPercentFullHashTableFixture, HashTableDeleteEmptyIdItem) {
@@ -182,12 +185,11 @@ TEST_F(SixtyPercentFullHashTableFixture, HashTableDeleteEmptyIdItem) {
   EXPECT_EQ(hashtable->item_cnt, orig_item_cnt);
 }
 
-TEST_F(SixtyPercentFullHashTableFixture, HashTableFindDeletedItem) {
-  size_t item_idx;
+TEST_F(SixtyPercentFullHashTableFixture, HashTableGetDeletedItem) {
+  void *data;
   ht_delete_item(hashtable, "identificator3");
 
-  EXPECT_EQ(ht_find_item(hashtable, "identificator3", &item_idx),
-            UNDEF_SYMBOL_ERR);
+  EXPECT_EQ(ht_get_item(hashtable, "identificator3", &data), UNDEF_SYMBOL_ERR);
 }
 
 TEST_F(SixtyPercentFullHashTableFixture, HashTableDeleteNonExistingItem) {

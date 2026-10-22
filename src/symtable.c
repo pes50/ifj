@@ -99,6 +99,53 @@ static err_code_t ht_resize(hashtable_t *hashtable, size_t item_cnt) {
 }
 
 /**
+ * @brief Finds symbol in the hash table by it's identificator
+ *
+ * @param hashtable Hash table to look into
+ * @param identificator Identificator of the given symbol
+ * @param [out] item_idx Return pointer with the found item index
+ *
+ * @return INTERNAL_ERR if id of the symbol is empty string
+ *                      or the hashtable has capacity = 0
+ *         UNDEF_SYMBOL_ERR if symbol of that id is not in hashtable,
+ *         NO_ERR otherwise
+ */
+static err_code_t ht_find_item(hashtable_t *hashtable,
+                               const char *identificator, size_t *item_idx) {
+  *item_idx = 0;
+  // checks for invalid input
+  if (identificator == NULL || strlen(identificator) == 0 ||
+      hashtable->capacity == 0) {
+    return INTERNAL_ERR;
+  }
+
+  // project onto <0, table capacity>
+  size_t hash_value = ht_hash_function(identificator) % hashtable->capacity;
+
+  // helper variable for readability
+  ht_item_t *ht_data = hashtable->data;
+
+  size_t examined_items = 0;
+  // until item is found in the table that has the same id as passed
+  // in parameter and is marked as FULL (not EMPTY/DELETED)
+  // or all the items have been examined
+  while (ht_data[hash_value].state != FULL ||
+         strcmp(ht_data[hash_value].identificator, identificator) != 0) {
+
+    if (ht_data[hash_value].state == EMPTY ||
+        examined_items > hashtable->capacity) {
+      return UNDEF_SYMBOL_ERR;
+    }
+    hash_value++;
+    hash_value = hash_value % hashtable->capacity;
+    examined_items++;
+  }
+  // returns index of the item in hasthable by this pointer
+  *item_idx = hash_value;
+  return NO_ERR;
+}
+
+/**
  * @brief Calculates the load factor (items/capacity) of a hash table
  *
  * @param hashtable Hash table to calculate load factor of
@@ -211,39 +258,29 @@ err_code_t ht_insert_item(hashtable_t *hashtable, const char *identificator,
   return NO_ERR;
 }
 
-err_code_t ht_find_item(hashtable_t *hashtable, const char *identificator,
-                        size_t *item_idx) {
-  *item_idx = 0;
-  // checks for invalid input
-  if (identificator == NULL || strlen(identificator) == 0 ||
-      hashtable->capacity == 0) {
+err_code_t ht_get_item(hashtable_t *hashtable, const char *identificator,
+                       void **data) {
+  err_code_t error_code;
+  size_t item_idx;
+
+  error_code = ht_find_item(hashtable, identificator, &item_idx);
+
+  // can't proceed if error in the lookup occured
+  if (error_code != NO_ERR) {
+    *data = NULL;
+    return error_code;
+  }
+
+  // can't proceed if the item at the found index or the index itself is invalid
+  if (hashtable->capacity - 1 < item_idx ||
+      hashtable->data[item_idx].state != FULL) {
+    *data = NULL;
     return INTERNAL_ERR;
   }
 
-  // project onto <0, table capacity>
-  size_t hash_value = ht_hash_function(identificator) % hashtable->capacity;
-
-  // helper variable for readability
-  ht_item_t *ht_data = hashtable->data;
-
-  size_t examined_items = 0;
-  // until item is found in the table that has the same id as passed
-  // in parameter and is marked as FULL (not EMPTY/DELETED)
-  // or all the items have been examined
-  while (ht_data[hash_value].state != FULL ||
-         strcmp(ht_data[hash_value].identificator, identificator) != 0) {
-
-    if (ht_data[hash_value].state == EMPTY ||
-        examined_items > hashtable->capacity) {
-      return UNDEF_SYMBOL_ERR;
-    }
-    hash_value++;
-    hash_value = hash_value % hashtable->capacity;
-    examined_items++;
-  }
-  // returns index of the item in hasthable by this pointer
-  *item_idx = hash_value;
-  return NO_ERR;
+  // reads data
+  *data = hashtable->data[item_idx].data;
+  return error_code;
 }
 
 err_code_t ht_delete_item(hashtable_t *hashtable, const char *identificator) {
