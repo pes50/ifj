@@ -130,3 +130,11 @@ typedef struct t_ast_node {
  * @return A pointer to the allocated node or NULL if allocation fails
  */
 t_ast_node *create_node();
+
+/**
+ * @brief Recursively deallocates memory for an AST node and its descendants
+ *
+ * @param node A pointer to the AST node to destroy. If NULL, the function does
+ * nothing.
+ */
+void destroy_node(t_ast_node *node);
