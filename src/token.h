@@ -55,10 +55,14 @@ typedef enum {
   TOK_LIT_STRING,   // "..."
   TOK_LIT_M_STRING, // """..."""
   // Extensions
-  TOK_LIT_TRUE,            // true BOOLTHEN
-  TOK_LIT_FALSE,           // false BOOLTHEN
-  TOK_LIT_INTERP_STRING,   // s"..." INTERPOLATEDS
-  TOK_LIT_INTERP_M_STRING, // s"""...""" INTERPOLATEDS
+  TOK_LIT_TRUE,                 // true BOOLTHEN
+  TOK_LIT_FALSE,                // false BOOLTHEN
+  TOK_LIT_INTERP_STRING_PART,   // s"... INTERPOLATEDS
+  TOK_LIT_INTERP_STRING_END,    // " INTERPOLATEDS
+  TOK_LIT_INTERP_M_STRING_PART, // s""" INTERPOLATEDS
+  TOK_LIT_INTERP_M_STRING_END,  // """ INTERPOLATEDS
+  TOK_EXPRESSION_START,         // ${ INTERPOLATEDS
+  TOK_EXPRESSION_END,           // } INTERPOLATEDS
 
   // Layout
   TOK_EOF,    // End of file
@@ -67,17 +71,19 @@ typedef enum {
   TOK_DEDENT, // Decrease in indentation level
 
   // Operators
-  TOK_PLUS,       // +
-  TOK_MINUS,      // -
-  TOK_MUL,        // *
-  TOK_DIV,        // /
-  TOK_LOWER_T,    // <
-  TOK_LOWER_EQ,   // <=
-  TOK_GREATER_T,  // >
-  TOK_GREATER_EQ, // >=
-  TOK_EQUAL,      // ==
-  TOK_NOT_EQ,     // !=
-  TOK_ASSIGN,     // =
+  TOK_UNARY_PLUS,   // +a
+  TOK_BINARY_PLUS,  // a + b
+  TOK_UNARY_MINUS,  // -a
+  TOK_BINARY_MINUS, // a - b
+  TOK_MUL,          // *
+  TOK_DIV,          // /
+  TOK_LOWER_T,      // <
+  TOK_LOWER_EQ,     // <=
+  TOK_GREATER_T,    // >
+  TOK_GREATER_EQ,   // >=
+  TOK_EQUAL,        // ==
+  TOK_NOT_EQ,       // !=
+  TOK_ASSIGN,       // =
   // Extensions
   TOK_AND,         // && BOOLTHEN
   TOK_OR,          // || BOOLTHEN
