@@ -75,6 +75,7 @@ static err_code_t ht_resize(hashtable_t *hashtable, size_t item_cnt) {
   hashtable->capacity = item_cnt;
   hashtable->item_cnt = 0;
   if (ht_init_data(hashtable, item_cnt) == INTERNAL_ERR) {
+    ht_data_destruct(&old_table);
     return INTERNAL_ERR;
   }
 
@@ -88,6 +89,7 @@ static err_code_t ht_resize(hashtable_t *hashtable, size_t item_cnt) {
     if (old_table.data[index].state == FULL) {
       if (ht_insert_item(hashtable, old_table.data[index].identificator,
                          old_table.data[index].data) == INTERNAL_ERR) {
+        ht_data_destruct(&old_table);
         return INTERNAL_ERR;
       }
       // notes that the item has been copied
