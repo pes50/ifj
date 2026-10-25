@@ -32,6 +32,8 @@ typedef enum {
   AST_WHILE_DO,
   AST_FOR_DO,
   AST_RETURN,
+  AST_MATCH,
+  AST_MATCH_CASE,
   AST_BINARY_OPERATION,
   AST_UNARY_OPERATION,
   AST_IDENTIFIER,
@@ -123,6 +125,17 @@ typedef struct t_ast_node {
     struct {
       struct t_ast_node *expression;
     } return_statement;
+
+    struct {
+      struct t_ast_node *expression;
+      struct t_ast_node *cases;
+    } match;
+
+    struct {
+      struct t_ast_node *pattern;
+      struct t_ast_node *guard;
+      struct t_ast_node *block;
+    } match_case;
 
     struct {
       token_type_t op;

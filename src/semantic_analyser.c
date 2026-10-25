@@ -288,6 +288,38 @@ t_ast_node *create_return_node(t_ast_node *expression) {
   return node;
 }
 
+t_ast_node *create_match_node(t_ast_node *expression, t_ast_node *cases) {
+  // Create node
+  t_ast_node *node = create_node();
+  if (node == NULL) {
+    return NULL;
+  }
+
+  // Initialize
+  node->type = AST_MATCH;
+  node->data.match.expression = expression;
+  node->data.match.cases = cases;
+
+  return node;
+}
+
+t_ast_node *create_match_case_node(t_ast_node *pattern, t_ast_node *guard,
+                                   t_ast_node *block) {
+  // Create node
+  t_ast_node *node = create_node();
+  if (node == NULL) {
+    return NULL;
+  }
+
+  // Initialize
+  node->type = AST_MATCH_CASE;
+  node->data.match_case.block = block;
+  node->data.match_case.guard = guard;
+  node->data.match_case.pattern = pattern;
+
+  return node;
+}
+
 t_ast_node *create_binary_operation_node(token_type_t operation,
                                          t_ast_node *left, t_ast_node *right) {
   // TODO validate operation

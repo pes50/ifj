@@ -179,6 +179,30 @@ t_ast_node *create_while_do_node(t_ast_node *condition, t_ast_node *body);
 t_ast_node *create_return_node(t_ast_node *expression);
 
 /**
+ * @brief Creates an AST node for match
+ *
+ * @param expression A pointer to the AST node representing the value to match
+ * @param cases A pointer to the AST match case node representing the first
+ * branch
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_match_node(t_ast_node *expression, t_ast_node *cases);
+
+/**
+ * @brief Creates an AST node for match case
+ *
+ * @param pattern A pointer to the AST node representing the value to match
+ * @param guard An optional pointer to the AST expression node representing a
+ * guard
+ * @param block A pointer to the AST node representing the branch
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_match_case_node(t_ast_node *pattern, t_ast_node *guard,
+                                   t_ast_node *block);
+
+/**
  * @brief Creates an AST node for binary operation
  *
  * @param operation The token type representing the binary operator

@@ -82,6 +82,15 @@ void destroy_node(t_ast_node *node) {
   case AST_RETURN:
     destroy_node(node->data.return_statement.expression);
     break;
+  case AST_MATCH:
+    destroy_node(node->data.match.cases);
+    destroy_node(node->data.match.expression);
+    break;
+  case AST_MATCH_CASE:
+    destroy_node(node->data.match_case.block);
+    destroy_node(node->data.match_case.guard);
+    destroy_node(node->data.match_case.pattern);
+    break;
   case AST_BINARY_OPERATION:
     destroy_node(node->data.binary_operation.left);
     destroy_node(node->data.binary_operation.right);
