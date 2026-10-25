@@ -319,3 +319,17 @@ t_ast_node *create_leaf_node(token_t token) {
 
   return node;
 }
+
+t_ast_node *create_interpolated_string_node(t_ast_node *expressions) {
+  // Create node
+  t_ast_node *node = create_node();
+  if (node == NULL) {
+    return NULL;
+  }
+
+  // Initialize
+  node->type = AST_INTERPOLATED_STRING;
+  node->data.interpolated_string.expressions = expressions;
+
+  return node;
+}

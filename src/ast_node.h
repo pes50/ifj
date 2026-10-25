@@ -32,6 +32,7 @@ typedef enum {
   AST_UNARY_OPERATION,
   AST_IDENTIFIER,
   AST_LITERAL,
+  AST_INTERPOLATED_STRING,
 } AST_TYPE;
 
 /**
@@ -135,6 +136,10 @@ typedef struct t_ast_node {
       char *raw;
       DATA_TYPE data_type;
     } literal;
+
+    struct {
+      struct t_ast_node *expressions;
+    } interpolated_string;
   } data;
 } t_ast_node;
 
