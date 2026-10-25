@@ -22,6 +22,7 @@ typedef enum {
   AST_FUNCTION_CALL,
   AST_DOT_FUNCTION_CALL,
   AST_LAMBDA_DECLARATION,
+  AST_PARAMETER_LIST,
   AST_PARAMETER,
   AST_CLASS_DECLARATION,
   AST_TYPE_DECLARATION,
@@ -52,20 +53,20 @@ typedef struct t_ast_node {
   union {
     struct {
       char *name;
-      struct t_ast_node *parameters;
+      struct t_ast_node *parameter_lists;
       struct t_ast_node *body;
       t_data_type_node *return_type;
     } function_declaration;
 
     struct {
       char *name;
-      struct t_ast_node *arguments;
+      struct t_ast_node *argument_lists;
     } function_call;
 
     struct {
       char *name;
       struct t_ast_node *target;
-      struct t_ast_node *arguments;
+      struct t_ast_node *argument_lists;
     } dot_function_call;
 
     struct {
@@ -73,6 +74,10 @@ typedef struct t_ast_node {
       struct t_ast_node *body;
       t_data_type_node *return_type;
     } lambda_declaration;
+
+    struct {
+      struct t_ast_node *parameters;
+    } parameter_list;
 
     struct {
       char *name;

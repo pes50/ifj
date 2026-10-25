@@ -23,23 +23,26 @@ void destroy_node(t_ast_node *node) {
   switch (node->type) {
   case AST_FUNCTION_DECLARATION:
     free(node->data.function_declaration.name);
-    destroy_node(node->data.function_declaration.parameters);
+    destroy_node(node->data.function_declaration.parameter_lists);
     destroy_node(node->data.function_declaration.body);
     destroy_type_node(node->data.function_declaration.return_type);
     break;
   case AST_FUNCTION_CALL:
     free(node->data.function_call.name);
-    destroy_node(node->data.function_call.arguments);
+    destroy_node(node->data.function_call.argument_lists);
     break;
   case AST_DOT_FUNCTION_CALL:
     free(node->data.dot_function_call.name);
     destroy_node(node->data.dot_function_call.target);
-    destroy_node(node->data.dot_function_call.arguments);
+    destroy_node(node->data.dot_function_call.argument_lists);
     break;
   case AST_LAMBDA_DECLARATION:
     destroy_node(node->data.lambda_declaration.parameters);
     destroy_node(node->data.lambda_declaration.body);
     destroy_type_node(node->data.lambda_declaration.return_type);
+    break;
+  case AST_PARAMETER_LIST:
+    destroy_node(node->data.parameter_list.parameters);
     break;
   case AST_PARAMETER:
     free(node->data.parameter.name);

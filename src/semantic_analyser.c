@@ -12,7 +12,8 @@
 #include "string_duplicate.h"
 #include <stdlib.h>
 
-t_ast_node *create_function_declaration_node(char *name, t_ast_node *parameters,
+t_ast_node *create_function_declaration_node(char *name,
+                                             t_ast_node *parameter_lists,
                                              t_ast_node *body,
                                              t_data_type_node *return_type) {
   // Create node
@@ -24,7 +25,7 @@ t_ast_node *create_function_declaration_node(char *name, t_ast_node *parameters,
   // Initialize
   node->type = AST_FUNCTION_DECLARATION;
   node->data.function_declaration.name = string_duplicate(name);
-  node->data.function_declaration.parameters = parameters;
+  node->data.function_declaration.parameter_lists = parameter_lists;
   node->data.function_declaration.body = body;
   node->data.function_declaration.return_type = return_type;
 
@@ -37,7 +38,7 @@ t_ast_node *create_function_declaration_node(char *name, t_ast_node *parameters,
   return node;
 }
 
-t_ast_node *create_function_call_node(char *name, t_ast_node *arguments) {
+t_ast_node *create_function_call_node(char *name, t_ast_node *argument_lists) {
   // Create node
   t_ast_node *node = create_node();
   if (node == NULL) {
@@ -47,7 +48,7 @@ t_ast_node *create_function_call_node(char *name, t_ast_node *arguments) {
   // Initialize
   node->type = AST_FUNCTION_CALL;
   node->data.function_call.name = string_duplicate(name);
-  node->data.function_call.arguments = arguments;
+  node->data.function_call.argument_lists = argument_lists;
 
   // Check if string_duplicate failed
   if (node->data.function_call.name == NULL) {
@@ -59,7 +60,7 @@ t_ast_node *create_function_call_node(char *name, t_ast_node *arguments) {
 }
 
 t_ast_node *create_dot_function_call_node(char *name, t_ast_node *target,
-                                          t_ast_node *arguments) {
+                                          t_ast_node *argument_lists) {
   // Create node
   t_ast_node *node = create_node();
   if (node == NULL) {
@@ -70,7 +71,7 @@ t_ast_node *create_dot_function_call_node(char *name, t_ast_node *target,
   node->type = AST_DOT_FUNCTION_CALL;
   node->data.dot_function_call.name = string_duplicate(name);
   node->data.dot_function_call.target = target;
-  node->data.dot_function_call.arguments = arguments;
+  node->data.dot_function_call.argument_lists = argument_lists;
 
   // Check if string_duplicate failed
   if (node->data.dot_function_call.name == NULL) {
@@ -95,6 +96,20 @@ t_ast_node *create_lambda_declaration_node(t_ast_node *parameters,
   node->data.lambda_declaration.parameters = parameters;
   node->data.lambda_declaration.body = body;
   node->data.lambda_declaration.return_type = return_type;
+
+  return node;
+}
+
+t_ast_node *create_parameter_list_node(t_ast_node *parameters) {
+  // Create node
+  t_ast_node *node = create_node();
+  if (node == NULL) {
+    return NULL;
+  }
+
+  // Initialize
+  node->type = AST_PARAMETER_LIST;
+  node->data.parameter_list.parameters = parameters;
 
   return node;
 }

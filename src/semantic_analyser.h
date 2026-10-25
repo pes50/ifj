@@ -16,13 +16,15 @@
  * @brief Creates an AST node for function declaration
  *
  * @param name Function identifier
- * @param parameters A pointer to the AST node representing the first parameter
+ * @param parameter_lists A pointer to the AST node representing the first
+ * parameter list. NULL for a function without a parameter list
  * @param body A pointer to the AST block node representing the function body
  * @param return_type Type of the return value
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_function_declaration_node(char *name, t_ast_node *parameters,
+t_ast_node *create_function_declaration_node(char *name,
+                                             t_ast_node *parameter_lists,
                                              t_ast_node *body,
                                              t_data_type_node *return_type);
 
@@ -30,11 +32,12 @@ t_ast_node *create_function_declaration_node(char *name, t_ast_node *parameters,
  * @brief Creates an AST node for function call
  *
  * @param name Function identifier
- * @param arguments A pointer to the AST node representing the first argument
+ * @param argument_lists A pointer to the AST node representing the first
+ * argument list. NULL for a function without an argument list
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_function_call_node(char *name, t_ast_node *arguments);
+t_ast_node *create_function_call_node(char *name, t_ast_node *argument_lists);
 
 /**
  * @brief Creates an AST node for dot function call
@@ -42,12 +45,13 @@ t_ast_node *create_function_call_node(char *name, t_ast_node *arguments);
  * @param name Function identifier
  * @param target A pointer to the AST node representing the expression before
  * the dot
- * @param arguments A pointer to the AST node representing the first argument
+ * @param argument_lists A pointer to the AST node representing the first
+ * argument list. NULL for a function without an argument list
  *
  * @return A pointer to created node or NULL if failed
  */
 t_ast_node *create_dot_function_call_node(char *name, t_ast_node *target,
-                                          t_ast_node *arguments);
+                                          t_ast_node *argument_lists);
 
 /**
  * @brief Creates an AST node for lambda function declaration
@@ -61,6 +65,16 @@ t_ast_node *create_dot_function_call_node(char *name, t_ast_node *target,
 t_ast_node *create_lambda_declaration_node(t_ast_node *parameters,
                                            t_ast_node *body,
                                            t_data_type_node *return_type);
+
+/**
+ * @brief Creates an AST node for function parameter list
+ *
+ * @param parameters A pointer to the AST node representing the first parameter.
+ * NULL for a list without parameters
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_parameter_list_node(t_ast_node *parameters);
 
 /**
  * @brief Creates an AST node for function parameter
