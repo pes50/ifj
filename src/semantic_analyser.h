@@ -24,7 +24,7 @@
  */
 t_ast_node *create_function_declaration_node(char *name, t_ast_node *parameters,
                                              t_ast_node *body,
-                                             DATA_TYPE return_type);
+                                             t_data_type_node *return_type);
 
 /**
  * @brief Creates an AST node for function call
@@ -60,7 +60,7 @@ t_ast_node *create_dot_function_call_node(char *name, t_ast_node *target,
  */
 t_ast_node *create_lambda_declaration_node(t_ast_node *parameters,
                                            t_ast_node *body,
-                                           DATA_TYPE return_type);
+                                           t_data_type_node *return_type);
 
 /**
  * @brief Creates an AST node for function parameter
@@ -70,7 +70,7 @@ t_ast_node *create_lambda_declaration_node(t_ast_node *parameters,
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_parameter_node(char *name, DATA_TYPE data_type);
+t_ast_node *create_parameter_node(char *name, t_data_type_node *data_type);
 
 /**
  * @brief Creates an AST node for code block
@@ -93,7 +93,8 @@ t_ast_node *create_block_node(t_ast_node *statement);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_variable_declaration_node(char *name, DATA_TYPE data_type,
+t_ast_node *create_variable_declaration_node(char *name,
+                                             t_data_type_node *data_type,
                                              bool is_const,
                                              t_ast_node *expression);
 

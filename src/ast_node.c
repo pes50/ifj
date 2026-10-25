@@ -18,11 +18,14 @@ void destroy_node(t_ast_node *node) {
     return;
   }
 
+  destroy_type_node(node->data_type);
+
   switch (node->type) {
   case AST_FUNCTION_DECLARATION:
     free(node->data.function_declaration.name);
     destroy_node(node->data.function_declaration.parameters);
     destroy_node(node->data.function_declaration.body);
+    destroy_type_node(node->data.function_declaration.return_type);
     break;
   case AST_FUNCTION_CALL:
     free(node->data.function_call.name);
@@ -36,9 +39,11 @@ void destroy_node(t_ast_node *node) {
   case AST_LAMBDA_DECLARATION:
     destroy_node(node->data.lambda_declaration.parameters);
     destroy_node(node->data.lambda_declaration.body);
+    destroy_type_node(node->data.lambda_declaration.return_type);
     break;
   case AST_PARAMETER:
     free(node->data.parameter.name);
+    destroy_type_node(node->data.parameter.data_type);
     break;
   case AST_BLOCK:
     destroy_node(node->data.block.statement);
@@ -46,6 +51,7 @@ void destroy_node(t_ast_node *node) {
   case AST_VARIABLE_DECLARATION:
     free(node->data.variable_declaration.name);
     destroy_node(node->data.variable_declaration.expression);
+    destroy_type_node(node->data.variable_declaration.data_type);
     break;
   case AST_ASSIGNMENT:
     free(node->data.assignment.name);
