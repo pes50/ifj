@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "data_type.h"
 #include "token.h"
 #include <stdbool.h>
 
@@ -34,35 +35,22 @@ typedef enum {
   AST_IDENTIFIER,
   AST_LITERAL,
   AST_INTERPOLATED_STRING,
-} AST_TYPE;
-
-/**
- * @brief Enumeration of all data types
- */
-typedef enum {
-  DT_UNKNOWN,
-  DT_INT,
-  DT_DOUBLE,
-  DT_STRING,
-  DT_UNIT,
-  DT_BOOLEAN,
-  DT_LIST,
-} DATA_TYPE;
+} t_ast_type;
 
 /**
  * @brief Struct for an AST node
  */
 typedef struct t_ast_node {
-  AST_TYPE type;
+  t_ast_type type;
   struct t_ast_node *next;
-  DATA_TYPE data_type;
+  t_data_type_node *data_type;
 
   union {
     struct {
       char *name;
       struct t_ast_node *parameters;
       struct t_ast_node *body;
-      DATA_TYPE return_type;
+      t_data_type_node *return_type;
     } function_declaration;
 
     struct {
@@ -79,12 +67,12 @@ typedef struct t_ast_node {
     struct {
       struct t_ast_node *parameters;
       struct t_ast_node *body;
-      DATA_TYPE return_type;
+      t_data_type_node *return_type;
     } lambda_declaration;
 
     struct {
       char *name;
-      DATA_TYPE data_type;
+      t_data_type_node *data_type;
     } parameter;
 
     struct {
@@ -95,7 +83,7 @@ typedef struct t_ast_node {
       char *name;
       bool is_const;
       struct t_ast_node *expression;
-      DATA_TYPE data_type;
+      t_data_type_node *data_type;
     } variable_declaration;
 
     struct {
@@ -141,7 +129,7 @@ typedef struct t_ast_node {
 
     struct {
       char *raw;
-      DATA_TYPE data_type;
+      t_primitive primitive;
     } literal;
 
     struct {

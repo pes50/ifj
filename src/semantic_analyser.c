@@ -14,7 +14,7 @@
 
 t_ast_node *create_function_declaration_node(char *name, t_ast_node *parameters,
                                              t_ast_node *body,
-                                             DATA_TYPE return_type) {
+                                             t_data_type_node *return_type) {
   // Create node
   t_ast_node *node = create_node();
   if (node == NULL) {
@@ -83,7 +83,7 @@ t_ast_node *create_dot_function_call_node(char *name, t_ast_node *target,
 
 t_ast_node *create_lambda_declaration_node(t_ast_node *parameters,
                                            t_ast_node *body,
-                                           DATA_TYPE return_type) {
+                                           t_data_type_node *return_type) {
   // Create node
   t_ast_node *node = create_node();
   if (node == NULL) {
@@ -99,7 +99,7 @@ t_ast_node *create_lambda_declaration_node(t_ast_node *parameters,
   return node;
 }
 
-t_ast_node *create_parameter_node(char *name, DATA_TYPE data_type) {
+t_ast_node *create_parameter_node(char *name, t_data_type_node *data_type) {
   // Create node
   t_ast_node *node = create_node();
   if (node == NULL) {
@@ -134,7 +134,8 @@ t_ast_node *create_block_node(t_ast_node *statement) {
   return node;
 }
 
-t_ast_node *create_variable_declaration_node(char *name, DATA_TYPE data_type,
+t_ast_node *create_variable_declaration_node(char *name,
+                                             t_data_type_node *data_type,
                                              bool is_const,
                                              t_ast_node *expression) {
   // Create node
@@ -293,27 +294,27 @@ t_ast_node *create_leaf_node(token_t token) {
     break;
   case TOK_LIT_INT:
     node->type = AST_LITERAL;
-    node->data.literal.data_type = DT_INT;
+    node->data.literal.primitive = PRIMITIVE_INT;
     node->data.literal.raw = string_duplicate(token.value);
     break;
   case TOK_LIT_DOUBLE:
     node->type = AST_LITERAL;
-    node->data.literal.data_type = DT_DOUBLE;
+    node->data.literal.primitive = PRIMITIVE_DOUBLE;
     node->data.literal.raw = string_duplicate(token.value);
     break;
   case TOK_LIT_STRING:
     node->type = AST_LITERAL;
-    node->data.literal.data_type = DT_STRING;
+    node->data.literal.primitive = PRIMITIVE_STRING;
     node->data.literal.raw = string_duplicate(token.value);
     break;
   case TOK_LIT_TRUE:
     node->type = AST_LITERAL;
-    node->data.literal.data_type = DT_BOOLEAN;
+    node->data.literal.primitive = PRIMITIVE_BOOLEAN;
     node->data.literal.raw = string_duplicate(token.value);
     break;
   case TOK_LIT_FALSE:
     node->type = AST_LITERAL;
-    node->data.literal.data_type = DT_BOOLEAN;
+    node->data.literal.primitive = PRIMITIVE_BOOLEAN;
     node->data.literal.raw = string_duplicate(token.value);
     break;
   default:
