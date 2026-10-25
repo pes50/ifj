@@ -50,6 +50,19 @@ t_ast_node *create_dot_function_call_node(char *name, t_ast_node *target,
                                           t_ast_node *arguments);
 
 /**
+ * @brief Creates an AST node for lambda function declaration
+ *
+ * @param parameters A pointer to the AST node representing the first parameter
+ * @param body A pointer to the AST block node representing the function body
+ * @param return_type Type of the return value
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_lambda_declaration_node(t_ast_node *parameters,
+                                           t_ast_node *body,
+                                           DATA_TYPE return_type);
+
+/**
  * @brief Creates an AST node for function parameter
  *
  * @param name Parameter name

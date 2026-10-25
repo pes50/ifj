@@ -33,6 +33,10 @@ void destroy_node(t_ast_node *node) {
     destroy_node(node->data.dot_function_call.target);
     destroy_node(node->data.dot_function_call.arguments);
     break;
+  case AST_LAMBDA_DECLARATION:
+    destroy_node(node->data.lambda_declaration.parameters);
+    destroy_node(node->data.lambda_declaration.body);
+    break;
   case AST_PARAMETER:
     free(node->data.parameter.name);
     break;

@@ -81,6 +81,24 @@ t_ast_node *create_dot_function_call_node(char *name, t_ast_node *target,
   return node;
 }
 
+t_ast_node *create_lambda_declaration_node(t_ast_node *parameters,
+                                           t_ast_node *body,
+                                           DATA_TYPE return_type) {
+  // Create node
+  t_ast_node *node = create_node();
+  if (node == NULL) {
+    return NULL;
+  }
+
+  // Initialize
+  node->type = AST_LAMBDA_DECLARATION;
+  node->data.lambda_declaration.parameters = parameters;
+  node->data.lambda_declaration.body = body;
+  node->data.lambda_declaration.return_type = return_type;
+
+  return node;
+}
+
 t_ast_node *create_parameter_node(char *name, DATA_TYPE data_type) {
   // Create node
   t_ast_node *node = create_node();
