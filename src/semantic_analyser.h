@@ -108,6 +108,19 @@ t_ast_node *create_type_declaration_node(char *name,
                                          t_data_type_node *data_type);
 
 /**
+ * @brief Creates an AST node for extension declaration
+ *
+ * @param parameters A pointer to the AST node representing the parameter
+ * @param function_declarations A pointer to the AST node representing the first
+ * function declaration
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *
+create_extension_declaration_node(t_ast_node *parameter,
+                                  t_ast_node *function_declarations);
+
+/**
  * @brief Creates an AST node for code block
  *
  * @param statement A pointer to the AST node representing the first statement
