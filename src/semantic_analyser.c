@@ -158,7 +158,6 @@ t_ast_node *create_class_declaration_node(char *name, t_ast_node *attributes) {
 
 t_ast_node *create_type_declaration_node(char *name,
                                          t_data_type_node *data_type) {
-
   // Create node
   t_ast_node *node = create_node();
   if (node == NULL) {
@@ -175,6 +174,24 @@ t_ast_node *create_type_declaration_node(char *name,
     destroy_node(node);
     return NULL;
   }
+
+  return node;
+}
+
+t_ast_node *
+create_extension_declaration_node(t_ast_node *parameter,
+                                  t_ast_node *function_declarations) {
+  // Create node
+  t_ast_node *node = create_node();
+  if (node == NULL) {
+    return NULL;
+  }
+
+  // Initialize
+  node->type = AST_EXTENSION_DECLARATION;
+  node->data.extension_declaration.parameter = parameter;
+  node->data.extension_declaration.function_declarations =
+      function_declarations;
 
   return node;
 }

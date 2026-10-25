@@ -56,6 +56,10 @@ void destroy_node(t_ast_node *node) {
     free(node->data.type_declaration.name);
     destroy_type_node(node->data.type_declaration.data_type);
     break;
+  case AST_EXTENSION_DECLARATION:
+    destroy_node(node->data.extension_declaration.parameter);
+    destroy_node(node->data.extension_declaration.function_declarations);
+    break;
   case AST_BLOCK:
     destroy_node(node->data.block.statement);
     break;
