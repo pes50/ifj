@@ -49,6 +49,10 @@ void destroy_node(t_ast_node *node) {
     free(node->data.class_declaration.name);
     destroy_node(node->data.class_declaration.attributes);
     break;
+  case AST_TYPE_DECLARATION:
+    free(node->data.type_declaration.name);
+    destroy_type_node(node->data.type_declaration.data_type);
+    break;
   case AST_BLOCK:
     destroy_node(node->data.block.statement);
     break;

@@ -141,6 +141,29 @@ t_ast_node *create_class_declaration_node(char *name, t_ast_node *attributes) {
   return node;
 }
 
+t_ast_node *create_type_declaration_node(char *name,
+                                         t_data_type_node *data_type) {
+
+  // Create node
+  t_ast_node *node = create_node();
+  if (node == NULL) {
+    return NULL;
+  }
+
+  // Initialize
+  node->type = AST_TYPE_DECLARATION;
+  node->data.type_declaration.name = string_duplicate(name);
+  node->data.type_declaration.data_type = data_type;
+
+  // Check if string_duplicate failed
+  if (node->data.type_declaration.name == NULL) {
+    destroy_node(node);
+    return NULL;
+  }
+
+  return node;
+}
+
 t_ast_node *create_block_node(t_ast_node *statement) {
   // Create node
   t_ast_node *node = create_node();

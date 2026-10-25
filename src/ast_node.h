@@ -24,6 +24,7 @@ typedef enum {
   AST_LAMBDA_DECLARATION,
   AST_PARAMETER,
   AST_CLASS_DECLARATION,
+  AST_TYPE_DECLARATION,
   AST_BLOCK,
   AST_VARIABLE_DECLARATION,
   AST_ASSIGNMENT,
@@ -80,6 +81,11 @@ typedef struct t_ast_node {
       char *name;
       struct t_ast_node *attributes;
     } class_declaration;
+
+    struct {
+      char *name;
+      t_data_type_node *data_type;
+    } type_declaration;
 
     struct {
       struct t_ast_node *statement;
