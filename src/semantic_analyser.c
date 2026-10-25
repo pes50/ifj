@@ -58,6 +58,29 @@ t_ast_node *create_function_call_node(char *name, t_ast_node *arguments) {
   return node;
 }
 
+t_ast_node *create_dot_function_call_node(char *name, t_ast_node *target,
+                                          t_ast_node *arguments) {
+  // Create node
+  t_ast_node *node = create_node();
+  if (node == NULL) {
+    return NULL;
+  }
+
+  // Initialize
+  node->type = AST_DOT_FUNCTION_CALL;
+  node->data.dot_function_call.name = string_duplicate(name);
+  node->data.dot_function_call.target = target;
+  node->data.dot_function_call.arguments = arguments;
+
+  // Check if string_duplicate failed
+  if (node->data.dot_function_call.name == NULL) {
+    destroy_node(node);
+    return NULL;
+  }
+
+  return node;
+}
+
 t_ast_node *create_parameter_node(char *name, DATA_TYPE data_type) {
   // Create node
   t_ast_node *node = create_node();

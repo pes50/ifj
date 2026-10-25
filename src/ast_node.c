@@ -28,6 +28,11 @@ void destroy_node(t_ast_node *node) {
     free(node->data.function_call.name);
     destroy_node(node->data.function_call.arguments);
     break;
+  case AST_DOT_FUNCTION_CALL:
+    free(node->data.dot_function_call.name);
+    destroy_node(node->data.dot_function_call.target);
+    destroy_node(node->data.dot_function_call.arguments);
+    break;
   case AST_PARAMETER:
     free(node->data.parameter.name);
     break;

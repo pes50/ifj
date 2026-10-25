@@ -37,6 +37,19 @@ t_ast_node *create_function_declaration_node(char *name, t_ast_node *parameters,
 t_ast_node *create_function_call_node(char *name, t_ast_node *arguments);
 
 /**
+ * @brief Creates an AST node for dot function call
+ *
+ * @param name Function identifier
+ * @param target A pointer to the AST node representing the expression before
+ * the dot
+ * @param arguments A pointer to the AST node representing the first argument
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_dot_function_call_node(char *name, t_ast_node *target,
+                                          t_ast_node *arguments);
+
+/**
  * @brief Creates an AST node for function parameter
  *
  * @param name Parameter name
