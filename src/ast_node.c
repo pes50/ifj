@@ -42,6 +42,11 @@ void destroy_node(t_ast_node *node) {
     free(node->data.assignment.name);
     destroy_node(node->data.assignment.expression);
     break;
+  case AST_FOR_DO:
+    destroy_node(node->data.for_do.generator);
+    destroy_node(node->data.for_do.guards);
+    destroy_node(node->data.for_do.body);
+    break;
   case AST_WHILE_DO:
     destroy_node(node->data.while_do.condition);
     destroy_node(node->data.while_do.body);

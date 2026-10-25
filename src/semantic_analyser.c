@@ -156,6 +156,23 @@ t_ast_node *create_if_node(t_ast_node *condition, t_ast_node *true_branch,
   return node;
 }
 
+t_ast_node *create_for_do_node(t_ast_node *generator, t_ast_node *guards,
+                               t_ast_node *body) {
+  // Create node
+  t_ast_node *node = create_node();
+  if (node == NULL) {
+    return NULL;
+  }
+
+  // Initialize
+  node->type = AST_FOR_DO;
+  node->data.for_do.generator = generator;
+  node->data.for_do.guards = guards;
+  node->data.for_do.body = body;
+
+  return node;
+}
+
 t_ast_node *create_while_do_node(t_ast_node *condition, t_ast_node *body) {
   // Create node
   t_ast_node *node = create_node();

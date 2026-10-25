@@ -25,6 +25,7 @@ typedef enum {
   AST_ASSIGNMENT,
   AST_IF,
   AST_WHILE_DO,
+  AST_FOR_DO,
   AST_RETURN,
   AST_BINARY_OPERATION,
   AST_UNARY_OPERATION,
@@ -86,6 +87,12 @@ typedef struct t_ast_node {
       char *name;
       struct t_ast_node *expression;
     } assignment;
+
+    struct {
+      struct t_ast_node *generator;
+      struct t_ast_node *guards;
+      struct t_ast_node *body;
+    } for_do;
 
     struct {
       struct t_ast_node *condition;
