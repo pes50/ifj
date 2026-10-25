@@ -83,6 +83,17 @@ t_ast_node *create_parameter_node(char *name, t_data_type_node *data_type);
 t_ast_node *create_class_declaration_node(char *name, t_ast_node *attributes);
 
 /**
+ * @brief Creates an AST node for type declaration
+ *
+ * @param name Type identifier
+ * @param attributes A pointer to the Data type node
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_type_declaration_node(char *name,
+                                         t_data_type_node *data_type);
+
+/**
  * @brief Creates an AST node for code block
  *
  * @param statement A pointer to the AST node representing the first statement
