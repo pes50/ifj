@@ -73,6 +73,16 @@ t_ast_node *create_lambda_declaration_node(t_ast_node *parameters,
 t_ast_node *create_parameter_node(char *name, t_data_type_node *data_type);
 
 /**
+ * @brief Creates an AST node for class declaration
+ *
+ * @param name Class identifier
+ * @param attributes A pointer to the AST node representing the first attribute
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_class_declaration_node(char *name, t_ast_node *attributes);
+
+/**
  * @brief Creates an AST node for code block
  *
  * @param statement A pointer to the AST node representing the first statement
