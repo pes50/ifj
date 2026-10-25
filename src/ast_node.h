@@ -20,6 +20,7 @@ typedef enum {
   AST_FUNCTION_DECLARATION,
   AST_FUNCTION_CALL,
   AST_DOT_FUNCTION_CALL,
+  AST_LAMBDA_DECLARATION,
   AST_PARAMETER,
   AST_BLOCK,
   AST_VARIABLE_DECLARATION,
@@ -74,6 +75,12 @@ typedef struct t_ast_node {
       struct t_ast_node *target;
       struct t_ast_node *arguments;
     } dot_function_call;
+
+    struct {
+      struct t_ast_node *parameters;
+      struct t_ast_node *body;
+      DATA_TYPE return_type;
+    } lambda_declaration;
 
     struct {
       char *name;
