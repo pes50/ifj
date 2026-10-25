@@ -87,9 +87,9 @@ t_ast_node *create_assignment_node(char *name, t_ast_node *expression);
  *
  * @param condition A pointer to the AST node representing the condition
  * expression
- * @param true_branch  A pointer to the AST block node representing the true
+ * @param true_branch A pointer to the AST block node representing the true
  * branch
- * @param false_branch  A pointer to the AST block node representing the false
+ * @param false_branch A pointer to the AST block node representing the false
  * branch
  *
  * @return A pointer to created node or NULL if failed
@@ -98,11 +98,23 @@ t_ast_node *create_if_node(t_ast_node *condition, t_ast_node *true_branch,
                            t_ast_node *false_branch);
 
 /**
+ * @brief Creates an AST node for for loop
+ *
+ * @param generator A pointer to the AST expression node containing generator
+ * @param guards A pointer to the AST expression node representing the guards
+ * @param body A pointer to the AST block node representing the loop body
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+t_ast_node *create_for_do_node(t_ast_node *generator, t_ast_node *guards,
+                               t_ast_node *body);
+
+/**
  * @brief Creates an AST node for while loop
  *
  * @param condition A pointer to the AST node representing the condition
  * expression
- * @param body  A pointer to the AST block node representing the loop body
+ * @param body A pointer to the AST block node representing the loop body
  *
  * @return A pointer to created node or NULL if failed
  */
