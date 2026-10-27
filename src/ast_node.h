@@ -57,6 +57,7 @@ typedef struct t_ast_node {
       struct t_ast_node *parameter_lists;
       struct t_ast_node *body;
       t_data_type_node *return_type;
+      bool is_main;
     } function_declaration;
 
     struct {

@@ -20,13 +20,15 @@
  * parameter list. NULL for a function without a parameter list
  * @param body A pointer to the AST block node representing the function body
  * @param return_type Type of the return value
+ * @param is_main True if the function is the entrypoint of the program
  *
  * @return A pointer to created node or NULL if failed
  */
 t_ast_node *create_function_declaration_node(char *name,
                                              t_ast_node *parameter_lists,
                                              t_ast_node *body,
-                                             t_data_type_node *return_type);
+                                             t_data_type_node *return_type,
+                                             bool is_main);
 
 /**
  * @brief Creates an AST node for function call
