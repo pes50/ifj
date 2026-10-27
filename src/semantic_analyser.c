@@ -15,7 +15,8 @@
 t_ast_node *create_function_declaration_node(char *name,
                                              t_ast_node *parameter_lists,
                                              t_ast_node *body,
-                                             t_data_type_node *return_type) {
+                                             t_data_type_node *return_type,
+                                             bool is_main) {
   // Create node
   t_ast_node *node = create_node();
   if (node == NULL) {
@@ -28,6 +29,7 @@ t_ast_node *create_function_declaration_node(char *name,
   node->data.function_declaration.parameter_lists = parameter_lists;
   node->data.function_declaration.body = body;
   node->data.function_declaration.return_type = return_type;
+  node->data.function_declaration.is_main = is_main;
 
   // Check if string_duplicate failed
   if (node->data.function_declaration.name == NULL) {
