@@ -2,7 +2,7 @@
  *
  * @file token.h
  *
- * @author Simon Smid      (xsmidsi00)
+ * @author Simon Šmíd       (xsmidsi00)
  *
  * @brief Definition of the token structure
  *
@@ -10,6 +10,8 @@
 
 #ifndef TOKEN_H
 #define TOKEN_H
+
+#include "err_codes.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -20,6 +22,9 @@
 typedef enum {
   // Error token
   TOK_ERR,
+
+  // Empty token
+  TOK_EMPTY,
 
   // Identifier
   TOK_IDENTIFIER,
@@ -109,11 +114,55 @@ typedef enum {
 
 /**
  * @brief Struct for a token
+ *
+ * The token's value is a heap-allocated (NUL-terminated copy).
+ * length does not include the terminating NUL. value is NULL (and
+ * length is 0) for tokens with no value.
+ *
+ * The value should only be modified using token_set().
  */
 typedef struct token {
   token_type_t type;
   const char *value;
   size_t length;
 } token_t;
+
+/**
+ * @brief Initializes an empty token.(type = TOK_EMPTY, value = NULL,
+ *        length = 0)
+ *
+ * @param token Token to be initialized.
+ *
+ * @return NO_ERR on success.
+ *         INTERNAL_ERR if token is NULL.
+ */
+err_code_t token_init(token_t *token);
+
+/**
+ * @brief Sets the token type and value.
+ *
+ * Copies length bytes from value to the token. Replaces
+ * and frees its previous value.
+ *
+ * The token must be initialized by token_init() before calling
+ * token_set(). Otherwise the old value is freed from an invalid pointer.
+ * length must be 0 if value is NULL.
+ * On failure the token is left unchanged.
+ *
+ * @param token  Token to be set.
+ * @param type   Token type.
+ * @param value  Value to be copied into the token.
+ * @param length Length of the value.
+ *
+ * @return NO_ERR on success.
+ *         INTERNAL_ERR on allocation failure or invalid arguments.
+ */
+err_code_t token_set(token_t *token, token_type_t type, const char *value,
+                     size_t length);
+
+/**
+ * @brief Frees the memory owned by the token and the token itself
+ */
+void token_free(token_t *token);
 
 #endif
