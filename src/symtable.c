@@ -54,7 +54,6 @@ static void ht_data_destruct(hashtable_t *hashtable) {
     free(hashtable->data);
     hashtable->data = NULL;
   }
-  return;
 }
 
 /**
@@ -187,6 +186,7 @@ err_code_t ht_init(hashtable_t **hashtable, size_t item_cnt) {
   // initialize hashtable helper data
   (*hashtable)->capacity = item_cnt;
   (*hashtable)->item_cnt = 0;
+  (*hashtable)->parent = NULL;
   return NO_ERR;
 }
 
@@ -198,7 +198,6 @@ void ht_destruct(hashtable_t **hashtable) {
     free(*hashtable);
     *hashtable = NULL;
   }
-  return;
 }
 
 size_t ht_hash_function(const char *identificator) {
@@ -301,6 +300,6 @@ err_code_t ht_delete_item(hashtable_t *hashtable, const char *identificator) {
   hashtable->data[item_idx].state = DELETED;
   hashtable->data[item_idx].identificator = NULL;
   hashtable->data[item_idx].data = NULL;
-  (hashtable->item_cnt)--;
+  hashtable->item_cnt--;
   return NO_ERR;
 }
