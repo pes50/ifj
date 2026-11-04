@@ -50,10 +50,11 @@ typedef struct {
 /**
  * @brief Structure containing data of a hashtable
  */
-typedef struct {
+typedef struct hashtable_t {
   ht_item_t *data; // dynamic array of hashtable items
   size_t item_cnt;
   size_t capacity;
+  struct hashtable_t *parent;
 } hashtable_t;
 
 /*************************************\
