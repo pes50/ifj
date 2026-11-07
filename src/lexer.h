@@ -17,7 +17,7 @@
 #include <stddef.h>
 
 // Maximum number of tokens the lexer can look ahead.
-#define MAX_LOOKAHEAD_OFFSET 10
+#define LEXER_MAX_LOOKAHEAD 10
 
 /**
  * @brief Specifies whether end of line is expected, required or forbidden at
@@ -59,7 +59,7 @@ err_code_t lexer_get_token(token_t *token, eol_code_t eol_code);
  *                         allowed or required.
  * @param lookahead_offset Number of tokens the lexer should look ahead.
  *                         0 is the next, 1 is the second and so on. The number
- *                         must not exceed MAX_LOOKAHEAD_OFFSET!
+ *                         must not exceed LEXER_MAX_LOOKAHEAD!
  *
  * @return NO_ERR on success.
  *         LEXICAL_ERR when lexical error is found.
