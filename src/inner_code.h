@@ -183,4 +183,84 @@ typedef struct inner_statement {
   struct inner_statement *next_statement;
 } inner_statement_t;
 
+/***********************\
+ * Interface functions *
+\***********************/
+
+/**
+ * @brief Creates empty symbol
+ *
+ * @return Returns the empty symbol
+ */
+inner_symbol_t create_empty_symbol();
+
+/**
+ * @brief Creates variable symbol with given parameters
+ *
+ * @param identificator Identificator of the variable (preallocated)
+ *
+ * @return Symbol with set parameters
+ */
+inner_symbol_t create_var_symbol(char *identificator);
+
+/**
+ * @brief Creates constant symbol with given parameters
+ *
+ * @param datatype Datatype of the constant
+ * @param value Value of the constant - using datatype as the one provided,
+ *              can be anything if datatype is null
+ *
+ * @return Symbol with set parameters
+ */
+inner_symbol_t create_const_symbol(inner_datatype_t datatype,
+                                   inner_value_t value);
+
+/**
+ * @brief Creates array symbol with given parameters
+ *
+ * @param identificator Identificator of the array (preallocated)
+ *
+ * @return Symbol with set parameters
+ */
+inner_symbol_t create_arr_symbol(char *identificator);
+
+/**
+ * @brief Creates label symbol with given parameters
+ *
+ * @param identificator Identificator of the label (preallocated)
+ *
+ * @return Symbol with set parameters
+ */
+inner_symbol_t create_label_symbol(char *identificator);
+
+/**
+ * @brief Allocates memory for statement and fills its values using parameters
+ *
+ * @param operation Operation type of the statement (instruction in ifj26code)
+ * @param destination Symbol that is the destination of the operation,
+ *                    empty symbol if not needed
+ * @param source1 Symbol which is the first (or only) operand of the operation
+ *                or empty symbol if not needed
+ * @param source2 Second operand or empty symbol if not needed
+ *
+ * @return Pointer to allocated statement or
+ *         NULL if memory allocation failed or necesary operands were NULL
+ */
+inner_statement_t *create_statement(inner_statement_operation_t operation,
+                                    inner_symbol_t destination,
+                                    inner_symbol_t source1,
+                                    inner_symbol_t source2);
+
+/**
+ * @brief Deallocates all memory held by the statement
+ *       and returns the next one
+ *
+ * @param statement Address of a pointer that points
+ *                  to the statement struct memory, the pointer is set to NULL
+ *                  after memory is deallocated
+ * @return Next statement pointer or
+ *         NULL if the pointer at statement address was NULL
+ */
+inner_statement_t *destroy_statement(inner_statement_t **statement);
+
 #endif
