@@ -2,6 +2,7 @@
  *
  * @file stack.h
  *
+ * @author Matous Jahoda     (xjahodm00)
  * @author Roman Skoupý      (xskoupr00)
  *
  * @brief Specification of stack
@@ -45,16 +46,13 @@ t_stack *create_stack();
 bool stack_push(t_stack *stack, void *data);
 
 /**
- * @brief Removes the top element from the stack and optionally retrieves its
- * data
+ * @brief Removes the top element from the stack
  *
  * @param stack A pointer to the target stack
- * @param data A pointer used to output the data, can be set to NULL to discard
- * the value
  *
- * @return true on success, false if the stack is empty or NULL
+ * @return pointer to data, or NULL if empty
  */
-bool stack_pop(t_stack *stack, void **data);
+void *stack_pop(t_stack *stack);
 
 /**
  * @brief Returns element on top of the stack

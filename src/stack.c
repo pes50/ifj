@@ -2,6 +2,7 @@
  *
  * @file stack.c
  *
+ * @author Matous Jahoda     (xjahodm00)
  * @author Roman Skoupý      (xskoupr00)
  *
  * @brief Implementation of stack using a linked list
@@ -38,23 +39,20 @@ bool stack_push(t_stack *stack, void *data) {
   return true;
 }
 
-bool stack_pop(t_stack *stack, void **data) {
+void *stack_pop(t_stack *stack) {
   if (stack == NULL || stack->size == 0) {
-    return false;
+    return NULL;
   }
 
   t_stack_element *element = stack->head;
-
-  if (data != NULL) {
-    *data = element->data;
-  }
+  void *data = element->data;
 
   // remove element
   stack->head = element->next;
   stack->size--;
   free(element);
 
-  return true;
+  return data;
 }
 
 t_stack_element *stack_get_top(t_stack *stack) {
