@@ -4,7 +4,7 @@
  *
  * @author Tomáš Peňás      (xpenast00)
  *
- * @brief Data structure of inner code
+ * @brief Data structure of inner code and interface specification
  *
  \*****************************************************************************/
 
@@ -13,6 +13,10 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+
+/*************************************\
+ * Data structure elements definiton *
+\*************************************/
 
 /**
  * @brief Enumeration of all possible inner code operations
@@ -69,13 +73,13 @@ typedef enum {
   INNER_INT2CHAR,
   INNER_STRI2INT,
   INNER_FLOAT2STR,
-  INNER_INT2STRING,
+  INNER_INT2STR,
   INNER_INT2FLOATS,
   INNER_FLOAT2INTS,
   INNER_INT2CHARS,
   INNER_STRI2INTS,
   INNER_FLOAT2STRS,
-  INNER_INT2STRINGS,
+  INNER_INT2STRS,
 
   // I/O instructions
   INNER_READ,
@@ -110,14 +114,13 @@ typedef enum {
   // Debug instructions
   INNER_BREAK,
   INNER_DPRINT
-
-  // TODO others
 } inner_statement_operation_t;
 
 /**
  * @brief Types of symbols in inner code
  */
 typedef enum {
+  INNER_SYM_EMPTY,
   INNER_SYM_CONST,
   INNER_SYM_VAR,
   INNER_SYM_ARR,
@@ -125,7 +128,7 @@ typedef enum {
 } inner_symbol_type_t;
 
 /**
- * @brief Datatypes in inner code
+ * @brief Datatypes of constants in inner code
  */
 typedef enum {
   INNER_NIL,
@@ -133,12 +136,12 @@ typedef enum {
   INNER_INT,
   INNER_FLOAT,
   INNER_STRING,
-  INNER_ARR_REF,
 } inner_datatype_t;
 /**
- * @brief Union for value in given datatype
+ * @brief Union for constant value in given datatype
  */
 typedef union {
+  char *inner_nil;
   bool inner_bool;
   long long int inner_int;
   double inner_float;
@@ -153,33 +156,14 @@ typedef struct inner_symbol {
 
   // possible types of symbols
   union {
-    // variable data
-    struct {
-      char *identificator;
-      inner_datatype_t datatype;
-      inner_value_t value;
-    } variable;
+    // variable / array / label
+    char *identificator;
 
-    // constant data
+    // constant
     struct {
       inner_datatype_t datatype;
       inner_value_t value;
     } constant;
-
-    // array data
-    struct {
-      char *identificator;
-      long long int ref_value;
-
-      inner_datatype_t items_datatype;
-      struct inner_symbol *items; // (array or const of given datatype)
-    } array;
-
-    // label data
-    struct {
-      char *identificator;
-    } label;
-
   } data;
 
 } inner_symbol_t;
@@ -195,15 +179,8 @@ typedef struct inner_statement {
   inner_symbol_t first_op;
   inner_symbol_t second_op;
 
-  // options for next state
-  // (for optimalization purposes - moving through the inner code)
-
   // next statement
   struct inner_statement *next_statement;
-
-  // alternative next statement if condition was not satisfied
-  struct inner_statement *cond_unsat_next_statement;
-
 } inner_statement_t;
 
 #endif
