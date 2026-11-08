@@ -33,9 +33,10 @@ typedef enum {
 /**
  * @brief Reads the next token from stdin.
  *
- * @param token    Empty token the lexer is supposed to return filled. The lexer
- *                 allocates memory for the token->value and because of that the
- *                 caller must free the memory using lexer_free_token function.
+ * @param token    Empty token the lexer is supposed to return filled with copy
+ *                 of the peeked token. The lexer allocates memory for the
+ *                 token->value and because of that the caller must free the
+ *                 memory using token_free() function.
  * @param eol_code Gives information whether TOK_EOL is forbidden, allowed or
  *                 required.
  *
@@ -51,10 +52,9 @@ err_code_t lexer_get_token(token_t *token, eol_code_t eol_code);
  * @brief Reads the number of tokens given ahead from stdin.
  *
  * @param token            Empty token the lexer is supposed to return filled.
- *                         The lexer allocates memory for the token->value.
- *                         The memory of token->value still belongs to the
- *                         lexer, so the caller must NOT call lexer_free_token
- *                         on it.
+ *                         It must be initialized (empty) before the call.
+ *                         The caller owns token->value and releases it
+ *                         as for lexer_get_token().
  * @param eol_code         Gives information whether TOK_EOL is forbidden,
  *                         allowed or required.
  * @param lookahead_offset Number of tokens the lexer should look ahead.
@@ -72,10 +72,7 @@ err_code_t lexer_peek_token(token_t *token, eol_code_t eol_code,
 
 /**
  * @brief Frees memory of all remaining tokens in the lexer's buffer.
- *
- * @return NO_ERR on success.
- *         INTERNAL_ERR on internal error.
  */
-err_code_t lexer_destroy(void);
+void lexer_destroy(void);
 
 #endif
