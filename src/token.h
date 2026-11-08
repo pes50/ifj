@@ -161,6 +161,14 @@ err_code_t token_set(token_t *token, token_type_t type, const char *value,
                      size_t length);
 
 /**
+ * @brief Frees the value owned by the token. Sets length to zero and type to
+ * TOK_EMPTY.
+ *
+ * @param token Token to be cleared.
+ */
+void token_clear(token_t *token);
+
+/**
  * @brief Frees the memory owned by the token and the token itself
  */
 void token_free(token_t *token);

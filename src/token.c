@@ -56,11 +56,22 @@ err_code_t token_set(token_t *token, token_type_t type, const char *value,
   return NO_ERR;
 }
 
-void token_free(token_t *token) {
+void token_clear(token_t *token) {
   if (token == NULL) {
     return;
   }
 
   free((void *)token->value);
+  token->type = TOK_EMPTY;
+  token->value = NULL;
+  token->length = 0;
+}
+
+void token_free(token_t *token) {
+  if (token == NULL) {
+    return;
+  }
+
+  token_clear(token);
   free(token);
 }
