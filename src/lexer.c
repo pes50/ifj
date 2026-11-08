@@ -13,8 +13,15 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 #define LEXER_BUF_SIZE (LEXER_MAX_LOOKAHEAD + 1)
+
+// slovnik pro KWs
+typedef struct {
+  char *key_word;
+  token_type_t type;
+} dictionary_t;
 
 // stav lexeru
 typedef enum {
@@ -82,6 +89,20 @@ typedef enum {
   S_DOLAR_STATE_ML,
 } lexer_state_t;
 
+static const dictionary_t keywords[] = {
+    {"def", TOK_KW_DEF},         {"do", TOK_KW_DO},
+    {"Double", TOK_KW_DOUBLE},   {"else", TOK_KW_ELSE},
+    {"if", TOK_KW_IF},           {"import", TOK_KW_IMPORT},
+    {"int", TOK_KW_INT},         {"return", TOK_KW_RETURN},
+    {"String", TOK_KW_STRING},   {"then", TOK_KW_THEN},
+    {"Unit", TOK_KW_UNIT},       {"val", TOK_KW_VAL},
+    {"var", TOK_KW_VAR},         {"while", TOK_KW_WHILE},
+    {"Boolean", TOK_KW_BOOLEAN}, {"case", TOK_KW_CASE},
+    {"class", TOK_KW_CLASS},     {"extension", TOK_KW_EXTENSION},
+    {"for", TOK_KW_FOR},         {"List", TOK_KW_LIST},
+    {"match", TOK_KW_MATCH},     {"type", TOK_KW_TYPE},
+};
+
 static token_t token_buffer[LEXER_BUF_SIZE];
 static size_t token_buf_head = 0;
 static size_t token_buf_count = 0;
@@ -108,10 +129,18 @@ static bool prev_ends_operand(void) {
   }
 }
 
-static bool is_keyword(const char *word) {
-  (void)word;
-  return true;
+static token_type_t is_keyword(const char *word) {
+  size_t num_of_kws = sizeof(keywords) / sizeof(keywords[0]);
+
+  for (size_t index = 0; index < num_of_kws; index++) {
+    if (strcmp(word, keywords[index].key_word) == 0) {
+      return keywords[index].type;
+    }
+  }
+  return TOK_IDENTIFIER;
 }
+
+// mozna nebude potreba
 static bool has_new_line() { return true; }
 
 static err_code_t check_eol_code(token_t *token, eol_code_t eol_code) {
