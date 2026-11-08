@@ -81,6 +81,7 @@ typedef enum {
 } lexer_state_t;
 
 static token_t token_buffer[LEXER_MAX_LOOKAHEAD + 1];
+static size_t token_buf_head = 0;
 static size_t token_buf_count = 0;
 static token_type_t prev_token_type = TOK_EMPTY;
 
@@ -951,9 +952,31 @@ static err_code_t lexer_scan_token(token_t *token) {
 }
 
 err_code_t lexer_get_token(token_t *token, eol_code_t eol_code) {
-  (void)token;
-  (void)eol_code;
-  return lexer_scan_token(token);
+  err_code_t err_code = lexer_scan_token(token);
+
+  if (err_code != NO_ERR) {
+    return err_code;
+  }
+
+  switch (eol_code) {
+  case FORBIDDEN:
+    if (token->type == TOK_EOL) {
+      return LEXICAL_ERR;
+    }
+    break;
+
+  case REQUIRED:
+    if (token->type != TOK_EOL) {
+      return LEXICAL_ERR;
+    }
+    break;
+
+  case ALLOWED:
+  default:
+    break;
+  }
+
+  return err_code;
 }
 
 err_code_t lexer_peek_token(token_t *token, eol_code_t eol_code,
@@ -962,6 +985,7 @@ err_code_t lexer_peek_token(token_t *token, eol_code_t eol_code,
   (void)eol_code;
   (void)lookahead_offset;
   (void)token_buf_count;
+  (void)token_buf_head;
   (void)token_buffer;
   return 0;
 }
