@@ -440,7 +440,7 @@ t_ast_node *create_unary_operation_node(token_type_t operation,
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_leaf_node(token_t token);
+t_ast_node *create_leaf_node(token_t *token);
 
 /**
  * @brief Creates an AST node for interpolated string

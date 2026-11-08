@@ -499,7 +499,7 @@ t_ast_node *create_unary_operation_node(token_type_t operation,
   return node;
 }
 
-t_ast_node *create_leaf_node(token_t token) {
+t_ast_node *create_leaf_node(token_t *token) {
   // Create node
   t_ast_node *node = create_node();
   if (node == NULL) {
@@ -507,35 +507,35 @@ t_ast_node *create_leaf_node(token_t token) {
   }
 
   // Initialize
-  switch (token.type) {
+  switch (token->type) {
   case TOK_IDENTIFIER:
     node->type = AST_IDENTIFIER;
-    node->data.identifier.name = string_duplicate(token.value);
+    node->data.identifier.name = string_duplicate(token->value);
     break;
   case TOK_LIT_INT:
     node->type = AST_LITERAL;
     node->data.literal.data_type = &node_int;
-    node->data.literal.raw = string_duplicate(token.value);
+    node->data.literal.raw = string_duplicate(token->value);
     break;
   case TOK_LIT_DOUBLE:
     node->type = AST_LITERAL;
     node->data.literal.data_type = &node_double;
-    node->data.literal.raw = string_duplicate(token.value);
+    node->data.literal.raw = string_duplicate(token->value);
     break;
   case TOK_LIT_STRING:
     node->type = AST_LITERAL;
     node->data.literal.data_type = &node_string;
-    node->data.literal.raw = string_duplicate(token.value);
+    node->data.literal.raw = string_duplicate(token->value);
     break;
   case TOK_LIT_TRUE:
     node->type = AST_LITERAL;
     node->data.literal.data_type = &node_boolean;
-    node->data.literal.raw = string_duplicate(token.value);
+    node->data.literal.raw = string_duplicate(token->value);
     break;
   case TOK_LIT_FALSE:
     node->type = AST_LITERAL;
     node->data.literal.data_type = &node_boolean;
-    node->data.literal.raw = string_duplicate(token.value);
+    node->data.literal.raw = string_duplicate(token->value);
     break;
   default:
     // Invalid token for leaf node
@@ -544,7 +544,7 @@ t_ast_node *create_leaf_node(token_t token) {
   }
 
   // Check if string_duplicate failed
-  if (token.type == TOK_IDENTIFIER) {
+  if (token->type == TOK_IDENTIFIER) {
     if (node->data.identifier.name == NULL) {
       destroy_node(node);
       return NULL;
