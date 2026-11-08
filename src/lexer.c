@@ -14,6 +14,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#define LEXER_BUF_SIZE (LEXER_MAX_LOOKAHEAD + 1)
+
 // stav lexeru
 typedef enum {
   // stavy ze startu
@@ -80,7 +82,7 @@ typedef enum {
   S_DOLAR_STATE_ML,
 } lexer_state_t;
 
-static token_t token_buffer[LEXER_MAX_LOOKAHEAD + 1];
+static token_t token_buffer[LEXER_BUF_SIZE];
 static size_t token_buf_head = 0;
 static size_t token_buf_count = 0;
 static token_type_t prev_token_type = TOK_EMPTY;
@@ -111,6 +113,27 @@ static bool is_keyword(const char *word) {
   return true;
 }
 static bool has_new_line() { return true; }
+
+static err_code_t check_eol_code(token_t *token, eol_code_t eol_code) {
+  switch (eol_code) {
+  case FORBIDDEN:
+    if (token->type == TOK_EOL) {
+      return SYNTAX_ERR;
+    }
+    break;
+
+  case REQUIRED:
+    if (token->type != TOK_EOL) {
+      return SYNTAX_ERR;
+    }
+    break;
+
+  case ALLOWED:
+  default:
+    break;
+  }
+  return NO_ERR;
+}
 
 // skenovaci fce (staci jedna pro lexer get token a peek)
 static err_code_t lexer_scan_token(token_t *token) {
@@ -952,42 +975,60 @@ static err_code_t lexer_scan_token(token_t *token) {
 }
 
 err_code_t lexer_get_token(token_t *token, eol_code_t eol_code) {
-  err_code_t err_code = lexer_scan_token(token);
+  if (token == NULL) {
+    return INTERNAL_ERR;
+  }
 
+  if (token_buf_count > 0) {
+    *token = token_buffer[token_buf_head];
+    token_init(&token_buffer[token_buf_head]);
+
+    token_buf_head = (token_buf_head + 1) % LEXER_BUF_SIZE;
+    token_buf_count -= 1;
+    return check_eol_code(token, eol_code);
+  }
+
+  err_code_t err_code = lexer_scan_token(token);
   if (err_code != NO_ERR) {
     return err_code;
   }
-
-  switch (eol_code) {
-  case FORBIDDEN:
-    if (token->type == TOK_EOL) {
-      return LEXICAL_ERR;
-    }
-    break;
-
-  case REQUIRED:
-    if (token->type != TOK_EOL) {
-      return LEXICAL_ERR;
-    }
-    break;
-
-  case ALLOWED:
-  default:
-    break;
-  }
-
-  return err_code;
+  return check_eol_code(token, eol_code);
 }
 
 err_code_t lexer_peek_token(token_t *token, eol_code_t eol_code,
                             size_t lookahead_offset) {
-  (void)token;
-  (void)eol_code;
-  (void)lookahead_offset;
-  (void)token_buf_count;
-  (void)token_buf_head;
-  (void)token_buffer;
-  return 0;
+  if (token == NULL || lookahead_offset > LEXER_MAX_LOOKAHEAD) {
+    return INTERNAL_ERR;
+  }
+
+  // Scan tokens until the seeked one is in the buffer
+  while (token_buf_count <= lookahead_offset) {
+    size_t index = (token_buf_head + token_buf_count) % LEXER_BUF_SIZE;
+
+    err_code_t err = lexer_scan_token(&token_buffer[index]);
+
+    if (err != NO_ERR) {
+      token_clear(&token_buffer[index]);
+      return err;
+    }
+    token_buf_count += 1;
+  }
+
+  const token_t *src =
+      &token_buffer[(token_buf_head + lookahead_offset) % LEXER_BUF_SIZE];
+
+  if (token_set(token, src->type, src->value, src->length) != NO_ERR) {
+    return INTERNAL_ERR;
+  }
+
+  return check_eol_code(token, eol_code);
 }
 
-err_code_t lexer_destroy(void) { return 0; }
+void lexer_destroy(void) {
+  for (size_t i = 0; i < token_buf_count; i++) {
+    size_t index = (token_buf_head + i) % LEXER_BUF_SIZE;
+    token_clear(&token_buffer[index]);
+  }
+  token_buf_head = 0;
+  token_buf_count = 0;
+}
