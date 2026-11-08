@@ -26,6 +26,16 @@ err_code_t token_init(token_t *token) {
   return NO_ERR;
 }
 
+token_t *token_create(void) {
+  token_t *token = malloc(sizeof(token_t));
+  if (token == NULL) {
+    return NULL;
+  }
+
+  token_init(token);
+  return token;
+}
+
 err_code_t token_set(token_t *token, token_type_t type, const char *value,
                      size_t length) {
   // Check if given arguments are valid.

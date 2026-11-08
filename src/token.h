@@ -139,6 +139,15 @@ typedef struct token {
 err_code_t token_init(token_t *token);
 
 /**
+ * @brief Allocates and initializes an empty token.
+ *
+ * The token must be released using token_free() function.
+ *
+ * @return Pointer to the new token, NULL on failure.
+ */
+token_t *token_create(void);
+
+/**
  * @brief Sets the token type and value.
  *
  * Copies length bytes from value to the token. Replaces
