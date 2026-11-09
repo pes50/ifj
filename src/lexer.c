@@ -99,7 +99,7 @@ static token_type_t prev_token_type = TOK_EMPTY;
 
 static size_t comment_cnt = 0;
 
-static bool prev_ends_operand(void) {
+static bool is_binary_operator(void) {
   switch (prev_token_type) {
   case TOK_IDENTIFIER:
   case TOK_LIT_INT:
@@ -356,10 +356,13 @@ static err_code_t lexer_scan_token(token_t *token) {
       }
       break;
 
-      // stavy
+      /**
+       * KA - OPERATORS
+       */
 
     case S_MINUS:
-      if (prev_ends_operand()) {
+      ungetc(character, stdin);
+      if (is_binary_operator()) {
         token->type = TOK_BINARY_MINUS;
       } else {
         token->type = TOK_UNARY_MINUS;
@@ -368,13 +371,13 @@ static err_code_t lexer_scan_token(token_t *token) {
       break;
 
     case S_PLUS:
-      character = getchar();
       if (character == '+') {
         token->type = TOK_CONCAT_LIST;
+        dynstr_append_char(&output_val, character);
       } else {
         ungetc(character, stdin);
 
-        if (prev_ends_operand()) {
+        if (is_binary_operator()) {
           token->type = TOK_BINARY_PLUS;
         } else {
           token->type = TOK_UNARY_PLUS;
@@ -384,11 +387,12 @@ static err_code_t lexer_scan_token(token_t *token) {
       break;
 
     case S_LOWER_THAN:
-      character = getchar();
       if (character == '=') {
         token->type = TOK_LOWER_EQ;
+        dynstr_append_char(&output_val, character);
       } else if (character == '-') {
         token->type = TOK_ARROW_LEFT;
+        dynstr_append_char(&output_val, character);
       } else {
         ungetc(character, stdin);
         token->type = TOK_LOWER_T;
@@ -397,9 +401,9 @@ static err_code_t lexer_scan_token(token_t *token) {
       break;
 
     case S_GREATER_THAN:
-      character = getchar();
       if (character == '=') {
         token->type = TOK_GREATER_EQ;
+        dynstr_append_char(&output_val, character);
       } else {
         ungetc(character, stdin);
         token->type = TOK_GREATER_T;
@@ -408,11 +412,12 @@ static err_code_t lexer_scan_token(token_t *token) {
       break;
 
     case S_EQUAL:
-      character = getchar();
       if (character == '=') {
         token->type = TOK_EQUAL;
+        dynstr_append_char(&output_val, character);
       } else if (character == '>') {
         token->type = TOK_ARROW_RIGHT;
+        dynstr_append_char(&output_val, character);
       } else {
         ungetc(character, stdin);
         token->type = TOK_ASSIGN;
@@ -421,9 +426,9 @@ static err_code_t lexer_scan_token(token_t *token) {
       break;
 
     case S_NOT:
-      character = getchar();
       if (character == '=') {
         token->type = TOK_NOT_EQ;
+        dynstr_append_char(&output_val, character);
       } else {
         ungetc(character, stdin);
         token->type = TOK_NOT;
@@ -432,9 +437,9 @@ static err_code_t lexer_scan_token(token_t *token) {
       break;
 
     case S_VERTICAL_BAR:
-      character = getchar();
       if (character == '|') {
         token->type = TOK_OR;
+        dynstr_append_char(&output_val, character);
       } else {
         ungetc(character, stdin);
         token->type = TOK_PIPE;
@@ -442,18 +447,24 @@ static err_code_t lexer_scan_token(token_t *token) {
       lexer_run = false;
       break;
 
-    // MUZE TU NASTAT ERROR POKUD BUDE JENOM JEDEN AMPERSAND!!!
+    // POSIBLE ERROR!
     case S_AMPERSAND:
-      character = getchar();
       if (character == '&') {
         token->type = TOK_AND;
+        dynstr_append_char(&output_val, character);
       } else {
         ungetc(character, stdin);
         // lexikalni chyba
         token->type = TOK_ERR;
+        dynstr_free(&output_val);
+        return LEXICAL_ERR;
       }
       lexer_run = false;
       break;
+
+      /**
+       *  KA - Identifiers
+       */
 
     case S_START_AT_MAIN: {
       const char *id_main = "main";
