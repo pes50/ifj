@@ -9,6 +9,7 @@
 \*****************************************************************************/
 
 #include "lexer.h"
+#include "dynstr.h"
 
 #include <ctype.h>
 #include <stdbool.h>
@@ -17,26 +18,10 @@
 
 #define LEXER_BUF_SIZE (LEXER_MAX_LOOKAHEAD + 1)
 
-// slovnik pro KWs
-typedef struct {
-  char *key_word;
-  token_type_t type;
-} dictionary_t;
-
 // stav lexeru
 typedef enum {
   // stavy ze startu
   S_START,
-  S_COMMA,
-  S_SEMICOLON,
-  S_EOF,
-  S_EOL,
-  S_START_PARS,
-  S_END_PARS,
-  S_START_BRACKETS,
-  S_END_BRACKETS,
-  S_START_BRACES,
-  S_END_BRACES,
   S_START_AT_MAIN,
   S_S_PREFIX,
   S_ID,
@@ -44,12 +29,10 @@ typedef enum {
   S_MINUS,
   S_PLUS,
   S_DIV,
-  S_ASTERISK,
   S_LOWER_THAN,
   S_GREATER_THAN,
   S_EQUAL,
   S_NOT,
-  S_COLON,
   S_VERTICAL_BAR,
   S_AMPERSAND,
   S_S,
@@ -88,6 +71,12 @@ typedef enum {
   S_END_S_ML_2,
   S_DOLAR_STATE_ML,
 } lexer_state_t;
+
+// slovnik pro KWs
+typedef struct {
+  char *key_word;
+  token_type_t type;
+} dictionary_t;
 
 static const dictionary_t keywords[] = {
     {"def", TOK_KW_DEF},         {"do", TOK_KW_DO},
@@ -170,6 +159,9 @@ static err_code_t lexer_scan_token(token_t *token) {
   bool lexer_run = true;
   int character;
 
+  dynstr_t output_val;
+  dynstr_init(&output_val);
+
   while (lexer_run) {
 
     character = getchar();
@@ -186,54 +178,76 @@ static err_code_t lexer_scan_token(token_t *token) {
         state = S_START;
         break;
 
+      // KA - state COMMA
       // ','
       case ',':
-        state = S_COMMA;
+        token->type = TOK_COMMA;
+        dynstr_append_char(&output_val, character);
+        lexer_run = false;
         break;
 
+      // KA -state SEMICOLON
       // ';'
       case ';':
-        state = S_SEMICOLON;
+        token->type = TOK_SEMICOLON;
+        dynstr_append_char(&output_val, character);
+        lexer_run = false;
         break;
 
+      // KA - state EOF
       // EOF
       case EOF:
-        state = S_EOF;
+        token->type = TOK_EOF;
+        dynstr_append_char(&output_val, character);
+        lexer_run = false;
         break;
 
+      // KA - state EOL
       // LF '\n'
       case '\n':
-        state = S_EOL;
+        token->type = TOK_EOL;
+        dynstr_append_char(&output_val, character);
+        lexer_run = false;
         break;
 
+      // KA - state START PARS
       // '('
       case '(':
-        state = S_START_PARS;
+        token->type = TOK_L_PAREN;
+        dynstr_append_char(&output_val, character);
+        lexer_run = false;
         break;
 
+      // KA - state END PARs
       // ')'
       case ')':
-        state = S_END_PARS;
+        token->type = TOK_R_PAREN;
+        dynstr_append_char(&output_val, character);
+        lexer_run = false;
         break;
 
+      // KA - state START_BRACKETS
       // '['
       case '[':
-        state = S_START_BRACKETS;
+        token->type = TOK_L_BRACKET;
+        dynstr_append_char(&output_val, character);
+        lexer_run = false;
         break;
 
-      // ']'
+      // KA state - END_BRACKETS
+      //  ']'
       case ']':
-        state = S_END_BRACKETS;
+        token->type = TOK_R_BRACKET;
+        dynstr_append_char(&output_val, character);
+        lexer_run = false;
         break;
 
-      // '{'
-      case '{':
-        state = S_START_BRACES;
-        break;
-
+      // KA - END EXPRESION
       // '}'
       case '}':
-        state = S_END_BRACES;
+        token->type = TOK_EXPRESSION_END;
+        dynstr_append_char(&output_val, character);
+        lexer_run = false;
         break;
 
       // @ (@main)
@@ -266,9 +280,12 @@ static err_code_t lexer_scan_token(token_t *token) {
         state = S_DIV;
         break;
 
+      // KA - state *
       // '*'
       case '*':
-        state = S_ASTERISK;
+        token->type = TOK_MUL;
+        dynstr_append_char(&output_val, character);
+        lexer_run = false;
         break;
 
       // '<'
@@ -291,9 +308,12 @@ static err_code_t lexer_scan_token(token_t *token) {
         state = S_NOT;
         break;
 
+      // KA - state :
       // ':'
       case ':':
-        state = S_COLON;
+        token->type = TOK_COLON;
+        dynstr_append_char(&output_val, character);
+        lexer_run = false;
         break;
 
       // '|'
@@ -338,58 +358,6 @@ static err_code_t lexer_scan_token(token_t *token) {
 
       // stavy
 
-    case S_COMMA:
-      token->type = TOK_COMMA;
-      lexer_run = false;
-      break;
-
-    case S_SEMICOLON:
-      token->type = TOK_SEMICOLON;
-      lexer_run = false;
-      break;
-
-    case S_EOF:
-      token->type = TOK_EOF;
-      lexer_run = false;
-      break;
-
-    case S_EOL:
-      token->type = TOK_EOL;
-      lexer_run = false;
-      break;
-
-    case S_START_PARS:
-      token->type = TOK_L_PAREN;
-      lexer_run = false;
-      break;
-
-    case S_END_PARS:
-      token->type = TOK_R_PAREN;
-      lexer_run = false;
-      break;
-
-    case S_START_BRACKETS:
-      token->type = TOK_L_BRACKET;
-      lexer_run = false;
-      break;
-
-    case S_END_BRACKETS:
-      token->type = TOK_R_BRACKET;
-      lexer_run = false;
-      break;
-
-    case S_START_BRACES:
-      // neco musim vymyslet
-      // token->type = TOK_L_PAREN;
-      lexer_run = false;
-      break;
-
-    case S_END_BRACES:
-      // neco musim vymyslet
-      // token->type = TOK_L_PAREN;
-      lexer_run = false;
-      break;
-
     case S_MINUS:
       if (prev_ends_operand()) {
         token->type = TOK_BINARY_MINUS;
@@ -412,11 +380,6 @@ static err_code_t lexer_scan_token(token_t *token) {
           token->type = TOK_UNARY_PLUS;
         }
       }
-      lexer_run = false;
-      break;
-
-    case S_ASTERISK:
-      token->type = TOK_MUL;
       lexer_run = false;
       break;
 
@@ -465,11 +428,6 @@ static err_code_t lexer_scan_token(token_t *token) {
         ungetc(character, stdin);
         token->type = TOK_NOT;
       }
-      lexer_run = false;
-      break;
-
-    case S_COLON:
-      token->type = TOK_COLON;
       lexer_run = false;
       break;
 
