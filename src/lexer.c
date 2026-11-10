@@ -103,6 +103,7 @@ static token_type_t token_prev_type = TOK_EMPTY;
 
 static size_t indent_level = 0;
 static bool interpolated_ml_str = false;
+static bool in_interpolated_str = false;
 
 static indent_stack_t indent_stack;
 static bool indent_stack_initialized = false;
@@ -177,7 +178,9 @@ static err_code_t check_eol_code(token_t *token, eol_code_t eol_code) {
 
 // skenovaci fce (staci jedna pro lexer get token a peek)
 static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
-  lexer_state_t state = S_START;
+  static lexer_state_t next_start_state = S_LINE_START;
+  lexer_state_t state = next_start_state;
+  next_start_state = S_START;
   bool lexer_run = true;
   bool has_newline = false;
   bool tab_on_line = false;
@@ -185,11 +188,21 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
   int character;
 
   if (!indent_stack_initialized) {
-    indent_stack_init(&indent_stack);
+    if (indent_stack_init(&indent_stack) != NO_ERR) {
+      return INTERNAL_ERR;
+    }
     indent_stack_initialized = true;
   }
 
   while (lexer_run) {
+
+    if (state == S_START && in_interpolated_str) {
+      if (interpolated_ml_str) {
+        state = S_START_S_ML;
+      } else {
+        state = S_START_S_STR;
+      }
+    }
 
     character = getchar();
 
@@ -225,17 +238,17 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         if (indent_stack_top(&indent_stack) > 0) {
           indent_stack_pop(&indent_stack);
           *type = TOK_DEDENT;
+          next_start_state = S_START;
         } else {
           *type = TOK_EOF;
         }
         lexer_run = false;
         break;
-
       // KA - state EOL
       // LF '\n'
       case '\n':
         *type = TOK_EOL;
-        state = S_LINE_START;
+        next_start_state = S_LINE_START;
         indent_level = 0;
         lexer_run = false;
         break;
@@ -798,6 +811,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         state = S_BLOCK_COMMENT;
       } else if (comment_depth_cnt == 0 && has_newline) {
         *type = TOK_EOL;
+        indent_level = 0;
+        next_start_state = S_LINE_START;
         lexer_run = false;
       } else {
         state = S_START;
@@ -939,7 +954,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       break;
 
     case S_START_S_STR:
-      character = getchar();
+      in_interpolated_str = true;
       if (!(character == '"' || character == '\\' || character == '\n' ||
             character == EOF || character == '$')) {
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
@@ -952,6 +967,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         state = S_DOLAR_STATE;
       } else if (character == '"') {
         *type = TOK_LIT_INTERP_M_STRING_END;
+        in_interpolated_str = false;
         lexer_run = false;
       } else {
         return LEXICAL_ERR;
@@ -1132,9 +1148,11 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
     case S_LINE:
       ungetc(character, stdin);
       if (indent_level > indent_stack_top(&indent_stack)) {
-        indent_stack_push(&indent_stack, indent_level);
+        if (indent_stack_push(&indent_stack, indent_level) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
         *type = TOK_INDENT;
-        state = S_START;
+        next_start_state = S_START;
         lexer_run = false;
       } else if (indent_level < indent_stack_top(&indent_stack)) {
         indent_stack_pop(&indent_stack);
@@ -1143,10 +1161,11 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
           return LEXICAL_ERR;
         }
         *type = TOK_DEDENT;
-        state = S_LINE;
+        next_start_state = S_LINE;
         lexer_run = false;
       } else if (indent_level == indent_stack_top(&indent_stack)) {
         state = S_START;
+        continue;
       } else {
         return LEXICAL_ERR;
       }
@@ -1241,4 +1260,8 @@ void lexer_destroy(void) {
   }
   token_buf_head = 0;
   token_buf_count = 0;
+  if (indent_stack_initialized) {
+    indent_stack_free(&indent_stack);
+    indent_stack_initialized = false;
+  }
 }
