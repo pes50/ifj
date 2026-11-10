@@ -545,130 +545,178 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
        */
 
     case S_NUM:
-      character = getchar();
-      if (character >= 0 && character <= 9) {
+      if (character >= '0' && character <= '9') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        // state = S_NUM je zbytecne ale zatim nechavam pro lepsi citelnost
         state = S_NUM;
       } else if (character == '_') {
         state = S_NUM_UNDERSCORE;
       } else if (character == '.') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
         state = S_DOT;
       } else if (character == 'e' || character == 'E') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
         state = S_E;
       } else {
-        lexer_run = false;
-      }
-      break;
-
-    case S_ZERO:
-      character = getchar();
-      if (character == '.') {
-        state = S_DOT;
-      } else if (character == 'e' || character == 'E') {
-        state = S_E;
-      } else {
-        lexer_run = false;
-      }
-      break;
-
-    case S_TOK_DOT:
-      character = getchar();
-      if (character >= 0 && character <= 9) {
-        state = S_DEC;
-      } else {
-        // bud lexikalni chyba nebo je tecka nejaky koncovy stav ale nevim.
-        lexer_run = false;
-      }
-      break;
-
-    case S_NUM_UNDERSCORE:
-      character = getchar();
-      if (character >= 0 && character <= 9) {
-        state = S_NUM;
-      } else {
-        // bud lexikalni chyba nebo je tecka nejaky koncovy stav ale nevim.
-        lexer_run = false;
-      }
-      break;
-
-    case S_DOT:
-      character = getchar();
-      if (character >= 0 && character <= 9) {
-        state = S_DEC;
-      } else {
-        // bud lexikalni chyba nebo je tecka nejaky koncovy stav ale nevim.
-        lexer_run = false;
-      }
-      break;
-
-    case S_E:
-      character = getchar();
-      if (character >= 0 && character <= 9) {
-        state = S_EXP;
-      } else if (character == '+' || character == '-') {
-        state = S_SIGNED_EXP;
-      } else {
-        lexer_run = false;
-      }
-      break;
-
-    case S_SIGNED_EXP:
-      character = getchar();
-      if (character >= 0 && character <= 9) {
-        state = S_EXP;
-      } else {
-        lexer_run = false;
-      }
-      break;
-
-    case S_EXP:
-      character = getchar();
-      if (character >= 0 && character <= 9) {
-        state = S_EXP;
-      } else if (character == '_') {
-        state = S_UNDERSCORE_EXP;
-      } else if (character == 'D' || character == 'd') {
-        *type = TOK_LIT_DOUBLE;
-      } else {
+        ungetc(character, stdin);
         *type = TOK_LIT_INT;
         lexer_run = false;
       }
       break;
 
-    case S_UNDERSCORE_EXP:
-      character = getchar();
-      if (character >= 0 && character <= 9) {
-        state = S_EXP;
+    case S_ZERO:
+      if (character == '.') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_DOT;
+      } else if (character == 'e' || character == 'E') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_E;
       } else {
-        // chyba
+        ungetc(character, stdin);
+        *type = TOK_LIT_INT;
         lexer_run = false;
       }
       break;
 
+    case S_TOK_DOT:
+      if (character >= '0' && character <= '9') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_DEC;
+      } else {
+        ungetc(character, stdin);
+        *type = TOK_DOT;
+        lexer_run = false;
+      }
+      break;
+
+    case S_NUM_UNDERSCORE:
+      if (character >= '0' && character <= '9') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_NUM;
+      } else {
+        return LEXICAL_ERR;
+      }
+      break;
+
+    case S_DOT:
+      if (character >= '0' && character <= '9') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_DEC;
+      } else {
+        return LEXICAL_ERR;
+      }
+      break;
+
+    case S_E:
+      if (character >= '0' && character <= '9') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_EXP;
+      } else if (character == '+' || character == '-') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_SIGNED_EXP;
+      } else {
+        return LEXICAL_ERR;
+      }
+      break;
+
+    case S_SIGNED_EXP:
+      if (character >= '0' && character <= '9') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_EXP;
+      } else {
+        return LEXICAL_ERR;
+      }
+      break;
+
+    case S_EXP:
+      if (character >= '0' && character <= '9') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        // state = S_EXP je zbytecne ale zatim nechavam pro lepsi citelnost
+        state = S_EXP;
+      } else if (character == '_') {
+        state = S_UNDERSCORE_EXP;
+      } else if (character == 'D' || character == 'd') {
+        *type = TOK_LIT_DOUBLE;
+        lexer_run = false;
+      } else {
+        ungetc(character, stdin);
+        *type = TOK_LIT_DOUBLE;
+        lexer_run = false;
+      }
+      break;
+
+    case S_UNDERSCORE_EXP:
+      if (character >= '0' && character <= '9') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_EXP;
+      } else {
+        return LEXICAL_ERR;
+      }
+      break;
+
     case S_DEC:
-      character = getchar();
-      if (character >= 0 && character <= 9) {
+      if (character >= '0' && character <= '9') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
         state = S_DEC;
       } else if (character == '_') {
         state = S_DEC_UNDERSCORE;
       } else if (character == 'D' || character == 'd') {
         *type = TOK_LIT_DOUBLE;
+        lexer_run = false;
       } else if (character == 'e' || character == 'E') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
         state = S_E;
       } else {
-        // chyba
+        ungetc(character, stdin);
+        *type = TOK_LIT_DOUBLE;
         lexer_run = false;
       }
       break;
 
     case S_DEC_UNDERSCORE:
-      character = getchar();
-      if (character >= 0 && character <= 9) {
+      if (character >= '0' && character <= '9') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
         state = S_DEC;
       } else {
-        // chyba
-        lexer_run = false;
+        return LEXICAL_ERR;
       }
       break;
+
+    /**
+     * KA - COMMENTS
+     */
 
     // komenty
     case S_DIV:
