@@ -41,11 +41,15 @@ bool push_nonterm(token_stack_t *stack, t_ast_node *node) {
   if (stack == NULL) {
     return false;
   }
-  element_token_t elem;
-  elem.type = NONTERMINAL;
-  elem.nonterminal.node = node;
+  element_token_t *elem = malloc(sizeof(element_token_t));
+  if (elem == NULL) {
+    return false;
+  }
+  elem->type = NONTERMINAL;
+  elem->nonterminal.node = node;
 
-  if (!stack_push(stack->top, &elem)) {
+  if (!stack_push(stack->top, elem)) {
+    free(elem);
     return false;
   }
   return true;
@@ -84,6 +88,7 @@ void destroy_token_stack(token_stack_t *stack) {
     }
     free(elem);
   }
+  free(stack->top);
   free(stack);
 }
 
@@ -91,16 +96,16 @@ bool push_token(token_stack_t *stack, token_t *token) {
   if (stack == NULL) {
     return false;
   }
-  element_token_t elem;
-  elem.type = TOKEN;
+  element_token_t *elem = malloc(sizeof(element_token_t));
+  elem->type = TOKEN;
 
-  elem.token.token = token;
-  if (elem.token.token == NULL) {
+  elem->token.token = token;
+  if (elem->token.token == NULL) {
     return false;
   }
 
-  if (!stack_push(stack->top, &elem)) {
-    token_free(elem.token.token);
+  if (!stack_push(stack->top, elem)) {
+    free(elem);
     return false;
   }
   stack->token_count++;
@@ -313,10 +318,13 @@ t_ast_node *return_final_node(token_stack_t *stack) {
   if (stack == NULL) {
     return NULL;
   }
-  if (!is_empty(stack)) {
+  if (!is_empty(stack) || stack->top == NULL) {
     return NULL;
   }
   t_stack_element *elem = stack_get_top(stack->top);
+  if (elem == NULL) {
+    return NULL;
+  }
   element_token_t *data = (element_token_t *)elem->data;
   return data->nonterminal.node;
 }
