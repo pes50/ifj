@@ -198,11 +198,9 @@ bool reduce(token_stack_t *stack) {
       free(data);
       stack->token_count--;
       return ret;
-      break;
 
     default:
       return false;
-      break;
     }
   }
   elem = elem->next;
@@ -236,7 +234,6 @@ bool reduce(token_stack_t *stack) {
     free(data);
     stack->token_count--;
     return ret;
-    break;
 
   // E -> E binop E
   case TOK_BINARY_PLUS:
@@ -279,11 +276,9 @@ bool reduce(token_stack_t *stack) {
     free(data);
     stack->token_count--;
     return ret;
-    break;
 
   default:
     return false;
-    break;
   }
 }
 

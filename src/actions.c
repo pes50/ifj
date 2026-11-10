@@ -42,13 +42,11 @@ priority_t get_priority(token_type_t token_type) {
   case TOK_LIT_FALSE:
   case TOK_L_PAREN:
     return ID_OR_CONST;
-    break;
 
   case TOK_UNARY_MINUS:
   case TOK_UNARY_PLUS:
   case TOK_NOT:
     return UN_OP;
-    break;
 
   case TOK_MUL:
   case TOK_DIV:
@@ -58,31 +56,28 @@ priority_t get_priority(token_type_t token_type) {
   case TOK_BINARY_MINUS:
   case TOK_CONCAT_LIST:
     return PLUS_MIN;
-    break;
 
   case TOK_LOWER_T:
   case TOK_LOWER_EQ:
   case TOK_GREATER_T:
   case TOK_GREATER_EQ:
     return GT_LW;
-    break;
+
   case TOK_EQUAL:
   case TOK_NOT_EQ:
     return EQ_NEQ;
-    break;
+
   case TOK_AND:
     return AND;
-    break;
+
   case TOK_OR:
     return OR;
-    break;
+
   case TOK_R_PAREN:
     return R_PAREN;
-    break;
 
   default:
     return NOT_VALID;
-    break;
   }
 }
 
@@ -90,17 +85,15 @@ associativity_t get_assoc(priority_t priority) {
   switch (priority) {
   case UN_OP:
     return R_ASSOC;
-    break;
+
   case MUL_DIV:
   case PLUS_MIN:
   case AND:
   case OR:
     return L_ASSOC;
-    break;
 
   default:
     return NO_ASSOC;
-    break;
   }
 }
 
