@@ -10,6 +10,7 @@
 
 #include "lexer.h"
 #include "dynstr.h"
+#include "indent_stack.h"
 
 #include <ctype.h>
 #include <stdbool.h>
@@ -71,6 +72,8 @@ typedef enum {
   S_END_S_ML,
   S_END_S_ML_2,
   S_DOLAR_STATE_ML,
+  S_LINE_START,
+  S_LINE,
 } lexer_state_t;
 
 // slovnik pro KWs
@@ -96,7 +99,13 @@ static const dictionary_t keywords[] = {
 static token_t token_buffer[LEXER_BUF_SIZE];
 static size_t token_buf_head = 0;
 static size_t token_buf_count = 0;
-static token_type_t prev_token_type = TOK_EMPTY;
+static token_type_t token_prev_type = TOK_EMPTY;
+
+static size_t indent_level = 0;
+static bool interpolated_ml_str = false;
+
+static indent_stack_t indent_stack;
+static bool indent_stack_initialized = false;
 
 static bool has_value(token_type_t type) {
   switch (type) {
@@ -116,7 +125,7 @@ static bool has_value(token_type_t type) {
 }
 
 static bool is_binary_operator(void) {
-  switch (prev_token_type) {
+  switch (token_prev_type) {
   case TOK_IDENTIFIER:
   case TOK_LIT_INT:
   case TOK_LIT_DOUBLE:
@@ -145,9 +154,6 @@ static token_type_t is_keyword(const char *word) {
   return TOK_IDENTIFIER;
 }
 
-// mozna nebude potreba
-static bool has_new_line() { return true; }
-
 static err_code_t check_eol_code(token_t *token, eol_code_t eol_code) {
   switch (eol_code) {
   case FORBIDDEN:
@@ -174,8 +180,14 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
   lexer_state_t state = S_START;
   bool lexer_run = true;
   bool has_newline = false;
+  bool tab_on_line = false;
   size_t comment_depth_cnt = 0;
   int character;
+
+  if (!indent_stack_initialized) {
+    indent_stack_init(&indent_stack);
+    indent_stack_initialized = true;
+  }
 
   while (lexer_run) {
 
@@ -190,7 +202,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
       // WS
       case ' ':
-        state = S_START;
+        state = S_LINE_START;
         break;
 
       // KA - state COMMA
@@ -210,7 +222,12 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       // KA - state EOF
       // EOF
       case EOF:
-        *type = TOK_EOF;
+        if (indent_stack_top(&indent_stack) > 0) {
+          indent_stack_pop(&indent_stack);
+          *type = TOK_DEDENT;
+        } else {
+          *type = TOK_EOF;
+        }
         lexer_run = false;
         break;
 
@@ -218,6 +235,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       // LF '\n'
       case '\n':
         *type = TOK_EOL;
+        state = S_LINE_START;
+        indent_level = 0;
         lexer_run = false;
         break;
 
@@ -773,15 +792,15 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       break;
 
     case S_BLOCK_COMMENT_END:
+      ungetc(character, stdin);
       if (comment_depth_cnt > 0) {
+        comment_depth_cnt--;
         state = S_BLOCK_COMMENT;
       } else if (comment_depth_cnt == 0 && has_newline) {
         *type = TOK_EOL;
         lexer_run = false;
-      } else if (comment_depth_cnt == 0 && !has_newline) {
-        state = S_START;
       } else {
-        return LEXICAL_ERR;
+        state = S_START;
       }
       break;
 
@@ -856,44 +875,44 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       break;
 
     case S_START_ML:
-      if (!(character == '"' || character == EOF)) {
-        state = S_START_ML;
+      if (character == EOF) {
+        return LEXICAL_ERR;
       } else if (character == '"') {
         state = S_END_ML;
       } else {
-        // chyba
-        lexer_run = false;
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
       }
       break;
 
     case S_END_ML:
-      character = getchar();
-      if (!(character == '"' || character == EOF)) {
-        if (dynstr_append_char(output_val, '"') != NO_ERR &&
-            dynstr_append_char(output_val, (char)character)) {
+      if (character == '"') {
+        state = S_END_ML_2;
+      } else if (character == EOF) {
+        return LEXICAL_ERR;
+      } else {
+        if (dynstr_append_char(output_val, '"') != NO_ERR ||
+            dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
         }
         state = S_START_ML;
-      } else if (character == '"') {
-        state = S_END_ML_2;
-      } else {
-        return LEXICAL_ERR;
       }
       break;
 
     case S_END_ML_2:
-      if (!(character == '"' || character == EOF)) {
-        if (dynstr_append_char(output_val, '"') != NO_ERR &&
-            dynstr_append_char(output_val, '"') != NO_ERR &&
-            dynstr_append_char(output_val, (char)character)) {
+      if (character == '"') {
+        *type = TOK_LIT_M_STRING;
+        lexer_run = false;
+      } else if (character == EOF) {
+        return LEXICAL_ERR;
+      } else {
+        if (dynstr_append_char(output_val, '"') != NO_ERR ||
+            dynstr_append_char(output_val, '"') != NO_ERR ||
+            dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
         }
         state = S_START_ML;
-      } else if (character == '"') {
-        *type = TOK_LIT_M_STRING;
-        lexer_run = false;
-      } else {
-        return LEXICAL_ERR;
       }
       break;
 
@@ -902,10 +921,12 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
        */
 
     case S_S_STR:
-      character = getchar();
       if (!(character == '"' || character == '\\' || character == '\n' ||
             character == EOF || character == '$')) {
-        state = S_START_ML;
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_START_S_STR;
       } else if (character == '\\') {
         state = S_S_ESC_SEQ;
       } else if (character == '$') {
@@ -913,8 +934,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else if (character == '"') {
         state = S_S_ML;
       } else {
-        // chyba
-        lexer_run = false;
+        return LEXICAL_ERR;
       }
       break;
 
@@ -922,6 +942,9 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       character = getchar();
       if (!(character == '"' || character == '\\' || character == '\n' ||
             character == EOF || character == '$')) {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
         state = S_START_S_STR;
       } else if (character == '\\') {
         state = S_S_ESC_SEQ;
@@ -931,120 +954,204 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         *type = TOK_LIT_INTERP_M_STRING_END;
         lexer_run = false;
       } else {
-        // chyba
-        lexer_run = false;
+        return LEXICAL_ERR;
       }
       break;
 
     case S_S_ESC_SEQ:
-      character = getchar();
-      if (character == '\\' || character == '"' || character == 'n' ||
-          character == '\r' || character == 't') {
-        state = S_START_S_STR;
+      if (character == '\\') {
+        character = '\\';
+      } else if (character == '"') {
+        character = '"';
+      } else if (character == 'n') {
+        character = '\n';
+      } else if (character == 'r') {
+        character = '\r';
+      } else if (character == 't') {
+        character = '\t';
       } else {
-        // chyba
-        lexer_run = false;
+        return LEXICAL_ERR;
       }
+
+      if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+        return INTERNAL_ERR;
+      }
+      state = S_START_S_STR;
       break;
 
     case S_DOLAR_STATE:
-      character = getchar();
       if (character == '$') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
         state = S_START_S_STR;
+      } else if (token_prev_type != TOK_LIT_INTERP_STRING_PART) {
+        *type = TOK_LIT_INTERP_STRING_PART;
+        lexer_run = false;
       } else if (isalpha(character) || character == '_') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
         state = S_READ_ID;
       } else if (character == '{') {
         *type = TOK_EXPRESSION_START;
         lexer_run = false;
       } else {
-        // chyba
-        lexer_run = false;
+        return LEXICAL_ERR;
       }
       break;
 
     case S_READ_ID:
-      character = getchar();
       if (isalnum(character) || character == '_') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
         state = S_READ_ID;
+      } else if (character == '}') {
+        *type = TOK_EXPRESSION_END;
+        if (interpolated_ml_str) {
+          state = S_START_S_ML;
+        } else {
+          state = S_START_S_STR;
+        }
+        lexer_run = false;
       } else {
+        ungetc(character, stdin);
         *type = TOK_IDENTIFIER;
         lexer_run = false;
       }
       break;
 
     case S_S_ML:
-      character = getchar();
       if (!(character == '"')) {
+        ungetc(character, stdin);
         *type = TOK_LIT_INTERP_M_STRING_END;
         lexer_run = false;
       } else if (character == '"') {
         state = S_START_S_ML;
       } else {
-        // chyba;
-        lexer_run = false;
+        return LEXICAL_ERR;
       }
       break;
 
     case S_START_S_ML:
-      character = getchar();
-      if (!(character == '"' || character == EOF || character == '$')) {
-        state = S_START_S_ML;
-      } else if (character == '$') {
+      interpolated_ml_str = true;
+      if (character == '$') {
         state = S_DOLAR_STATE_ML;
       } else if (character == '"') {
         state = S_END_S_ML;
+      } else if (!(character == '"' || character == EOF || character == '$')) {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_START_S_ML;
       } else {
-        // chyba
-        lexer_run = false;
+        return LEXICAL_ERR;
       }
       break;
 
     case S_END_S_ML:
-      character = getchar();
       if (!(character == '"' || character == EOF || character == '$')) {
+        if (dynstr_append_char(output_val, '"') != NO_ERR ||
+            dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
         state = S_START_S_ML;
       } else if (character == '$') {
         state = S_DOLAR_STATE_ML;
       } else if (character == '"') {
         state = S_END_S_ML_2;
       } else {
-        // chyba
-        lexer_run = false;
+        return LEXICAL_ERR;
       }
       break;
 
     case S_END_S_ML_2:
-      character = getchar();
       if (!(character == '"' || character == EOF || character == '$')) {
+        if (dynstr_append_char(output_val, '"') != NO_ERR ||
+            dynstr_append_char(output_val, '"') != NO_ERR ||
+            dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
         state = S_START_S_ML;
       } else if (character == '$') {
         state = S_DOLAR_STATE_ML;
       } else if (character == '"') {
         *type = TOK_LIT_INTERP_M_STRING_END;
+        interpolated_ml_str = false;
         lexer_run = false;
       } else {
-        // chyba
-        lexer_run = false;
+        return LEXICAL_ERR;
       }
       break;
 
     case S_DOLAR_STATE_ML:
-      character = getchar();
       if (character == '$') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
         state = S_START_S_ML;
       } else if (isalpha(character) || character == '_') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
         state = S_READ_ID;
       } else if (character == '{') {
         *type = TOK_EXPRESSION_START;
         lexer_run = false;
       } else {
-        // chyba
-        lexer_run = false;
+        return LEXICAL_ERR;
       }
       break;
 
+      /**
+       * INDENTACE
+       */
+
+    case S_LINE_START:
+      if (character == ' ') {
+        indent_level++;
+      } else if (character == '\n' || character == '\r') {
+        indent_level = 0;
+        tab_on_line = false;
+      } else if (character == '\t') {
+        tab_on_line = true;
+      } else if (character == EOF) {
+        tab_on_line = false;
+        ungetc(character, stdin);
+        state = S_LINE;
+      } else {
+        if (tab_on_line) {
+          return LEXICAL_ERR;
+        }
+        ungetc(character, stdin);
+        state = S_LINE;
+      }
+      break;
+
+    case S_LINE:
+      ungetc(character, stdin);
+      if (indent_level > indent_stack_top(&indent_stack)) {
+        indent_stack_push(&indent_stack, indent_level);
+        *type = TOK_INDENT;
+        state = S_START;
+        lexer_run = false;
+      } else if (indent_level < indent_stack_top(&indent_stack)) {
+        indent_stack_pop(&indent_stack);
+
+        if (indent_level > indent_stack_top(&indent_stack)) {
+          return LEXICAL_ERR;
+        }
+        *type = TOK_DEDENT;
+        state = S_LINE;
+        lexer_run = false;
+      } else if (indent_level == indent_stack_top(&indent_stack)) {
+        state = S_START;
+      } else {
+        return LEXICAL_ERR;
+      }
+
     default:
-      is_keyword("HELLO");
       break;
     }
   }
@@ -1071,7 +1178,7 @@ static err_code_t lexer_scan_token(token_t *token) {
   }
 
   if (err == NO_ERR) {
-    prev_token_type = type;
+    token_prev_type = type;
   }
   dynstr_free(&output_val);
   return err;
