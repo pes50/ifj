@@ -20,9 +20,35 @@
 #define LEXER_BUF_SIZE (LEXER_MAX_LOOKAHEAD + 1)
 #define LEXER_AT_MAIN "main"
 
-// stav lexeru
+/**
+ * @brief Dictionary for the keywords.
+ */
+typedef struct {
+  char *key_word;
+  token_type_t type;
+} dictionary_t;
+
+// Dictionary of the the keywords.
+static const dictionary_t keywords[] = {
+    {"def", TOK_KW_DEF},         {"do", TOK_KW_DO},
+    {"Double", TOK_KW_DOUBLE},   {"else", TOK_KW_ELSE},
+    {"if", TOK_KW_IF},           {"import", TOK_KW_IMPORT},
+    {"Int", TOK_KW_INT},         {"return", TOK_KW_RETURN},
+    {"String", TOK_KW_STRING},   {"then", TOK_KW_THEN},
+    {"Unit", TOK_KW_UNIT},       {"val", TOK_KW_VAL},
+    {"var", TOK_KW_VAR},         {"while", TOK_KW_WHILE},
+    {"Boolean", TOK_KW_BOOLEAN}, {"case", TOK_KW_CASE},
+    {"class", TOK_KW_CLASS},     {"extension", TOK_KW_EXTENSION},
+    {"for", TOK_KW_FOR},         {"List", TOK_KW_LIST},
+    {"match", TOK_KW_MATCH},     {"type", TOK_KW_TYPE},
+    {"true", TOK_LIT_TRUE},      {"false", TOK_LIT_FALSE},
+};
+
+/**
+ * @brief Enumeration of lexer states.
+ */
 typedef enum {
-  // stavy ze startu
+  // States achiaveable from S_START
   S_START,
   S_START_AT_MAIN,
   S_S_PREFIX,
@@ -42,8 +68,7 @@ typedef enum {
   S_NUM,
   S_ZERO,
   S_STR,
-  // dalsi stavy
-  S_S_STR,
+  // NUMBERS, DECIMALS
   S_NUM_UNDERSCORE,
   S_DOT,
   S_E,
@@ -52,62 +77,60 @@ typedef enum {
   S_UNDERSCORE_EXP,
   S_DEC,
   S_DEC_UNDERSCORE,
+  // COMMENTS
   S_LINE_COMMENT,
   S_BLOCK_COMMENT,
   S_NESTED_BLOCK_COMMENT,
   S_BLOCK_COMMENT_END_START,
   S_BLOCK_COMMENT_END,
+  // STRING
+  S_START_STRING,
+  S_ESCAPE_SEQ,
   S_ML,
   S_START_ML,
   S_END_ML,
   S_END_ML_2,
-  S_START_STRING,
-  S_ESCAPE_SEQ,
-  S_S_ML,
+  // INTERPOLATED STRING
+  S_S_STR,
   S_START_S_STR,
   S_S_ESC_SEQ,
   S_DOLAR_STATE,
+  S_DOLAR_NEXT,
   S_READ_ID,
+  S_S_ML,
   S_START_S_ML,
+  // S_DOLAR_STATE_ML,
   S_END_S_ML,
   S_END_S_ML_2,
-  S_DOLAR_STATE_ML,
+  // INDENTATION
   S_LINE_START,
   S_LINE,
 } lexer_state_t;
 
-// slovnik pro KWs
-typedef struct {
-  char *key_word;
-  token_type_t type;
-} dictionary_t;
-
-static const dictionary_t keywords[] = {
-    {"def", TOK_KW_DEF},         {"do", TOK_KW_DO},
-    {"Double", TOK_KW_DOUBLE},   {"else", TOK_KW_ELSE},
-    {"if", TOK_KW_IF},           {"import", TOK_KW_IMPORT},
-    {"int", TOK_KW_INT},         {"return", TOK_KW_RETURN},
-    {"String", TOK_KW_STRING},   {"then", TOK_KW_THEN},
-    {"Unit", TOK_KW_UNIT},       {"val", TOK_KW_VAL},
-    {"var", TOK_KW_VAR},         {"while", TOK_KW_WHILE},
-    {"Boolean", TOK_KW_BOOLEAN}, {"case", TOK_KW_CASE},
-    {"class", TOK_KW_CLASS},     {"extension", TOK_KW_EXTENSION},
-    {"for", TOK_KW_FOR},         {"List", TOK_KW_LIST},
-    {"match", TOK_KW_MATCH},     {"type", TOK_KW_TYPE},
-};
-
+// Variables used for work with tokens.
 static token_t token_buffer[LEXER_BUF_SIZE];
 static size_t token_buf_head = 0;
 static size_t token_buf_count = 0;
 static token_type_t token_prev_type = TOK_EMPTY;
 
-static size_t indent_level = 0;
+// Variables used to decide whether the lexer is in interpolated string.
+static bool in_expression = false;
 static bool interpolated_ml_str = false;
 static bool in_interpolated_str = false;
 
+// Variables used for work with indentation stack.
 static indent_stack_t indent_stack;
 static bool indent_stack_initialized = false;
+static size_t indent_level = 0;
 
+/**
+ * @brief Determine whether the token should have value.
+ *
+ * @param type Type of token.
+ *
+ * @return true if the token should have value.
+ *         false if the token shouldn't.
+ */
 static bool has_value(token_type_t type) {
   switch (type) {
   case TOK_IDENTIFIER:
@@ -125,6 +148,13 @@ static bool has_value(token_type_t type) {
   }
 }
 
+/**
+ * @brief Determine whether the sign should be binary or not based on previous
+ * token type.
+ *
+ * @return true if the sign should be binary
+ *         false if the sign shouldn't.
+ */
 static bool is_binary_operator(void) {
   switch (token_prev_type) {
   case TOK_IDENTIFIER:
@@ -144,6 +174,14 @@ static bool is_binary_operator(void) {
   }
 }
 
+/**
+ * @brief Determine whether the given string is keyword.
+ *
+ * @param word A string to be checked.
+ *
+ * @return TOK_IDENTIFIER if the token isn't keyword.
+ *         otherwise return token type of the matching keyword.
+ */
 static token_type_t is_keyword(const char *word) {
   size_t num_of_kws = sizeof(keywords) / sizeof(keywords[0]);
 
@@ -155,16 +193,26 @@ static token_type_t is_keyword(const char *word) {
   return TOK_IDENTIFIER;
 }
 
-static err_code_t check_eol_code(token_t *token, eol_code_t eol_code) {
+/**
+ * @brief Check if the given token type can exist after the given eol_code.
+ *
+ * @param type Token type.
+ * @param eol_code Code specifying whether end of line is expected, required or
+ * forbidden.
+ *
+ * @return NO_ERR when token type can exist after the given eol_code.
+ *         SYNTAX_ERR when not.
+ */
+static err_code_t check_eol_code(token_type_t *type, eol_code_t eol_code) {
   switch (eol_code) {
   case FORBIDDEN:
-    if (token->type == TOK_EOL) {
+    if (*type == TOK_EOL) {
       return SYNTAX_ERR;
     }
     break;
 
   case REQUIRED:
-    if (token->type != TOK_EOL) {
+    if (*type != TOK_EOL) {
       return SYNTAX_ERR;
     }
     break;
@@ -176,7 +224,18 @@ static err_code_t check_eol_code(token_t *token, eol_code_t eol_code) {
   return NO_ERR;
 }
 
-// skenovaci fce (staci jedna pro lexer get token a peek)
+/**
+ * @brief Scans upcoming stream of data on stdin and determines token's type and
+ * it's value.
+ *
+ * @param output_val Value of the token's attribute.
+ * @param type       Pointer to token type which the lexer shold determine.
+ *
+ * @return NO_ERR on success.
+ *         INTERNAL_ERR on internal error.
+ *         SYNTAX_ERR on syntax failure.
+ *         LEXICAL_ERR on syntax failure.
+ */
 static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
   static lexer_state_t next_start_state = S_LINE_START;
   lexer_state_t state = next_start_state;
@@ -215,7 +274,15 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
       // WS
       case ' ':
-        state = S_LINE_START;
+        state = S_START;
+        break;
+
+      case '\t':
+        state = S_START;
+        break;
+
+      case '\r':
+        state = S_START;
         break;
 
       // KA - state COMMA
@@ -281,10 +348,14 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         lexer_run = false;
         break;
 
-      // KA - END EXPRESION
-      // '}'
+        // KA - END EXPRESION
+        // '}'
       case '}':
         *type = TOK_EXPRESSION_END;
+        if (in_expression) {
+          in_expression = false;
+          in_interpolated_str = true;
+        }
         lexer_run = false;
         break;
 
@@ -528,6 +599,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
     case S_S_PREFIX:
       if (character == '"') {
+        in_interpolated_str = true;
+        interpolated_ml_str = false;
         state = S_S_STR;
       } else if (isalnum(character) || character == '_') {
         if (dynstr_append_char(output_val, 's') != NO_ERR ||
@@ -764,7 +837,12 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
     case S_LINE_COMMENT:
       if (character == '\n' || character == EOF) {
+        if (character == EOF) {
+          ungetc(character, stdin);
+        }
         *type = TOK_EOL;
+        indent_level = 0;
+        next_start_state = S_LINE_START;
         lexer_run = false;
       } else {
         state = S_LINE_COMMENT;
@@ -824,7 +902,9 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
        */
 
     case S_STR:
-      if (!(character == '\n' || character == EOF || character == '"')) {
+      if (character == '\\') {
+        state = S_ESCAPE_SEQ;
+      } else if (!(character == '\n' || character == EOF || character == '"')) {
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
         }
@@ -846,9 +926,6 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         state = S_START_STRING;
       } else if (character == '\\') {
-        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
-          return INTERNAL_ERR;
-        }
         state = S_ESCAPE_SEQ;
       } else if (character == '"') {
         *type = TOK_LIT_STRING;
@@ -966,7 +1043,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else if (character == '$') {
         state = S_DOLAR_STATE;
       } else if (character == '"') {
-        *type = TOK_LIT_INTERP_M_STRING_END;
+        *type = TOK_LIT_INTERP_STRING_END;
         in_interpolated_str = false;
         lexer_run = false;
       } else {
@@ -997,23 +1074,42 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
     case S_DOLAR_STATE:
       if (character == '$') {
-        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+        if (dynstr_append_char(output_val, '$') != NO_ERR) {
           return INTERNAL_ERR;
         }
-        state = S_START_S_STR;
-      } else if (token_prev_type != TOK_LIT_INTERP_STRING_PART) {
-        *type = TOK_LIT_INTERP_STRING_PART;
+
+        if (interpolated_ml_str) {
+          state = S_START_S_ML;
+        } else {
+          state = S_START_S_STR;
+        }
+      } else if (isalpha(character) || character == '_' || character == '{') {
+        ungetc(character, stdin);
+
+        if (interpolated_ml_str) {
+          *type = TOK_LIT_INTERP_M_STRING_PART;
+        } else {
+          *type = TOK_LIT_INTERP_STRING_PART;
+        }
+
+        next_start_state = S_DOLAR_NEXT;
         lexer_run = false;
-      } else if (isalpha(character) || character == '_') {
+      } else {
+        return LEXICAL_ERR;
+      }
+      break;
+
+    case S_DOLAR_NEXT:
+      if (character == '{') {
+        *type = TOK_EXPRESSION_START;
+        in_interpolated_str = false;
+        in_expression = true;
+        lexer_run = false;
+      } else {
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
         }
         state = S_READ_ID;
-      } else if (character == '{') {
-        *type = TOK_EXPRESSION_START;
-        lexer_run = false;
-      } else {
-        return LEXICAL_ERR;
       }
       break;
 
@@ -1023,14 +1119,6 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
           return INTERNAL_ERR;
         }
         state = S_READ_ID;
-      } else if (character == '}') {
-        *type = TOK_EXPRESSION_END;
-        if (interpolated_ml_str) {
-          state = S_START_S_ML;
-        } else {
-          state = S_START_S_STR;
-        }
-        lexer_run = false;
       } else {
         ungetc(character, stdin);
         *type = TOK_IDENTIFIER;
@@ -1039,21 +1127,21 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       break;
 
     case S_S_ML:
-      if (!(character == '"')) {
-        ungetc(character, stdin);
-        *type = TOK_LIT_INTERP_M_STRING_END;
-        lexer_run = false;
-      } else if (character == '"') {
+      if (character == '"') {
+        interpolated_ml_str = true;
         state = S_START_S_ML;
       } else {
-        return LEXICAL_ERR;
+        ungetc(character, stdin);
+        *type = TOK_LIT_INTERP_STRING_END;
+        in_interpolated_str = false;
+        lexer_run = false;
       }
       break;
 
     case S_START_S_ML:
       interpolated_ml_str = true;
       if (character == '$') {
-        state = S_DOLAR_STATE_ML;
+        state = S_DOLAR_STATE;
       } else if (character == '"') {
         state = S_END_S_ML;
       } else if (!(character == '"' || character == EOF || character == '$')) {
@@ -1074,7 +1162,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         state = S_START_S_ML;
       } else if (character == '$') {
-        state = S_DOLAR_STATE_ML;
+        state = S_DOLAR_STATE;
       } else if (character == '"') {
         state = S_END_S_ML_2;
       } else {
@@ -1091,9 +1179,10 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         state = S_START_S_ML;
       } else if (character == '$') {
-        state = S_DOLAR_STATE_ML;
+        state = S_DOLAR_STATE;
       } else if (character == '"') {
         *type = TOK_LIT_INTERP_M_STRING_END;
+        in_interpolated_str = false;
         interpolated_ml_str = false;
         lexer_run = false;
       } else {
@@ -1101,24 +1190,24 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       }
       break;
 
-    case S_DOLAR_STATE_ML:
-      if (character == '$') {
-        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
-          return INTERNAL_ERR;
-        }
-        state = S_START_S_ML;
-      } else if (isalpha(character) || character == '_') {
-        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
-          return INTERNAL_ERR;
-        }
-        state = S_READ_ID;
-      } else if (character == '{') {
-        *type = TOK_EXPRESSION_START;
-        lexer_run = false;
-      } else {
-        return LEXICAL_ERR;
-      }
-      break;
+      // case S_DOLAR_STATE_ML:
+      //   if (character == '$') {
+      //     if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+      //       return INTERNAL_ERR;
+      //     }
+      //     state = S_START_S_ML;
+      //   } else if (isalpha(character) || character == '_') {
+      //     if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+      //       return INTERNAL_ERR;
+      //     }
+      //     state = S_READ_ID;
+      //   } else if (character == '{') {
+      //     *type = TOK_EXPRESSION_START;
+      //     lexer_run = false;
+      //   } else {
+      //     return LEXICAL_ERR;
+      //   }
+      //   break;
 
       /**
        * INDENTACE
@@ -1133,6 +1222,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else if (character == '\t') {
         tab_on_line = true;
       } else if (character == EOF) {
+        indent_level = 0;
         tab_on_line = false;
         ungetc(character, stdin);
         state = S_LINE;
@@ -1169,6 +1259,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else {
         return LEXICAL_ERR;
       }
+      break;
 
     default:
       break;
@@ -1178,6 +1269,14 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
   return NO_ERR;
 }
 
+/**
+ * @brief Get token with it's correct type and value.
+ *
+ * @param token Empty token.
+ *
+ * @return NO_ERR on success.
+ *         INTERNAL_ERR on failure.
+ */
 static err_code_t lexer_scan_token(token_t *token) {
   dynstr_t output_val;
   if (dynstr_init(&output_val) != NO_ERR) {
@@ -1188,6 +1287,7 @@ static err_code_t lexer_scan_token(token_t *token) {
 
   err_code_t err = lexer_scan_automat(&output_val, &type);
 
+  // Decide whether the token's value (attribue) should be filled.
   if (err == NO_ERR) {
     if (has_value(type)) {
       err = token_set(token, type, output_val.data, output_val.length);
@@ -1208,20 +1308,21 @@ err_code_t lexer_get_token(token_t *token, eol_code_t eol_code) {
     return INTERNAL_ERR;
   }
 
+  // First return tokens in the buffer, then scan new ones.
   if (token_buf_count > 0) {
     *token = token_buffer[token_buf_head];
     token_init(&token_buffer[token_buf_head]);
 
     token_buf_head = (token_buf_head + 1) % LEXER_BUF_SIZE;
     token_buf_count -= 1;
-    return check_eol_code(token, eol_code);
+    return check_eol_code(&token->type, eol_code);
   }
 
   err_code_t err_code = lexer_scan_token(token);
   if (err_code != NO_ERR) {
     return err_code;
   }
-  return check_eol_code(token, eol_code);
+  return check_eol_code(&token->type, eol_code);
 }
 
 err_code_t lexer_peek_token(token_t *token, eol_code_t eol_code,
@@ -1250,7 +1351,7 @@ err_code_t lexer_peek_token(token_t *token, eol_code_t eol_code,
     return INTERNAL_ERR;
   }
 
-  return check_eol_code(token, eol_code);
+  return check_eol_code(&token->type, eol_code);
 }
 
 void lexer_destroy(void) {
