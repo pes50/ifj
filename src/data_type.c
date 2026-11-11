@@ -15,48 +15,49 @@
 #include <stdlib.h>
 #include <string.h>
 
-t_data_type_node node_int = {
+char *primitive_to_string[] = {
+    "Int", "Double", "String", "Unit", "Boolean", "Any",
+};
+
+data_type_node_t node_int = {
     .type = DATA_TYPE_PRIMITIVE,
     .data.primitive_type = PRIMITIVE_INT,
     .next = NULL,
 };
-t_data_type_node node_double = {
+data_type_node_t node_double = {
     .type = DATA_TYPE_PRIMITIVE,
     .data.primitive_type = PRIMITIVE_DOUBLE,
     .next = NULL,
 };
-t_data_type_node node_string = {
+data_type_node_t node_string = {
     .type = DATA_TYPE_PRIMITIVE,
     .data.primitive_type = PRIMITIVE_STRING,
     .next = NULL,
 };
-t_data_type_node node_unit = {
+data_type_node_t node_unit = {
     .type = DATA_TYPE_PRIMITIVE,
     .data.primitive_type = PRIMITIVE_UNIT,
     .next = NULL,
 };
-t_data_type_node node_boolean = {
+data_type_node_t node_boolean = {
     .type = DATA_TYPE_PRIMITIVE,
     .data.primitive_type = PRIMITIVE_BOOLEAN,
     .next = NULL,
 };
-t_data_type_node node_any = {
+data_type_node_t node_any = {
     .type = DATA_TYPE_PRIMITIVE,
     .data.primitive_type = PRIMITIVE_ANY,
     .next = NULL,
 };
 
-t_data_type_node *create_type_node() {
-  return calloc(1, sizeof(t_data_type_node));
+data_type_node_t *create_type_node() {
+  return calloc(1, sizeof(data_type_node_t));
 }
 
-void destroy_type_node(t_data_type_node *node) {
-  if (node == NULL || node == (t_data_type_node *)&node_int ||
-      node == (t_data_type_node *)&node_double ||
-      node == (t_data_type_node *)&node_string ||
-      node == (t_data_type_node *)&node_unit ||
-      node == (t_data_type_node *)&node_boolean ||
-      node == (t_data_type_node *)&node_any) {
+void destroy_type_node(data_type_node_t *node) {
+  if (node == NULL || node == &node_int || node == &node_double ||
+      node == &node_string || node == &node_unit || node == &node_boolean ||
+      node == &node_any) {
     return;
   }
 
@@ -83,9 +84,9 @@ void destroy_type_node(t_data_type_node *node) {
   free(node);
 }
 
-t_data_type_node *create_class_type_node(char *name) {
+data_type_node_t *create_class_type_node(char *name) {
   // Create node
-  t_data_type_node *node = create_type_node();
+  data_type_node_t *node = create_type_node();
   if (node == NULL) {
     return NULL;
   }
@@ -103,10 +104,10 @@ t_data_type_node *create_class_type_node(char *name) {
   return node;
 }
 
-t_data_type_node *create_lambda_type_node(t_data_type_node *parameter_types,
-                                          t_data_type_node *return_type) {
+data_type_node_t *create_lambda_type_node(data_type_node_t *parameter_types,
+                                          data_type_node_t *return_type) {
   // Create node
-  t_data_type_node *node = create_type_node();
+  data_type_node_t *node = create_type_node();
   if (node == NULL) {
     return NULL;
   }
@@ -119,9 +120,9 @@ t_data_type_node *create_lambda_type_node(t_data_type_node *parameter_types,
   return node;
 }
 
-t_data_type_node *create_list_type_node(t_data_type_node *element_type) {
+data_type_node_t *create_list_type_node(data_type_node_t *element_type) {
   // Create node
-  t_data_type_node *node = create_type_node();
+  data_type_node_t *node = create_type_node();
   if (node == NULL) {
     return NULL;
   }
@@ -133,9 +134,9 @@ t_data_type_node *create_list_type_node(t_data_type_node *element_type) {
   return node;
 }
 
-t_data_type_node *create_primitive_type_node(t_primitive primitive) {
+data_type_node_t *create_primitive_type_node(primitive_t primitive) {
   // Create node
-  t_data_type_node *node = create_type_node();
+  data_type_node_t *node = create_type_node();
   if (node == NULL) {
     return NULL;
   }
@@ -147,9 +148,9 @@ t_data_type_node *create_primitive_type_node(t_primitive primitive) {
   return node;
 }
 
-t_data_type_node *create_union_type_node(t_data_type_node *types) {
+data_type_node_t *create_union_type_node(data_type_node_t *types) {
   // Create node
-  t_data_type_node *node = create_type_node();
+  data_type_node_t *node = create_type_node();
   if (node == NULL) {
     return NULL;
   }
@@ -161,8 +162,8 @@ t_data_type_node *create_union_type_node(t_data_type_node *types) {
   return node;
 }
 
-err_code_t duplicate_type_node(t_data_type_node *original,
-                               t_data_type_node **copy) {
+err_code_t duplicate_type_node(data_type_node_t *original,
+                               data_type_node_t **copy) {
   if (copy == NULL) {
     return INTERNAL_ERR;
   }
@@ -172,7 +173,7 @@ err_code_t duplicate_type_node(t_data_type_node *original,
     return NO_ERR;
   }
 
-  t_data_type_node *node = create_type_node();
+  data_type_node_t *node = create_type_node();
   if (node == NULL) {
     return INTERNAL_ERR;
   }
@@ -229,16 +230,16 @@ err_code_t duplicate_type_node(t_data_type_node *original,
   return NO_ERR;
 }
 
-bool union_contains_type(t_data_type_node *target_type,
-                         t_data_type_node *union_type) {
+bool union_contains_type(data_type_node_t *target_type,
+                         data_type_node_t *union_type) {
 
-  t_data_type_node target_no_next = *target_type;
+  data_type_node_t target_no_next = *target_type;
   target_no_next.next = NULL;
 
-  t_data_type_node *current = union_type;
+  data_type_node_t *current = union_type;
   while (current != NULL) {
 
-    t_data_type_node current_no_next = *current;
+    data_type_node_t current_no_next = *current;
     current_no_next.next = NULL;
 
     if (are_data_types_identical(&target_no_next, &current_no_next)) {
@@ -249,37 +250,33 @@ bool union_contains_type(t_data_type_node *target_type,
   return false;
 }
 
-bool are_unions_equivalent(t_data_type_node *union_a,
-                           t_data_type_node *union_b) {
-  t_data_type_node *current_a = union_a;
+bool is_union_subset(data_type_node_t *union_a, data_type_node_t *union_b) {
+  data_type_node_t *current_a = union_a;
   while (current_a != NULL) {
     if (!union_contains_type(current_a, union_b)) {
       return false;
     }
     current_a = current_a->next;
   }
-
-  t_data_type_node *curr_b = union_b;
-  while (curr_b != NULL) {
-    if (!union_contains_type(curr_b, union_a)) {
-      return false;
-    }
-    curr_b = curr_b->next;
-  }
-
   return true;
 }
 
-bool is_union_unnecessary(t_data_type_node *union_node,
-                          t_data_type_node *target_type) {
-  t_data_type_node *current = union_node->data.union_type.types;
+bool are_unions_equivalent(data_type_node_t *union_a,
+                           data_type_node_t *union_b) {
+  return (is_union_subset(union_a, union_b) &&
+          is_union_subset(union_b, union_a)) != 0;
+}
+
+bool is_union_unnecessary(data_type_node_t *union_node,
+                          data_type_node_t *target_type) {
+  data_type_node_t *current = union_node->data.union_type.types;
 
   // Remove .next to ignore following nodes
-  t_data_type_node target_no_next = *target_type;
+  data_type_node_t target_no_next = *target_type;
   target_no_next.next = NULL;
 
   while (current != NULL) {
-    t_data_type_node current_no_next = *current;
+    data_type_node_t current_no_next = *current;
     current_no_next.next = NULL;
 
     if (!are_data_types_identical(&current_no_next, &target_no_next)) {
@@ -290,8 +287,8 @@ bool is_union_unnecessary(t_data_type_node *union_node,
   return true;
 }
 
-bool are_data_types_identical(t_data_type_node *data_type_a,
-                              t_data_type_node *data_type_b) {
+bool are_data_types_identical(data_type_node_t *data_type_a,
+                              data_type_node_t *data_type_b) {
   // Both NULL or same pointer
   if (data_type_a == data_type_b) {
     return true;
@@ -351,4 +348,49 @@ bool are_data_types_identical(t_data_type_node *data_type_a,
   }
 
   return are_data_types_identical(data_type_a->next, data_type_b->next);
+}
+
+bool are_data_types_compatible(data_type_node_t *data_type_a,
+                               data_type_node_t *data_type_b) {
+
+  if (are_data_types_identical(data_type_a, data_type_b)) {
+    return true;
+  }
+
+  if (data_type_b->type == DATA_TYPE_UNION) {
+    if (data_type_a->type == DATA_TYPE_UNION) {
+      return is_union_subset(data_type_a, data_type_b);
+    }
+    return union_contains_type(data_type_a, data_type_b);
+  }
+
+  return (data_type_a->type == DATA_TYPE_PRIMITIVE &&
+          data_type_a->data.primitive_type == PRIMITIVE_INT &&
+          data_type_b->type == DATA_TYPE_PRIMITIVE &&
+          data_type_b->data.primitive_type == PRIMITIVE_DOUBLE) != 0;
+}
+
+err_code_t type_to_string(data_type_node_t *data_type, char **result) {
+  if (data_type->type == DATA_TYPE_PRIMITIVE) {
+    *result = primitive_to_string[data_type->type];
+  } else if (data_type->type == DATA_TYPE_CLASS) {
+    *result = data_type->data.class_type.name;
+  } else {
+    // Type is not supported
+    return OTHER_SEMANTIC_ERR;
+  }
+  return NO_ERR;
+}
+
+err_code_t duplicate_superset_type(data_type_node_t *data_type_node_a,
+                                   data_type_node_t *data_type_node_b,
+                                   data_type_node_t **data_type_node_c) {
+  if (data_type_node_a == NULL || data_type_node_b == NULL) {
+    return INTERNAL_ERR;
+  }
+
+  if (are_data_types_identical(data_type_node_a, &node_int)) {
+    return duplicate_type_node(data_type_node_b, data_type_node_c);
+  }
+  return duplicate_type_node(data_type_node_a, data_type_node_c);
 }

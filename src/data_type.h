@@ -22,7 +22,7 @@ typedef enum {
   DATA_TYPE_LIST,
   DATA_TYPE_PRIMITIVE,
   DATA_TYPE_UNION,
-} t_dt_type;
+} dt_type_t;
 
 /**
  * @brief Enumeration of all primitives
@@ -34,13 +34,13 @@ typedef enum {
   PRIMITIVE_UNIT,
   PRIMITIVE_BOOLEAN,
   PRIMITIVE_ANY,
-} t_primitive;
+} primitive_t;
 
 /**
  * @brief Struct for a Data type node
  */
-typedef struct t_data_type_node {
-  t_dt_type type;
+typedef struct data_type_node_t {
+  dt_type_t type;
 
   union {
     struct {
@@ -48,37 +48,37 @@ typedef struct t_data_type_node {
     } class_type;
 
     struct {
-      struct t_data_type_node *parameter_types;
-      struct t_data_type_node *return_type;
+      struct data_type_node_t *parameter_types;
+      struct data_type_node_t *return_type;
     } lambda_type;
 
     struct {
-      struct t_data_type_node *elements_type;
+      struct data_type_node_t *elements_type;
     } list_type;
 
-    t_primitive primitive_type;
+    primitive_t primitive_type;
 
     struct {
-      struct t_data_type_node *types;
+      struct data_type_node_t *types;
     } union_type;
   } data;
 
-  struct t_data_type_node *next;
-} t_data_type_node;
+  struct data_type_node_t *next;
+} data_type_node_t;
 
-extern t_data_type_node node_int;
-extern t_data_type_node node_double;
-extern t_data_type_node node_string;
-extern t_data_type_node node_unit;
-extern t_data_type_node node_boolean;
-extern t_data_type_node node_any;
+extern data_type_node_t node_int;
+extern data_type_node_t node_double;
+extern data_type_node_t node_string;
+extern data_type_node_t node_unit;
+extern data_type_node_t node_boolean;
+extern data_type_node_t node_any;
 
 /**
  * @brief Allocates a new Data type node
  *
  * @return A pointer to the allocated node or NULL if allocation fails
  */
-t_data_type_node *create_type_node();
+data_type_node_t *create_type_node();
 
 /**
  * @brief Recursively deallocates memory for a Data type node and its
@@ -87,7 +87,7 @@ t_data_type_node *create_type_node();
  * @param node A pointer to the Data type node to destroy. If NULL, the function
  * does nothing.
  */
-void destroy_type_node(t_data_type_node *node);
+void destroy_type_node(data_type_node_t *node);
 
 /**
  * @brief Creates a data type node for class
@@ -96,7 +96,7 @@ void destroy_type_node(t_data_type_node *node);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_data_type_node *create_class_type_node(char *name);
+data_type_node_t *create_class_type_node(char *name);
 
 /**
  * @brief Creates a data type node for lambda function
@@ -107,8 +107,8 @@ t_data_type_node *create_class_type_node(char *name);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_data_type_node *create_lambda_type_node(t_data_type_node *parameter_types,
-                                          t_data_type_node *return_type);
+data_type_node_t *create_lambda_type_node(data_type_node_t *parameter_types,
+                                          data_type_node_t *return_type);
 
 /**
  * @brief Creates a data type node for list
@@ -118,7 +118,7 @@ t_data_type_node *create_lambda_type_node(t_data_type_node *parameter_types,
  *
  * @return A pointer to created node or NULL if failed
  */
-t_data_type_node *create_list_type_node(t_data_type_node *element_type);
+data_type_node_t *create_list_type_node(data_type_node_t *element_type);
 
 /**
  * @brief Creates a data type node for a primitive type
@@ -127,7 +127,7 @@ t_data_type_node *create_list_type_node(t_data_type_node *element_type);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_data_type_node *create_primitive_type_node(t_primitive primitive);
+data_type_node_t *create_primitive_type_node(primitive_t primitive);
 
 /**
  * @brief Creates a data type node for union
@@ -136,7 +136,7 @@ t_data_type_node *create_primitive_type_node(t_primitive primitive);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_data_type_node *create_union_type_node(t_data_type_node *types);
+data_type_node_t *create_union_type_node(data_type_node_t *types);
 
 /**
  * @brief Creates a deep copy of a type node
@@ -146,8 +146,8 @@ t_data_type_node *create_union_type_node(t_data_type_node *types);
  *
  * @return NO_ERR on successful copy
  */
-err_code_t duplicate_type_node(t_data_type_node *original,
-                               t_data_type_node **copy);
+err_code_t duplicate_type_node(data_type_node_t *original,
+                               data_type_node_t **copy);
 
 /**
  * @brief Check if target type is contained within an union
@@ -155,8 +155,8 @@ err_code_t duplicate_type_node(t_data_type_node *original,
  * @param target_type A pointer to the type to search for
  * @param union_type A pointer to the union to search
  */
-bool union_contains_type(t_data_type_node *target_type,
-                         t_data_type_node *union_type);
+bool union_contains_type(data_type_node_t *target_type,
+                         data_type_node_t *union_type);
 
 /**
  * @brief Check if two unions represent the same type, regardless of order, for
@@ -165,8 +165,8 @@ bool union_contains_type(t_data_type_node *target_type,
  * @param union_a A pointer to the first union to check
  * @param union_b A pointer to the second union to check
  */
-bool are_unions_equivalent(t_data_type_node *union_a,
-                           t_data_type_node *union_b);
+bool are_unions_equivalent(data_type_node_t *union_a,
+                           data_type_node_t *union_b);
 
 /**
  * @brief Checks if union can be simplified to a target_type, for example: A | A
@@ -175,8 +175,8 @@ bool are_unions_equivalent(t_data_type_node *union_a,
  * @param union_node A pointer to the union to check
  * @param target_type A pointer to the type to simplify to
  */
-bool is_union_unnecessary(t_data_type_node *union_node,
-                          t_data_type_node *target_type);
+bool is_union_unnecessary(data_type_node_t *union_node,
+                          data_type_node_t *target_type);
 
 /**
  * @brief Checks if two data type nodes represent the same type
@@ -184,5 +184,38 @@ bool is_union_unnecessary(t_data_type_node *union_node,
  * @param data_type_a A pointer to the first node to check
  * @param data_type_b A pointer to the second node to check
  */
-bool are_data_types_identical(t_data_type_node *data_type_a,
-                              t_data_type_node *data_type_b);
+bool are_data_types_identical(data_type_node_t *data_type_a,
+                              data_type_node_t *data_type_b);
+
+/**
+ * @brief Checks if data_type_a is identical or a subset of data_type_b
+ *
+ * @param data_type_a A pointer to the first node to check
+ * @param data_type_b A pointer to the second node to check
+ */
+bool are_data_types_compatible(data_type_node_t *data_type_a,
+                               data_type_node_t *data_type_b);
+
+/**
+ * @brief Converts a type to string
+ *
+ * @param data_type A pointer to the node to convert
+ * @param result A pointer to store the result, the caller doesn't own the
+ * string
+ *
+ * @return NO_ERR on success
+ */
+err_code_t type_to_string(data_type_node_t *data_type, char **result);
+
+/**
+ * @brief Duplicates a type that is the superset of the other one
+ *
+ * @param data_type_node_a A pointer to the first type to compare
+ * @param data_type_node_b A pointer to the second type to compare
+ * @param data_type_node_c [out] A pointer to the node to store the result to
+ *
+ * @return NO_ERR on success
+ */
+err_code_t duplicate_superset_type(data_type_node_t *data_type_node_a,
+                                   data_type_node_t *data_type_node_b,
+                                   data_type_node_t **data_type_node_c);
