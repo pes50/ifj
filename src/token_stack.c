@@ -28,7 +28,7 @@ typedef struct {
     } token;
 
     struct {
-      t_ast_node *node;
+      ast_node_t *node;
     } nonterminal;
   };
 } element_token_t;
@@ -39,7 +39,7 @@ struct token_stack_t {
   uint32_t token_count;
 };
 
-bool push_nonterm(token_stack_t *stack, t_ast_node *node) {
+bool push_nonterm(token_stack_t *stack, ast_node_t *node) {
   if (stack == NULL || node == NULL) {
     return false;
   }
@@ -168,9 +168,7 @@ bool remove_paren(token_stack_t *stack) {
 
   // If second from top is opening paren, we can succesfully remove it
   data = stack_pop(stack->top);
-  // save AST node
-  t_ast_node *node = data->nonterminal.node;
-
+  ast_node_t *node = data->nonterminal.node;
   free(data);
 
   data = stack_pop(stack->top);
@@ -218,7 +216,7 @@ bool reduce(token_stack_t *stack) {
     case TOK_LIT_TRUE:
     case TOK_LIT_FALSE:
       stack_pop(stack->top);
-      t_ast_node *node = create_leaf_node(data->token.token);
+      ast_node_t *node = create_leaf_node(data->token.token);
 
       token_free(data->token.token);
       free(data);
@@ -255,11 +253,10 @@ bool reduce(token_stack_t *stack) {
   if (data->type == NONTERMINAL) {
     return false;
   }
-
   // helper variables
-  t_ast_node *right;
-  t_ast_node *left;
-  t_ast_node *node;
+  ast_node_t *right;
+  ast_node_t *left;
+  ast_node_t *node;
   bool ret;
   token_type_t type;
 
@@ -409,7 +406,7 @@ bool is_token_empty(token_stack_t *stack) {
   return (stack->token_count == 0);
 }
 
-t_ast_node *return_final_node(token_stack_t *stack) {
+ast_node_t *return_final_node(token_stack_t *stack) {
   if (stack == NULL) {
     return NULL;
   }
@@ -427,7 +424,7 @@ t_ast_node *return_final_node(token_stack_t *stack) {
     return NULL;
   }
 
-  t_ast_node *node = data->nonterminal.node;
+  ast_node_t *node = data->nonterminal.node;
 
   free(data);
 

@@ -12,9 +12,9 @@
 #include "string_duplicate.h"
 #include <stdlib.h>
 
-t_ast_node *create_node() { return calloc(1, sizeof(t_ast_node)); }
+ast_node_t *create_node() { return calloc(1, sizeof(ast_node_t)); }
 
-void destroy_node(t_ast_node *node) {
+void destroy_node(ast_node_t *node) {
   if (node == NULL) {
     return;
   }
@@ -74,6 +74,7 @@ void destroy_node(t_ast_node *node) {
     destroy_node(node->data.assignment.expression);
     break;
   case AST_FOR_DO:
+    destroy_node(node->data.for_do.iterator);
     destroy_node(node->data.for_do.generator);
     destroy_node(node->data.for_do.guards);
     destroy_node(node->data.for_do.body);
@@ -122,13 +123,13 @@ void destroy_node(t_ast_node *node) {
   free(node);
 }
 
-t_ast_node *create_function_declaration_node(char *name,
-                                             t_ast_node *parameter_lists,
-                                             t_ast_node *body,
-                                             t_data_type_node *return_type,
+ast_node_t *create_function_declaration_node(char *name,
+                                             ast_node_t *parameter_lists,
+                                             ast_node_t *body,
+                                             data_type_node_t *return_type,
                                              bool is_main) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -150,9 +151,9 @@ t_ast_node *create_function_declaration_node(char *name,
   return node;
 }
 
-t_ast_node *create_function_call_node(char *name, t_ast_node *argument_lists) {
+ast_node_t *create_function_call_node(char *name, ast_node_t *argument_lists) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -171,10 +172,10 @@ t_ast_node *create_function_call_node(char *name, t_ast_node *argument_lists) {
   return node;
 }
 
-t_ast_node *create_dot_function_call_node(char *name, t_ast_node *target,
-                                          t_ast_node *argument_lists) {
+ast_node_t *create_dot_function_call_node(char *name, ast_node_t *target,
+                                          ast_node_t *argument_lists) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -194,11 +195,11 @@ t_ast_node *create_dot_function_call_node(char *name, t_ast_node *target,
   return node;
 }
 
-t_ast_node *create_lambda_declaration_node(t_ast_node *parameters,
-                                           t_ast_node *body,
-                                           t_data_type_node *return_type) {
+ast_node_t *create_lambda_declaration_node(ast_node_t *parameters,
+                                           ast_node_t *body,
+                                           data_type_node_t *return_type) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -212,9 +213,9 @@ t_ast_node *create_lambda_declaration_node(t_ast_node *parameters,
   return node;
 }
 
-t_ast_node *create_parameter_list_node(t_ast_node *parameters) {
+ast_node_t *create_parameter_list_node(ast_node_t *parameters) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -226,9 +227,9 @@ t_ast_node *create_parameter_list_node(t_ast_node *parameters) {
   return node;
 }
 
-t_ast_node *create_parameter_node(char *name, t_data_type_node *data_type) {
+ast_node_t *create_parameter_node(char *name, data_type_node_t *data_type) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -247,9 +248,9 @@ t_ast_node *create_parameter_node(char *name, t_data_type_node *data_type) {
   return node;
 }
 
-t_ast_node *create_class_declaration_node(char *name, t_ast_node *attributes) {
+ast_node_t *create_class_declaration_node(char *name, ast_node_t *attributes) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -268,10 +269,10 @@ t_ast_node *create_class_declaration_node(char *name, t_ast_node *attributes) {
   return node;
 }
 
-t_ast_node *create_type_declaration_node(char *name,
-                                         t_data_type_node *data_type) {
+ast_node_t *create_type_declaration_node(char *name,
+                                         data_type_node_t *data_type) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -290,11 +291,11 @@ t_ast_node *create_type_declaration_node(char *name,
   return node;
 }
 
-t_ast_node *
-create_extension_declaration_node(t_ast_node *parameter,
-                                  t_ast_node *function_declarations) {
+ast_node_t *
+create_extension_declaration_node(ast_node_t *parameter,
+                                  ast_node_t *function_declarations) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -308,9 +309,9 @@ create_extension_declaration_node(t_ast_node *parameter,
   return node;
 }
 
-t_ast_node *create_block_node(t_ast_node *statement) {
+ast_node_t *create_block_node(ast_node_t *statement) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -322,12 +323,12 @@ t_ast_node *create_block_node(t_ast_node *statement) {
   return node;
 }
 
-t_ast_node *create_variable_declaration_node(char *name,
-                                             t_data_type_node *data_type,
+ast_node_t *create_variable_declaration_node(char *name,
+                                             data_type_node_t *data_type,
                                              bool is_const,
-                                             t_ast_node *expression) {
+                                             ast_node_t *expression) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -348,9 +349,9 @@ t_ast_node *create_variable_declaration_node(char *name,
   return node;
 }
 
-t_ast_node *create_assignment_node(char *name, t_ast_node *expression) {
+ast_node_t *create_assignment_node(char *name, ast_node_t *expression) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -369,10 +370,10 @@ t_ast_node *create_assignment_node(char *name, t_ast_node *expression) {
   return node;
 }
 
-t_ast_node *create_if_node(t_ast_node *condition, t_ast_node *true_branch,
-                           t_ast_node *false_branch) {
+ast_node_t *create_if_node(ast_node_t *condition, ast_node_t *true_branch,
+                           ast_node_t *false_branch) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -386,16 +387,17 @@ t_ast_node *create_if_node(t_ast_node *condition, t_ast_node *true_branch,
   return node;
 }
 
-t_ast_node *create_for_do_node(t_ast_node *generator, t_ast_node *guards,
-                               t_ast_node *body) {
+ast_node_t *create_for_do_node(ast_node_t *iterator, ast_node_t *generator,
+                               ast_node_t *guards, ast_node_t *body) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
 
   // Initialize
   node->type = AST_FOR_DO;
+  node->data.for_do.iterator = iterator;
   node->data.for_do.generator = generator;
   node->data.for_do.guards = guards;
   node->data.for_do.body = body;
@@ -403,9 +405,9 @@ t_ast_node *create_for_do_node(t_ast_node *generator, t_ast_node *guards,
   return node;
 }
 
-t_ast_node *create_while_do_node(t_ast_node *condition, t_ast_node *body) {
+ast_node_t *create_while_do_node(ast_node_t *condition, ast_node_t *body) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -418,9 +420,9 @@ t_ast_node *create_while_do_node(t_ast_node *condition, t_ast_node *body) {
   return node;
 }
 
-t_ast_node *create_return_node(t_ast_node *expression) {
+ast_node_t *create_return_node(ast_node_t *expression) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -428,13 +430,14 @@ t_ast_node *create_return_node(t_ast_node *expression) {
   // Initialize
   node->type = AST_RETURN;
   node->data.return_statement.expression = expression;
+  node->data.return_statement.discard = true;
 
   return node;
 }
 
-t_ast_node *create_match_node(t_ast_node *expression, t_ast_node *cases) {
+ast_node_t *create_match_node(ast_node_t *expression, ast_node_t *cases) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -447,10 +450,10 @@ t_ast_node *create_match_node(t_ast_node *expression, t_ast_node *cases) {
   return node;
 }
 
-t_ast_node *create_match_case_node(t_ast_node *pattern, t_ast_node *guard,
-                                   t_ast_node *block) {
+ast_node_t *create_match_case_node(ast_node_t *pattern, ast_node_t *guard,
+                                   ast_node_t *block) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -464,11 +467,11 @@ t_ast_node *create_match_case_node(t_ast_node *pattern, t_ast_node *guard,
   return node;
 }
 
-t_ast_node *create_binary_operation_node(token_type_t operation,
-                                         t_ast_node *left, t_ast_node *right) {
+ast_node_t *create_binary_operation_node(token_type_t operation,
+                                         ast_node_t *left, ast_node_t *right) {
   // TODO validate operation
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -482,11 +485,11 @@ t_ast_node *create_binary_operation_node(token_type_t operation,
   return node;
 }
 
-t_ast_node *create_unary_operation_node(token_type_t operation,
-                                        t_ast_node *expression) {
+ast_node_t *create_unary_operation_node(token_type_t operation,
+                                        ast_node_t *expression) {
   // TODO validate operation
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -499,9 +502,9 @@ t_ast_node *create_unary_operation_node(token_type_t operation,
   return node;
 }
 
-t_ast_node *create_leaf_node(token_t *token) {
+ast_node_t *create_leaf_node(token_t *token) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }
@@ -559,9 +562,9 @@ t_ast_node *create_leaf_node(token_t *token) {
   return node;
 }
 
-t_ast_node *create_interpolated_string_node(t_ast_node *expressions) {
+ast_node_t *create_interpolated_string_node(ast_node_t *expressions) {
   // Create node
-  t_ast_node *node = create_node();
+  ast_node_t *node = create_node();
   if (node == NULL) {
     return NULL;
   }

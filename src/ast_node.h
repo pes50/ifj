@@ -41,124 +41,126 @@ typedef enum {
   AST_IDENTIFIER,
   AST_LITERAL,
   AST_INTERPOLATED_STRING,
-} t_ast_type;
+} ast_type_t;
 
 /**
  * @brief Struct for an AST node
  */
-typedef struct t_ast_node {
-  t_ast_type type;
-  struct t_ast_node *next;
-  t_data_type_node *data_type;
+typedef struct ast_node_t {
+  ast_type_t type;
+  struct ast_node_t *next;
+  data_type_node_t *data_type;
   bool _visited;
 
   union {
     struct {
       char *name;
-      struct t_ast_node *parameter_lists;
-      struct t_ast_node *body;
-      t_data_type_node *return_type;
+      struct ast_node_t *parameter_lists;
+      struct ast_node_t *body;
+      data_type_node_t *return_type;
       bool is_main;
     } function_declaration;
 
     struct {
       char *name;
-      struct t_ast_node *argument_lists;
+      struct ast_node_t *argument_lists;
     } function_call;
 
     struct {
       char *name;
-      struct t_ast_node *target;
-      struct t_ast_node *argument_lists;
+      struct ast_node_t *target;
+      struct ast_node_t *argument_lists;
     } dot_function_call;
 
     struct {
-      struct t_ast_node *parameters;
-      struct t_ast_node *body;
-      t_data_type_node *return_type;
+      struct ast_node_t *parameters;
+      struct ast_node_t *body;
+      data_type_node_t *return_type;
     } lambda_declaration;
 
     struct {
-      struct t_ast_node *parameters;
+      struct ast_node_t *parameters;
     } parameter_list;
 
     struct {
       char *name;
-      t_data_type_node *data_type;
+      data_type_node_t *data_type;
     } parameter;
 
     struct {
       char *name;
-      struct t_ast_node *attributes;
+      struct ast_node_t *attributes;
     } class_declaration;
 
     struct {
       char *name;
-      t_data_type_node *data_type;
+      data_type_node_t *data_type;
     } type_declaration;
 
     struct {
-      struct t_ast_node *parameter;
-      struct t_ast_node *function_declarations;
+      struct ast_node_t *parameter;
+      struct ast_node_t *function_declarations;
     } extension_declaration;
 
     struct {
-      struct t_ast_node *statement;
+      struct ast_node_t *statement;
     } block;
 
     struct {
       char *name;
       bool is_const;
-      struct t_ast_node *expression;
-      t_data_type_node *data_type;
+      struct ast_node_t *expression;
+      data_type_node_t *data_type;
     } variable_declaration;
 
     struct {
       char *name;
-      struct t_ast_node *expression;
+      struct ast_node_t *expression;
     } assignment;
 
     struct {
-      struct t_ast_node *generator;
-      struct t_ast_node *guards;
-      struct t_ast_node *body;
+      struct ast_node_t *iterator;
+      struct ast_node_t *generator;
+      struct ast_node_t *guards;
+      struct ast_node_t *body;
     } for_do;
 
     struct {
-      struct t_ast_node *condition;
-      struct t_ast_node *body;
+      struct ast_node_t *condition;
+      struct ast_node_t *body;
     } while_do;
 
     struct {
-      struct t_ast_node *condition;
-      struct t_ast_node *true_branch;
-      struct t_ast_node *false_branch;
+      struct ast_node_t *condition;
+      struct ast_node_t *true_branch;
+      struct ast_node_t *false_branch;
     } if_statement;
 
     struct {
-      struct t_ast_node *expression;
+      struct ast_node_t *expression;
+      bool discard;
     } return_statement;
 
     struct {
-      struct t_ast_node *expression;
-      struct t_ast_node *cases;
+      struct ast_node_t *expression;
+      struct ast_node_t *cases;
     } match;
 
     struct {
-      struct t_ast_node *pattern;
-      struct t_ast_node *guard;
-      struct t_ast_node *block;
+      struct ast_node_t *pattern;
+      struct ast_node_t *guard;
+      struct ast_node_t *block;
     } match_case;
 
     struct {
       token_type_t op;
-      struct t_ast_node *left;
-      struct t_ast_node *right;
+      struct ast_node_t *left;
+      struct ast_node_t *right;
     } binary_operation;
 
     struct {
       token_type_t op;
-      struct t_ast_node *expression;
+      struct ast_node_t *expression;
     } unary_operation;
 
     struct {
@@ -167,21 +169,21 @@ typedef struct t_ast_node {
 
     struct {
       char *raw;
-      t_data_type_node *data_type;
+      data_type_node_t *data_type;
     } literal;
 
     struct {
-      struct t_ast_node *expressions;
+      struct ast_node_t *expressions;
     } interpolated_string;
   } data;
-} t_ast_node;
+} ast_node_t;
 
 /**
  * @brief Allocates a new AST node
  *
  * @return A pointer to the allocated node or NULL if allocation fails
  */
-t_ast_node *create_node();
+ast_node_t *create_node();
 
 /**
  * @brief Recursively deallocates memory for an AST node and its descendants
@@ -189,7 +191,7 @@ t_ast_node *create_node();
  * @param node A pointer to the AST node to destroy. If NULL, the function does
  * nothing.
  */
-void destroy_node(t_ast_node *node);
+void destroy_node(ast_node_t *node);
 
 /**
  * @brief Creates an AST node for function declaration
@@ -203,10 +205,10 @@ void destroy_node(t_ast_node *node);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_function_declaration_node(char *name,
-                                             t_ast_node *parameter_lists,
-                                             t_ast_node *body,
-                                             t_data_type_node *return_type,
+ast_node_t *create_function_declaration_node(char *name,
+                                             ast_node_t *parameter_lists,
+                                             ast_node_t *body,
+                                             data_type_node_t *return_type,
                                              bool is_main);
 
 /**
@@ -218,7 +220,7 @@ t_ast_node *create_function_declaration_node(char *name,
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_function_call_node(char *name, t_ast_node *argument_lists);
+ast_node_t *create_function_call_node(char *name, ast_node_t *argument_lists);
 
 /**
  * @brief Creates an AST node for dot function call
@@ -231,8 +233,8 @@ t_ast_node *create_function_call_node(char *name, t_ast_node *argument_lists);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_dot_function_call_node(char *name, t_ast_node *target,
-                                          t_ast_node *argument_lists);
+ast_node_t *create_dot_function_call_node(char *name, ast_node_t *target,
+                                          ast_node_t *argument_lists);
 
 /**
  * @brief Creates an AST node for lambda function declaration
@@ -243,9 +245,9 @@ t_ast_node *create_dot_function_call_node(char *name, t_ast_node *target,
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_lambda_declaration_node(t_ast_node *parameters,
-                                           t_ast_node *body,
-                                           t_data_type_node *return_type);
+ast_node_t *create_lambda_declaration_node(ast_node_t *parameters,
+                                           ast_node_t *body,
+                                           data_type_node_t *return_type);
 
 /**
  * @brief Creates an AST node for function parameter list
@@ -255,7 +257,7 @@ t_ast_node *create_lambda_declaration_node(t_ast_node *parameters,
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_parameter_list_node(t_ast_node *parameters);
+ast_node_t *create_parameter_list_node(ast_node_t *parameters);
 
 /**
  * @brief Creates an AST node for function parameter
@@ -265,7 +267,7 @@ t_ast_node *create_parameter_list_node(t_ast_node *parameters);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_parameter_node(char *name, t_data_type_node *data_type);
+ast_node_t *create_parameter_node(char *name, data_type_node_t *data_type);
 
 /**
  * @brief Creates an AST node for class declaration
@@ -275,7 +277,7 @@ t_ast_node *create_parameter_node(char *name, t_data_type_node *data_type);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_class_declaration_node(char *name, t_ast_node *attributes);
+ast_node_t *create_class_declaration_node(char *name, ast_node_t *attributes);
 
 /**
  * @brief Creates an AST node for type declaration
@@ -285,8 +287,8 @@ t_ast_node *create_class_declaration_node(char *name, t_ast_node *attributes);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_type_declaration_node(char *name,
-                                         t_data_type_node *data_type);
+ast_node_t *create_type_declaration_node(char *name,
+                                         data_type_node_t *data_type);
 
 /**
  * @brief Creates an AST node for extension declaration
@@ -297,9 +299,9 @@ t_ast_node *create_type_declaration_node(char *name,
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *
-create_extension_declaration_node(t_ast_node *parameter,
-                                  t_ast_node *function_declarations);
+ast_node_t *
+create_extension_declaration_node(ast_node_t *parameter,
+                                  ast_node_t *function_declarations);
 
 /**
  * @brief Creates an AST node for code block
@@ -309,7 +311,7 @@ create_extension_declaration_node(t_ast_node *parameter,
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_block_node(t_ast_node *statement);
+ast_node_t *create_block_node(ast_node_t *statement);
 
 /**
  * @brief Creates an AST node for variable declaration
@@ -322,10 +324,10 @@ t_ast_node *create_block_node(t_ast_node *statement);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_variable_declaration_node(char *name,
-                                             t_data_type_node *data_type,
+ast_node_t *create_variable_declaration_node(char *name,
+                                             data_type_node_t *data_type,
                                              bool is_const,
-                                             t_ast_node *expression);
+                                             ast_node_t *expression);
 
 /**
  * @brief Creates an AST node for assignment
@@ -336,7 +338,7 @@ t_ast_node *create_variable_declaration_node(char *name,
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_assignment_node(char *name, t_ast_node *expression);
+ast_node_t *create_assignment_node(char *name, ast_node_t *expression);
 
 /**
  * @brief Creates an AST node for if statement
@@ -350,20 +352,21 @@ t_ast_node *create_assignment_node(char *name, t_ast_node *expression);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_if_node(t_ast_node *condition, t_ast_node *true_branch,
-                           t_ast_node *false_branch);
+ast_node_t *create_if_node(ast_node_t *condition, ast_node_t *true_branch,
+                           ast_node_t *false_branch);
 
 /**
  * @brief Creates an AST node for for loop
  *
+ * @param iterator A pointer to the AST parameter node
  * @param generator A pointer to the AST expression node containing generator
  * @param guards A pointer to the AST expression node representing the guards
  * @param body A pointer to the AST block node representing the loop body
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_for_do_node(t_ast_node *generator, t_ast_node *guards,
-                               t_ast_node *body);
+ast_node_t *create_for_do_node(ast_node_t *iterator, ast_node_t *generator,
+                               ast_node_t *guards, ast_node_t *body);
 
 /**
  * @brief Creates an AST node for while loop
@@ -374,7 +377,7 @@ t_ast_node *create_for_do_node(t_ast_node *generator, t_ast_node *guards,
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_while_do_node(t_ast_node *condition, t_ast_node *body);
+ast_node_t *create_while_do_node(ast_node_t *condition, ast_node_t *body);
 
 /**
  * @brief Creates an AST node for return statement
@@ -384,7 +387,7 @@ t_ast_node *create_while_do_node(t_ast_node *condition, t_ast_node *body);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_return_node(t_ast_node *expression);
+ast_node_t *create_return_node(ast_node_t *expression);
 
 /**
  * @brief Creates an AST node for match
@@ -395,7 +398,7 @@ t_ast_node *create_return_node(t_ast_node *expression);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_match_node(t_ast_node *expression, t_ast_node *cases);
+ast_node_t *create_match_node(ast_node_t *expression, ast_node_t *cases);
 
 /**
  * @brief Creates an AST node for match case
@@ -407,8 +410,8 @@ t_ast_node *create_match_node(t_ast_node *expression, t_ast_node *cases);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_match_case_node(t_ast_node *pattern, t_ast_node *guard,
-                                   t_ast_node *block);
+ast_node_t *create_match_case_node(ast_node_t *pattern, ast_node_t *guard,
+                                   ast_node_t *block);
 
 /**
  * @brief Creates an AST node for binary operation
@@ -419,8 +422,8 @@ t_ast_node *create_match_case_node(t_ast_node *pattern, t_ast_node *guard,
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_binary_operation_node(token_type_t operation,
-                                         t_ast_node *left, t_ast_node *right);
+ast_node_t *create_binary_operation_node(token_type_t operation,
+                                         ast_node_t *left, ast_node_t *right);
 
 /**
  * @brief Creates an AST node for unary operation
@@ -430,8 +433,8 @@ t_ast_node *create_binary_operation_node(token_type_t operation,
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_unary_operation_node(token_type_t operation,
-                                        t_ast_node *expression);
+ast_node_t *create_unary_operation_node(token_type_t operation,
+                                        ast_node_t *expression);
 
 /**
  * @brief Creates an AST node from given token
@@ -440,7 +443,7 @@ t_ast_node *create_unary_operation_node(token_type_t operation,
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_leaf_node(token_t *token);
+ast_node_t *create_leaf_node(token_t *token);
 
 /**
  * @brief Creates an AST node for interpolated string
@@ -450,4 +453,4 @@ t_ast_node *create_leaf_node(token_t *token);
  *
  * @return A pointer to created node or NULL if failed
  */
-t_ast_node *create_interpolated_string_node(t_ast_node *expressions);
+ast_node_t *create_interpolated_string_node(ast_node_t *expressions);

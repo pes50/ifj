@@ -53,7 +53,7 @@ bool push_token(token_stack_t *stack, token_t *token);
  * @return true if the element was successfully pushed, false if allocation
  * fails or stack is NULL.
  */
-bool push_nonterm(token_stack_t *stack, t_ast_node *node);
+bool push_nonterm(token_stack_t *stack, ast_node_t *node);
 
 /**
  * @brief Reduces top token on stack to nonterminals
@@ -100,4 +100,4 @@ bool is_token_empty(token_stack_t *stack);
  *
  * @return Pointer to the node
  */
-t_ast_node *return_final_node(token_stack_t *stack);
+ast_node_t *return_final_node(token_stack_t *stack);
