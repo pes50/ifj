@@ -268,6 +268,10 @@ err_code_t ht_get_item(hashtable_t *hashtable, const char *identificator,
 
   // can't proceed if error in the lookup occured
   if (error_code != NO_ERR) {
+    if (hashtable->parent != NULL) {
+      return ht_get_item(hashtable->parent, identificator, data);
+    }
+
     *data = NULL;
     return error_code;
   }
@@ -302,4 +306,17 @@ err_code_t ht_delete_item(hashtable_t *hashtable, const char *identificator) {
   hashtable->data[item_idx].data = NULL;
   hashtable->item_cnt--;
   return NO_ERR;
+}
+
+hashtable_t *ht_get_root(hashtable_t *hashtable) {
+  if (hashtable == NULL) {
+    return NULL;
+  }
+
+  hashtable_t *current = hashtable;
+  while (current->parent != NULL) {
+    current = current->parent;
+  }
+
+  return current;
 }
