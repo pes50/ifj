@@ -17,7 +17,7 @@
 /**
  * @brief Performs semantic analysis
  *
- * @param root A pointer to the root of AST node
+ * @param root A pointer to the root of AST
  * @param symtable A pointer to the symtable supplied with built in functions
  * and types
  * @param main_identifier [out] A pointer to store the identifier of the
