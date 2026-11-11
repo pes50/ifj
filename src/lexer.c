@@ -104,6 +104,7 @@ typedef enum {
   S_END_S_ML_2,
   // INDENTATION
   S_LINE_START,
+  S_LINE_SLASH,
   S_LINE,
 } lexer_state_t;
 
@@ -122,6 +123,8 @@ static bool in_interpolated_str = false;
 static indent_stack_t indent_stack;
 static bool indent_stack_initialized = false;
 static size_t indent_level = 0;
+
+static lexer_state_t next_state = S_LINE_START;
 
 /**
  * @brief Determine whether the token should have value.
@@ -225,6 +228,41 @@ static err_code_t check_eol_code(token_type_t *type, eol_code_t eol_code) {
 }
 
 /**
+ * @brief Skips the rest of a block comment.
+ *
+ * @param had_newline Set to true if a newline was found inside the comment.
+ *
+ * @return NO_ERR on success.
+ *         LEXICAL_ERR if the comment is not terminated.
+ */
+static err_code_t skip_block_comment(bool *had_newline) {
+  size_t depth = 1;
+  int prev = 0;
+  int ignored_char;
+
+  while (depth > 0) {
+    ignored_char = getchar();
+    if (ignored_char == EOF) {
+      return LEXICAL_ERR;
+    }
+    if (ignored_char == '\n') {
+      *had_newline = true;
+    }
+
+    if (prev == '/' && ignored_char == '*') {
+      depth++;
+      prev = 0;
+    } else if (prev == '*' && ignored_char == '/') {
+      depth--;
+      prev = 0;
+    } else {
+      prev = ignored_char;
+    }
+  }
+  return NO_ERR;
+}
+
+/**
  * @brief Scans upcoming stream of data on stdin and determines token's type and
  * it's value.
  *
@@ -237,12 +275,12 @@ static err_code_t check_eol_code(token_type_t *type, eol_code_t eol_code) {
  *         LEXICAL_ERR on syntax failure.
  */
 static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
-  static lexer_state_t next_state = S_LINE_START;
   lexer_state_t state = next_state;
   next_state = S_START;
   bool lexer_run = true;
   bool has_newline = false;
   bool tab_on_line = false;
+  bool comment_seen = false;
   size_t comment_depth_cnt = 0;
   int character;
 
@@ -288,27 +326,28 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         state = S_START;
         break;
 
-      // KA - state COMMA
-      // ','
       case ',':
         *type = TOK_COMMA;
         lexer_run = false;
         break;
 
-      // KA -state SEMICOLON
-      // ';'
       case ';':
         *type = TOK_SEMICOLON;
         lexer_run = false;
         break;
 
-      // KA - state EOF
-      // EOF
       case EOF:
+        if (in_expression) {
+          return LEXICAL_ERR;
+        }
+
+        // A file not ending with '\n' still needs a final EOL.
         if (token_prev_type != TOK_EOL && token_prev_type != TOK_EMPTY &&
-            token_prev_type != TOK_INDENT && token_prev_type != TOK_DEDENT) {
+            token_prev_type != TOK_INDENT && token_prev_type != TOK_DEDENT &&
+            token_prev_type != TOK_EOF) {
           *type = TOK_EOL;
         } else if (indent_stack_top(&indent_stack) > 0) {
+          // Close all remaining indentations. (one DEDENT per scan).
           indent_stack_pop(&indent_stack);
           *type = TOK_DEDENT;
           next_state = S_START;
@@ -318,51 +357,48 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         lexer_run = false;
         break;
 
-      // KA - state EOL
-      // LF '\n'
+      // The scan after '\n' must start by measuring
+      // the indentation of the new line.
       case '\n':
+        if (in_expression) {
+          return LEXICAL_ERR;
+        }
+
         *type = TOK_EOL;
         next_state = S_LINE_START;
         indent_level = 0;
         lexer_run = false;
         break;
 
-      // KA - state START PARS
-      // '('
       case '(':
         *type = TOK_L_PAREN;
         lexer_run = false;
         break;
 
-      // KA - state END PARs
-      // ')'
       case ')':
         *type = TOK_R_PAREN;
         lexer_run = false;
         break;
 
-      // KA - state START_BRACKETS
-      // '['
       case '[':
         *type = TOK_L_BRACKET;
         lexer_run = false;
         break;
 
-      // KA state - END_BRACKETS
-      //  ']'
       case ']':
         *type = TOK_R_BRACKET;
         lexer_run = false;
         break;
 
-        // KA - END EXPRESION
-        // '}'
       case '}':
-        *type = TOK_EXPRESSION_END;
-        if (in_expression) {
-          in_expression = false;
-          in_interpolated_str = true;
+        // '}' closes an interpolation expression ${ ... }
+        // The lexer continues reading the interpolated string.
+        if (!in_expression) {
+          return LEXICAL_ERR;
         }
+        *type = TOK_EXPRESSION_END;
+        in_expression = false;
+        in_interpolated_str = true;
         lexer_run = false;
         break;
 
@@ -371,12 +407,14 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         state = S_START_AT_MAIN;
         break;
 
-      // 's'
+      // 's' can be the prefix of interpolated string or begining of an
+      // identifier. This is decided in the S_S_PREFIX state.
       case 's':
         state = S_S_PREFIX;
         break;
 
-      // '-'
+      // '_' can be token on it's own or an indetifier
+      // when followed by more characters.
       case '_':
         state = S_UNDERSCORE;
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
@@ -384,66 +422,54 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         break;
 
-      // '-'
       case '-':
         state = S_MINUS;
         break;
 
-      // '+'
       case '+':
         state = S_PLUS;
         break;
 
-      // '/'
+      // Division or the beginning of a comment.
       case '/':
         state = S_DIV;
         break;
 
-      // KA - state *
-      // '*'
       case '*':
         *type = TOK_MUL;
         lexer_run = false;
         break;
 
-      // '<'
       case '<':
         state = S_LOWER_THAN;
         break;
 
-      // '>'
       case '>':
         state = S_GREATER_THAN;
         break;
 
-      // '='
       case '=':
         state = S_EQUAL;
         break;
 
-      // '!'
       case '!':
         state = S_NOT;
         break;
 
-      // KA - state :
-      // ':'
       case ':':
         *type = TOK_COLON;
         lexer_run = false;
         break;
 
-      // '|'
       case '|':
         state = S_VERTICAL_BAR;
         break;
 
-      // '&'
       case '&':
         state = S_AMPERSAND;
         break;
 
-      // '.'
+      // '.' is TOK_DOT or the start of a decimal number.
       case '.':
         state = S_TOK_DOT;
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
@@ -451,7 +477,6 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         break;
 
-      // '0'
       case '0':
         state = S_ZERO;
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
@@ -459,20 +484,18 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         break;
 
-      // '"'
       case '"':
         state = S_STR;
         break;
 
-      // a-z \ {s}, A-Z
       default:
+        // Identifier starts with a-z without 's', A-Z or integer 1-9
         if ((character >= 'a' && character <= 'z' && character != 's') ||
             (character >= 'A' && character <= 'Z')) {
           state = S_ID;
         } else if (character >= '1' && character <= '9') {
           state = S_NUM;
         } else {
-          // bude tu nejaky error asi lexemovy
           return LEXICAL_ERR;
         }
 
@@ -484,9 +507,10 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       break;
 
       /**
-       * KA - OPERATORS
+       * FA - OPERATORS
        */
 
+    // Whether the sign is binary or unary is  decided by the previous token.
     case S_MINUS:
       ungetc(character, stdin);
       if (is_binary_operator()) {
@@ -566,21 +590,18 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       lexer_run = false;
       break;
 
-    // POSSIBLE ERROR!
     case S_AMPERSAND:
       if (character == '&') {
         *type = TOK_AND;
       } else {
-        ungetc(character, stdin);
-        // lexikalni chyba
-        *type = TOK_ERR;
+        // '&' not followed by another '&' is lexical error.
         return LEXICAL_ERR;
       }
       lexer_run = false;
       break;
 
       /**
-       *  KA - Identifiers
+       *  FA - IDENTIFIERS, KEYWORDS, _, @main
        */
 
     case S_START_AT_MAIN:
@@ -593,7 +614,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
       }
 
-      // za "@main" nesmí pokračovat identifikátor
+      // Identifier cannot exist right after "@main".
       character = getchar();
       if (isalnum(character) || character == '_') {
         return LEXICAL_ERR;
@@ -610,12 +631,16 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         interpolated_ml_str = false;
         state = S_S_STR;
       } else if (isalnum(character) || character == '_') {
+        // 's' is not stored from S_START in case its prefix of interpolated
+        // string, which is not stored. So it needs to be stored in value in
+        // addition to next character.
         if (dynstr_append_char(output_val, 's') != NO_ERR ||
             dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
         }
         state = S_ID;
       } else {
+        // 's' can be identifier on its own.
         ungetc(character, stdin);
         if (dynstr_append_char(output_val, 's') != NO_ERR) {
           return INTERNAL_ERR;
@@ -646,14 +671,14 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         state = S_ID;
       } else {
         ungetc(character, stdin);
-        // pokud je kw tak tak kw jinak id tokentype
+        // Decide whether the value is keyword or identifier.
         *type = is_keyword(output_val->data);
         lexer_run = false;
       }
       break;
 
       /**
-       * KA - NUMBERS, DECIMALS
+       * FA - NUMBERS, DECIMALS
        */
 
     case S_NUM:
@@ -661,7 +686,6 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
         }
-        // state = S_NUM je zbytecne ale zatim nechavam pro lepsi citelnost
         state = S_NUM;
       } else if (character == '_') {
         state = S_NUM_UNDERSCORE;
@@ -769,7 +793,6 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
         }
-        // state = S_EXP je zbytecne ale zatim nechavam pro lepsi citelnost
         state = S_EXP;
       } else if (character == '_') {
         state = S_UNDERSCORE_EXP;
@@ -829,7 +852,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       break;
 
       /**
-       * KA - COMMENTS
+       * FA - COMMENTS
        */
 
     case S_DIV:
@@ -846,6 +869,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
     case S_LINE_COMMENT:
       if (character == '\n' || character == EOF) {
+        // Leave EOF in the stream so the lexer
+        // can properly handle it on the next call.
         if (character == EOF) {
           ungetc(character, stdin);
         }
@@ -894,20 +919,23 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
     case S_BLOCK_COMMENT_END:
       ungetc(character, stdin);
       if (comment_depth_cnt > 0) {
+        // Nested comment closed.
         comment_depth_cnt--;
         state = S_BLOCK_COMMENT;
       } else if (comment_depth_cnt == 0 && has_newline) {
+        // Top-level comment closed.
         *type = TOK_EOL;
         indent_level = 0;
         next_state = S_START;
         lexer_run = false;
       } else {
+        // Single-line block comment closed.
         state = S_START;
       }
       break;
 
       /**
-       * KA - STRING
+       * FA - STRINGS
        */
 
     case S_STR:
@@ -924,8 +952,6 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         return LEXICAL_ERR;
       }
       break;
-
-      // OD TUDMA KONTROLA STAVU + NEZAPOMENOUT NA INDENT
 
     case S_START_STRING:
       if (!(character == '\n' || character == EOF || character == '"' ||
@@ -978,7 +1004,9 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
     case S_START_ML:
       if (character == EOF) {
         return LEXICAL_ERR;
-      } else if (character == '"') {
+      }
+
+      if (character == '"') {
         state = S_END_ML;
       } else {
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
@@ -988,11 +1016,15 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       break;
 
     case S_END_ML:
+      if (character == EOF) {
+        return LEXICAL_ERR;
+      }
+
       if (character == '"') {
         state = S_END_ML_2;
-      } else if (character == EOF) {
-        return LEXICAL_ERR;
       } else {
+        // The quote wasn't stored, because end of string was suspected.
+        // That is why it is added in addition to the current character.
         if (dynstr_append_char(output_val, '"') != NO_ERR ||
             dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
@@ -1002,12 +1034,16 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       break;
 
     case S_END_ML_2:
+      if (character == EOF) {
+        return LEXICAL_ERR;
+      }
+
       if (character == '"') {
         *type = TOK_LIT_M_STRING;
         lexer_run = false;
-      } else if (character == EOF) {
-        return LEXICAL_ERR;
       } else {
+        // The quotes were not stored, because end of string was suspected.
+        // That is why they were added in addition to the current character.
         if (dynstr_append_char(output_val, '"') != NO_ERR ||
             dynstr_append_char(output_val, '"') != NO_ERR ||
             dynstr_append_char(output_val, (char)character) != NO_ERR) {
@@ -1018,7 +1054,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       break;
 
       /**
-       * KA - INTERPOLATED STRING
+       * FA - INTERPOLATED STRINGS
        */
 
     case S_S_STR:
@@ -1082,6 +1118,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       break;
 
     case S_DOLAR_STATE:
+      // Two consecutive dollars '$'.
       if (character == '$') {
         if (dynstr_append_char(output_val, '$') != NO_ERR) {
           return INTERNAL_ERR;
@@ -1093,6 +1130,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
           state = S_START_S_STR;
         }
       } else if (isalpha(character) || character == '_' || character == '{') {
+        // A single '$' indicates start of an identifier or expression.
+        // Return the accumulated string part and pause string parsing.
         ungetc(character, stdin);
 
         if (interpolated_ml_str) {
@@ -1110,6 +1149,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
     case S_DOLAR_NEXT:
       if (character == '{') {
+        // Go to expression reading state.
         *type = TOK_EXPRESSION_START;
         in_interpolated_str = false;
         in_expression = true;
@@ -1165,6 +1205,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
     case S_END_S_ML:
       if (!(character == '"' || character == EOF || character == '$')) {
+        // The quote wasn't stored, because end of string was suspected.
+        // That is why it is added in addition to the current character.
         if (dynstr_append_char(output_val, '"') != NO_ERR ||
             dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
@@ -1181,6 +1223,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
     case S_END_S_ML_2:
       if (!(character == '"' || character == EOF || character == '$')) {
+        // The quotes were not stored, because end of string was suspected.
+        // That is why they were added in addition to the current character.
         if (dynstr_append_char(output_val, '"') != NO_ERR ||
             dynstr_append_char(output_val, '"') != NO_ERR ||
             dynstr_append_char(output_val, (char)character) != NO_ERR) {
@@ -1188,6 +1232,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         state = S_START_S_ML;
       } else if (character == '$') {
+        // The quotes were not stored, because end of string was suspected.
+        // Then go to S_DOLAR_STATE.
         if (dynstr_append_char(output_val, '"') != NO_ERR ||
             dynstr_append_char(output_val, '"') != NO_ERR) {
           return INTERNAL_ERR;
@@ -1203,35 +1249,19 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       }
       break;
 
-      // case S_DOLAR_STATE_ML:
-      //   if (character == '$') {
-      //     if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
-      //       return INTERNAL_ERR;
-      //     }
-      //     state = S_START_S_ML;
-      //   } else if (isalpha(character) || character == '_') {
-      //     if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
-      //       return INTERNAL_ERR;
-      //     }
-      //     state = S_READ_ID;
-      //   } else if (character == '{') {
-      //     *type = TOK_EXPRESSION_START;
-      //     lexer_run = false;
-      //   } else {
-      //     return LEXICAL_ERR;
-      //   }
-      //   break;
-
       /**
-       * INDENTACE
+       * FA - INDENTATION
        */
 
     case S_LINE_START:
       if (character == ' ') {
-        indent_level++;
+        if (!comment_seen) {
+          indent_level++;
+        }
       } else if (character == '\n' || character == '\r') {
         indent_level = 0;
         tab_on_line = false;
+        comment_seen = false;
       } else if (character == '\t') {
         tab_on_line = true;
       } else if (character == EOF) {
@@ -1240,29 +1270,59 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         ungetc(character, stdin);
         state = S_LINE;
       } else if (character == '/') {
-        int next = getchar();
-        if (next == '/') {
+        state = S_LINE_SLASH;
+      } else {
+        // Tabulators for indentation are forbidden.
+        if (tab_on_line) {
+          return LEXICAL_ERR;
+        }
+        ungetc(character, stdin);
+        state = S_LINE;
+      }
+      break;
 
-          int c;
-          while ((c = getchar()) != '\n' && c != EOF) {
-          }
-          if (c == EOF) {
-            ungetc(c, stdin);
-          }
+    case S_LINE_SLASH:
+      if (character == '/') {
+        // It is a comment. Ignore all characters until the end of the line.
+        int ignored_char;
+        while ((ignored_char = getchar()) != '\n' && ignored_char != EOF) {
+        }
+
+        if (ignored_char == EOF) {
+          ungetc(ignored_char, stdin);
+        }
+
+        indent_level = 0;
+        tab_on_line = false;
+        comment_seen = false;
+        state = S_LINE_START;
+      } else if (character == '*') {
+        // Block comment at the beginning of a line.
+        bool had_newline = false;
+
+        if (skip_block_comment(&had_newline) != NO_ERR) {
+          return LEXICAL_ERR;
+        }
+
+        if (had_newline) {
+          // The text after "*/" starts a new line.
           indent_level = 0;
           tab_on_line = false;
+          comment_seen = false;
         } else {
-          ungetc(next, stdin);
-          ungetc('/', stdin);
-          if (tab_on_line)
-            return LEXICAL_ERR;
-          state = S_LINE;
+          comment_seen = true;
         }
+        state = S_LINE_START;
+      } else {
+        return LEXICAL_ERR;
       }
       break;
 
     case S_LINE:
+      // Return the first non-whitespace character back to the stream.
       ungetc(character, stdin);
+
+      // Indentation increased.
       if (indent_level > indent_stack_top(&indent_stack)) {
         if (indent_stack_push(&indent_stack, indent_level) != NO_ERR) {
           return INTERNAL_ERR;
@@ -1270,6 +1330,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         *type = TOK_INDENT;
         next_state = S_START;
         lexer_run = false;
+
+        // Indentation decreased.
       } else if (indent_level < indent_stack_top(&indent_stack)) {
         indent_stack_pop(&indent_stack);
 
@@ -1279,6 +1341,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         *type = TOK_DEDENT;
         next_state = S_LINE;
         lexer_run = false;
+
+        // Indentation matches the current block.
       } else if (indent_level == indent_stack_top(&indent_stack)) {
         state = S_START;
         continue;
@@ -1288,6 +1352,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       break;
 
     default:
+      // Unknown state.
       return LEXICAL_ERR;
     }
   }
@@ -1387,6 +1452,12 @@ void lexer_destroy(void) {
   }
   token_buf_head = 0;
   token_buf_count = 0;
+  next_state = S_LINE_START;
+  token_prev_type = TOK_EMPTY;
+  indent_level = 0;
+  in_expression = false;
+  in_interpolated_str = false;
+  interpolated_ml_str = false;
   if (indent_stack_initialized) {
     indent_stack_free(&indent_stack);
     indent_stack_initialized = false;
