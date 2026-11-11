@@ -11,3 +11,19 @@
 #pragma once
 
 #include "ast_node.h"
+#include "err_codes.h"
+#include "symtable.h"
+
+/**
+ * @brief Performs semantic analysis
+ *
+ * @param root A pointer to the root of AST node
+ * @param symtable A pointer to the symtable supplied with built in functions
+ * and types
+ * @param main_identifier [out] A pointer to store the identifier of the
+ * entrypoint
+ *
+ * @return NO_ERR on success
+ */
+err_code_t analyse(ast_node_t *root, hashtable_t *symtable,
+                   char **main_identifier);
