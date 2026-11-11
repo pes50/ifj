@@ -54,7 +54,8 @@ typedef struct hashtable_t {
   ht_item_t *data; // dynamic array of hashtable items
   size_t item_cnt;
   size_t capacity;
-  struct hashtable_t *parent;
+  // each hasthable has pointer to its parent scope's hashtable
+  struct hashtable_t *parent; // NULL if current hastable is root of symtable
 } hashtable_t;
 
 /*************************************\
@@ -141,7 +142,7 @@ err_code_t ht_delete_item(hashtable_t *hashtable, const char *identificator);
 /**
  * @brief Finds the root table
  *
- * @param hashtable A pointer to the table to find the root of
+ * @param hashtable A pointer to the hashtable from which we start to look for a root
  *
  * @return A pointer to the root table, NULL if supplied hastable is NULL
  */
