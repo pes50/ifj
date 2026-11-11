@@ -138,4 +138,13 @@ err_code_t ht_get_item(hashtable_t *hashtable, const char *identificator,
  */
 err_code_t ht_delete_item(hashtable_t *hashtable, const char *identificator);
 
+/**
+ * @brief Finds the root table
+ *
+ * @param hashtable A pointer to the table to find the root of
+ *
+ * @return A pointer to the root table, NULL if supplied hastable is NULL
+ */
+hashtable_t *ht_get_root(hashtable_t *hashtable);
+
 #endif
