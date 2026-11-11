@@ -64,6 +64,7 @@ typedef struct data_type_node_t {
   } data;
 
   struct data_type_node_t *next;
+  bool _visited;
 } data_type_node_t;
 
 extern data_type_node_t node_int;

@@ -184,7 +184,7 @@ err_code_t duplicate_type_node(data_type_node_t *original,
     node->data.class_type.name =
         string_duplicate(original->data.class_type.name);
     if (node->data.class_type.name == NULL) {
-      free(node);
+      destroy_type_node(node);
       return INTERNAL_ERR;
     }
     break;
@@ -192,19 +192,19 @@ err_code_t duplicate_type_node(data_type_node_t *original,
     if (duplicate_type_node(original->data.lambda_type.parameter_types,
                             &node->data.lambda_type.parameter_types) !=
         NO_ERR) {
-      free(node);
+      destroy_type_node(node);
       return INTERNAL_ERR;
     }
     if (duplicate_type_node(original->data.lambda_type.return_type,
                             &node->data.lambda_type.return_type) != NO_ERR) {
-      free(node);
+      destroy_type_node(node);
       return INTERNAL_ERR;
     }
     break;
   case DATA_TYPE_LIST:
     if (duplicate_type_node(original->data.list_type.elements_type,
                             &node->data.list_type.elements_type) != NO_ERR) {
-      free(node);
+      destroy_type_node(node);
       return INTERNAL_ERR;
     }
     break;
@@ -214,7 +214,7 @@ err_code_t duplicate_type_node(data_type_node_t *original,
   case DATA_TYPE_UNION:
     if (duplicate_type_node(original->data.union_type.types,
                             &node->data.union_type.types) != NO_ERR) {
-      free(node);
+      destroy_type_node(node);
       return INTERNAL_ERR;
     }
     break;
@@ -222,7 +222,7 @@ err_code_t duplicate_type_node(data_type_node_t *original,
 
   err_code_t err = duplicate_type_node(original->next, &node->next);
   if (err != NO_ERR) {
-    free(node);
+    destroy_type_node(node);
     return INTERNAL_ERR;
   }
 
@@ -372,7 +372,7 @@ bool are_data_types_compatible(data_type_node_t *data_type_a,
 
 err_code_t type_to_string(data_type_node_t *data_type, char **result) {
   if (data_type->type == DATA_TYPE_PRIMITIVE) {
-    *result = primitive_to_string[data_type->type];
+    *result = primitive_to_string[data_type->data.primitive_type];
   } else if (data_type->type == DATA_TYPE_CLASS) {
     *result = data_type->data.class_type.name;
   } else {
@@ -388,6 +388,8 @@ err_code_t duplicate_superset_type(data_type_node_t *data_type_node_a,
   if (data_type_node_a == NULL || data_type_node_b == NULL) {
     return INTERNAL_ERR;
   }
+
+  // TODO implement support for types other than Int
 
   if (are_data_types_identical(data_type_node_a, &node_int)) {
     return duplicate_type_node(data_type_node_b, data_type_node_c);

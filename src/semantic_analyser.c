@@ -111,14 +111,6 @@ err_code_t collect_function(ast_node_t *node, hashtable_t *symtable,
     }
   }
 
-  // Set node type if defined
-  if (node->data.function_declaration.return_type != NULL) {
-    if (duplicate_type_node(node->data.function_declaration.return_type,
-                            &node->data_type) != NO_ERR) {
-      return INTERNAL_ERR;
-    }
-  }
-
   // Define symbol
   if (ht_insert_item(symtable, node->data.function_declaration.name, node) !=
       NO_ERR) {
@@ -129,11 +121,12 @@ err_code_t collect_function(ast_node_t *node, hashtable_t *symtable,
 }
 
 err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
-  if (node->data.extension_declaration.parameter == NULL) {
+  ast_node_t *parameter = node->data.extension_declaration.parameter;
+
+  if (parameter == NULL) {
     return OTHER_SEMANTIC_ERR;
   }
 
-  ast_node_t *parameter = node->data.extension_declaration.parameter;
   if (parameter->type != AST_PARAMETER) {
     return OTHER_SEMANTIC_ERR;
   }
@@ -182,8 +175,10 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
     if (err != UNDEF_SYMBOL_ERR) {
       // Symbol is in table
       if (data != NULL) {
+        free(symbol);
         return REDEF_SYMBOL_ERR;
       }
+      free(symbol);
       return err;
     }
 
@@ -203,26 +198,31 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
       return INTERNAL_ERR;
     }
 
-    ast_node_t *parameter_list = create_parameter_list_node(parameter_copy);
-    if (parameter_list == NULL) {
+    ast_node_t *parameter_list_copy =
+        create_parameter_list_node(parameter_copy);
+    if (parameter_list_copy == NULL) {
       free(symbol);
       destroy_node(parameter_copy);
       return INTERNAL_ERR;
     }
 
-    if (current->data.function_declaration.parameter_lists == NULL) {
-      current->data.function_declaration.parameter_lists = parameter_list;
+    ast_node_t *parameter_lists =
+        current->data.function_declaration.parameter_lists;
+    if (parameter_lists == NULL) {
+      current->data.function_declaration.parameter_lists = parameter_list_copy;
     } else {
-      if (!is_parameter_list_chain(
-              current->data.function_declaration.parameter_lists)) {
+      if (!is_parameter_list_chain(parameter_lists)) {
+        free(symbol);
+        destroy_node(parameter_list_copy);
         return OTHER_SEMANTIC_ERR;
       }
-      parameter_list->next = current->data.function_declaration.parameter_lists;
-      current->data.function_declaration.parameter_lists = parameter_list;
+      parameter_list_copy->next = parameter_lists;
+      current->data.function_declaration.parameter_lists = parameter_list_copy;
     }
 
     // Define symbol
     if (ht_insert_item(symtable, symbol, current) != NO_ERR) {
+      free(symbol);
       return INTERNAL_ERR;
     }
 
@@ -348,6 +348,85 @@ err_code_t analyse_function_declaration(ast_node_t *node,
 
 #pragma endregion
 
+#pragma region Types
+
+err_code_t analyse_type(data_type_node_t *node, hashtable_t *symtable);
+
+err_code_t analyse_type_declaration(ast_node_t *node, hashtable_t *symtable) {
+  if (node == NULL || symtable == NULL) {
+    return INTERNAL_ERR;
+  }
+
+  if (node->type != AST_TYPE_DECLARATION) {
+    return OTHER_SEMANTIC_ERR;
+  }
+
+  if (node->data_type != NULL) {
+    return NO_ERR;
+  }
+
+  if (node->_visited) {
+    return TYPE_COMPAT_ERR;
+  }
+
+  node->_visited = true;
+  err_code_t err =
+      analyse_type(node->data.type_declaration.data_type, symtable);
+  node->_visited = false;
+
+  if (err != NO_ERR) {
+    return err;
+  }
+
+  return duplicate_type_node(node->data.type_declaration.data_type,
+                             &node->data_type);
+}
+
+err_code_t analyse_class_declaration(ast_node_t *node, hashtable_t *symtable) {
+  if (node == NULL || symtable == NULL) {
+    return INTERNAL_ERR;
+  }
+
+  if (node->type != AST_CLASS_DECLARATION) {
+    return OTHER_SEMANTIC_ERR;
+  }
+
+  if (node->data_type != NULL) {
+    return NO_ERR;
+  }
+
+  if (node->_visited) {
+    return TYPE_COMPAT_ERR;
+  }
+
+  node->_visited = true;
+  err_code_t err = NO_ERR;
+  ast_node_t *attribute = node->data.class_declaration.attributes;
+  while (attribute != NULL && err == NO_ERR) {
+    err = analyse_type(attribute->data.parameter.data_type, symtable);
+    if (err == NO_ERR) {
+      attribute = attribute->next;
+    } else {
+      break;
+    }
+  }
+  node->_visited = false;
+
+  if (err != NO_ERR) {
+    return err;
+  }
+
+  data_type_node_t *data_type =
+      create_class_type_node(node->data.class_declaration.name);
+  if (data_type == NULL) {
+    return INTERNAL_ERR;
+  }
+
+  node->data_type = data_type;
+
+  return NO_ERR;
+}
+
 err_code_t analyse_type(data_type_node_t *node, hashtable_t *symtable) {
   if (node == NULL || symtable == NULL) {
     return INTERNAL_ERR;
@@ -364,11 +443,22 @@ err_code_t analyse_type(data_type_node_t *node, hashtable_t *symtable) {
       return err;
     }
     if (table_node->type == AST_CLASS_DECLARATION) {
+      err = analyse_class_declaration(table_node, symtable);
+      if (err != NO_ERR) {
+        return err;
+      }
       break;
     }
 
     if (table_node->type != AST_TYPE_DECLARATION) {
       return OTHER_SEMANTIC_ERR;
+    }
+
+    if (table_node->data_type == NULL) {
+      err = analyse_type_declaration(table_node, symtable);
+    }
+    if (err != NO_ERR) {
+      return err;
     }
 
     data_type_node_t *copy = NULL;
@@ -378,7 +468,7 @@ err_code_t analyse_type(data_type_node_t *node, hashtable_t *symtable) {
       return err;
     }
 
-    free(table_node->data.type_declaration.name);
+    free(node->data.class_type.name);
 
     node->data = copy->data;
     node->type = copy->type;
@@ -418,6 +508,8 @@ err_code_t analyse_type(data_type_node_t *node, hashtable_t *symtable) {
 
   return analyse_type(node->next, symtable);
 }
+
+#pragma endregion
 
 #pragma region Expression
 
@@ -492,6 +584,11 @@ err_code_t analyse_function_call(char *identifier, ast_node_t *node,
   if (err != NO_ERR) {
     return err;
   }
+
+  if (table_node->type != AST_FUNCTION_DECLARATION) {
+    return OTHER_SEMANTIC_ERR;
+  }
+
   err = analyse_function_declaration(table_node, ht_get_root(symtable));
   if (err != NO_ERR) {
     return err;
@@ -690,7 +787,7 @@ err_code_t analyse_match_case_class_constructor(ast_node_t *node,
     return INTERNAL_ERR;
   }
 
-  if (node->type != AST_LITERAL) {
+  if (node->type != AST_FUNCTION_CALL) {
     return INTERNAL_ERR;
   }
 
@@ -706,7 +803,7 @@ err_code_t analyse_match_case_class_constructor(ast_node_t *node,
     return OTHER_SEMANTIC_ERR;
   }
 
-  if (are_data_types_compatible(table_node->data_type, match_type)) {
+  if (!are_data_types_compatible(table_node->data_type, match_type)) {
     return TYPE_COMPAT_ERR;
   }
 
@@ -747,7 +844,7 @@ err_code_t analyse_match_case_class_constructor(ast_node_t *node,
     return ARG_MISMATCH_ERR;
   }
 
-  return NO_ERR;
+  return duplicate_type_node(table_node->data_type, &node->data_type);
 }
 
 err_code_t analyse_match_case_parameter(ast_node_t *node,
@@ -760,19 +857,24 @@ err_code_t analyse_match_case_parameter(ast_node_t *node,
     return INTERNAL_ERR;
   }
 
-  if (node->data.parameter.name == NULL ||
-      node->data.parameter.data_type == NULL) {
+  char *name = node->data.parameter.name;
+  data_type_node_t *data_type = node->data.parameter.data_type;
+  if (name == NULL || data_type == NULL) {
     return INTERNAL_ERR;
   }
 
-  err_code_t err = analyse_type(node->data.parameter.data_type, symtable);
+  err_code_t err = analyse_type(data_type, symtable);
   if (err != NO_ERR) {
     return err;
   }
 
-  err = ht_insert_item(symtable, node->data.parameter.name, (void **)&node);
+  err = ht_insert_item(symtable, name, (void **)&node);
 
-  return err;
+  if (err != NO_ERR) {
+    return err;
+  }
+
+  return duplicate_type_node(data_type, &node->data_type);
 }
 
 err_code_t analyse_match_case(ast_node_t *node, hashtable_t *symtable,
@@ -798,7 +900,7 @@ err_code_t analyse_match_case(ast_node_t *node, hashtable_t *symtable,
   // Create new scope
   hashtable_t *current_scope;
   err = ht_init(&current_scope, table_size);
-  if (err == !NO_ERR) {
+  if (err != NO_ERR) {
     return err;
   }
   current_scope->parent = symtable;
@@ -848,29 +950,23 @@ err_code_t analyse_match_case(ast_node_t *node, hashtable_t *symtable,
 
   if (block->type == AST_BLOCK) {
     err = analyse_block(block, current_scope, explicit_data_type, allow_return);
-    if (err == NO_ERR &&
-        !are_data_types_compatible(block->data_type, match_type)) {
-      err = TYPE_COMPAT_ERR;
+    if (err != NO_ERR) {
       goto case_err;
     }
-
   } else {
     err = analyse_expression(block, current_scope, explicit_data_type, true,
                              allow_return);
-    if (err == NO_ERR &&
-        !are_data_types_compatible(block->data_type, match_type)) {
-      err = TYPE_COMPAT_ERR;
+    if (err != NO_ERR) {
       goto case_err;
     }
   }
   ht_destruct(&current_scope);
+
   if (err != NO_ERR) {
     return err;
   }
-  if (!are_data_types_compatible(block->data_type, match_type)) {
-    return TYPE_COMPAT_ERR;
-  }
-  return NO_ERR;
+
+  return duplicate_type_node(block->data_type, &node->data_type);
 case_err:
   ht_destruct(&current_scope);
   return err;
@@ -904,8 +1000,32 @@ err_code_t analyse_match(ast_node_t *node, hashtable_t *symtable,
     if (err != NO_ERR) {
       return err;
     }
+
+    if (node->data_type == NULL) {
+      node->data_type = current->data_type;
+    } else {
+      if (!are_data_types_compatible(current->data_type, node->data_type)) {
+        if (are_data_types_compatible(node->data_type, current->data_type)) {
+          node->data_type = current->data_type;
+        } else {
+          err = TYPE_COMPAT_ERR;
+        }
+      }
+      if (err != NO_ERR) {
+        node->data_type = NULL;
+        return err;
+      }
+    }
     current = current->next;
   }
+
+  data_type_node_t *data_type = NULL;
+  err = duplicate_type_node(node->data_type, &data_type);
+  if (err != NO_ERR) {
+    node->data_type = NULL;
+    return err;
+  }
+  node->data_type = data_type;
 
   if (default_count != 1) {
     return OTHER_SEMANTIC_ERR;
@@ -960,10 +1080,12 @@ err_code_t analyse_expression(ast_node_t *node, hashtable_t *symtable,
           err = analyse_function_call(
               identifier, node, symtable,
               node->data.dot_function_call.target->data_type);
+          free(identifier);
+        } else {
+          err = INTERNAL_ERR;
         }
-        free(identifier);
+        free(first);
       }
-      free(first);
     }
     break;
   case AST_IF:
@@ -1106,7 +1228,7 @@ err_code_t analyse_variable_declaration(ast_node_t *node,
   return err;
 }
 
-err_code_t analyse_assignement(ast_node_t *node, hashtable_t *symtable) {
+err_code_t analyse_assignment(ast_node_t *node, hashtable_t *symtable) {
   if (node == NULL || symtable == NULL) {
     return INTERNAL_ERR;
   }
@@ -1246,7 +1368,7 @@ err_code_t analyse_function_declaration(ast_node_t *node,
 
   // Update if return type of function was unknown during the collecting
   // symbols phase
-  if (node->data_type == NULL) {
+  if (node->data.function_declaration.return_type == NULL) {
     // Duplicate type
     err = duplicate_type_node(body->data_type, &node->data_type);
     if (err != NO_ERR) {
@@ -1514,7 +1636,7 @@ err_code_t analyse_block(ast_node_t *node, hashtable_t *symtable,
       }
       break;
     case AST_ASSIGNMENT:
-      err = analyse_assignement(current, symtable);
+      err = analyse_assignment(current, symtable);
       if (err == NO_ERR) {
         last_type = &node_unit;
       }
@@ -1605,18 +1727,10 @@ err_code_t analyse_top_block(ast_node_t *root, hashtable_t *symtable) {
       }
       break;
     case AST_TYPE_DECLARATION:
-      err = analyse_type(current->data.type_declaration.data_type, symtable);
+      err = analyse_type_declaration(current, symtable);
       break;
     case AST_CLASS_DECLARATION:
-      node = current->data.class_declaration.attributes;
-      while (node != NULL && err == NO_ERR) {
-        err = analyse_type(node->data.parameter.data_type, symtable);
-        if (err == NO_ERR) {
-          node = node->next;
-        } else {
-          return err;
-        }
-      }
+      err = analyse_class_declaration(current, symtable);
       break;
     default:
       return OTHER_SEMANTIC_ERR;

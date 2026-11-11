@@ -114,7 +114,7 @@ void destroy_node(ast_node_t *node) {
     free(node->data.literal.raw);
     break;
   case AST_INTERPOLATED_STRING:
-    free(node->data.interpolated_string.expressions);
+    destroy_node(node->data.interpolated_string.expressions);
     break;
   }
 

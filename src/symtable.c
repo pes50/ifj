@@ -70,11 +70,11 @@ static err_code_t ht_resize(hashtable_t *hashtable, size_t item_cnt) {
   // the wanted size
   hashtable_t old_table = *hashtable;
 
-  hashtable->data = NULL;
-  hashtable->capacity = item_cnt;
-  hashtable->item_cnt = 0;
-  if (ht_init_data(hashtable, item_cnt) == INTERNAL_ERR) {
-    ht_data_destruct(&old_table);
+  hashtable_t new_table = *hashtable;
+  new_table.data = NULL;
+  new_table.capacity = item_cnt;
+  new_table.item_cnt = 0;
+  if (ht_init_data(&new_table, item_cnt) == INTERNAL_ERR) {
     return INTERNAL_ERR;
   }
 
@@ -86,9 +86,9 @@ static err_code_t ht_resize(hashtable_t *hashtable, size_t item_cnt) {
     }
     // inserts item from old table into the new one
     if (old_table.data[index].state == FULL) {
-      if (ht_insert_item(hashtable, old_table.data[index].identificator,
+      if (ht_insert_item(&new_table, old_table.data[index].identificator,
                          old_table.data[index].data) == INTERNAL_ERR) {
-        ht_data_destruct(&old_table);
+        ht_data_destruct(&new_table);
         return INTERNAL_ERR;
       }
       // notes that the item has been copied
@@ -96,6 +96,8 @@ static err_code_t ht_resize(hashtable_t *hashtable, size_t item_cnt) {
     }
   }
   ht_data_destruct(&old_table);
+  *hashtable = new_table;
+
   return NO_ERR;
 }
 
@@ -180,6 +182,8 @@ err_code_t ht_init(hashtable_t **hashtable, size_t item_cnt) {
 
   // allocate memory for hash table items and initialize them as empty
   if (ht_init_data(*hashtable, item_cnt) == INTERNAL_ERR) {
+    free(*hashtable);
+    *hashtable = NULL;
     return INTERNAL_ERR;
   }
 
