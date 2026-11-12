@@ -416,11 +416,20 @@ t_ast_node *return_final_node(token_stack_t *stack) {
   if (!is_token_empty(stack) || stack->top == NULL) {
     return NULL;
   }
+
+  // only return node if it is the last element in stack
+  if (stack_get_size(stack->top) != 1) {
+    return NULL;
+  }
+
   element_token_t *data = stack_pop(stack->top);
   if (data == NULL) {
     return NULL;
   }
+
   t_ast_node *node = data->nonterminal.node;
+
   free(data);
+
   return node;
 }
