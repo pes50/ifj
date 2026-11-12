@@ -602,30 +602,13 @@ static data_type_node_t generic_list_node = {
     .type = DATA_TYPE_LIST,
     .data.list_type =
         {
-            .elements_type = NULL,
+            .elements_type = &node_generic_t,
         },
     .next = NULL,
 };
 
-static ast_node_t list_constructor_parameter_list = {
-    .type = AST_PARAMETER_LIST,
-    .data.parameter_list =
-        {
-            .parameters = NULL,
-        },
-    .data_type = &node_unit,
-    .next = NULL,
-};
-static ast_node_t list_constructor_function_declaration = {
-    .type = AST_FUNCTION_DECLARATION,
-    .data.function_declaration =
-        {
-            .body = NULL,
-            .is_main = false,
-            .name = "List",
-            .return_type = &generic_list_node,
-            .parameter_lists = &list_constructor_parameter_list,
-        },
+static ast_node_t list_constructor = {
+    .type = AST_LIST_CONSTRUCTOR,
     .data_type = &generic_list_node,
     .next = NULL,
 };
@@ -659,7 +642,6 @@ hashtable_t *create_builtin_symtable() {
       &string_length_function_declaration,
       &read_int_maybe_function_declaration,
       &read_double_maybe_function_declaration,
-      &list_constructor_function_declaration,
   };
 
   int functions_length = sizeof(functions) / sizeof(ast_node_t *);
@@ -688,6 +670,12 @@ hashtable_t *create_builtin_symtable() {
       ht_destruct(&table);
       return NULL;
     }
+  }
+
+  // Register List constructor
+  if (ht_insert_item(table, "List", &list_constructor) != NO_ERR) {
+    ht_destruct(&table);
+    return NULL;
   }
 
   return table;

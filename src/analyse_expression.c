@@ -567,6 +567,7 @@ err_code_t analyse_expression(ast_node_t *node, hashtable_t *symtable,
   case AST_WHILE_DO:
   case AST_RETURN:
   case AST_MATCH_CASE:
+  case AST_LIST_CONSTRUCTOR:
     err = OTHER_SEMANTIC_ERR;
     break;
   case AST_FUNCTION_CALL:

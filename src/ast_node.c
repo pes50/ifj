@@ -116,6 +116,8 @@ void destroy_node(ast_node_t *node) {
   case AST_INTERPOLATED_STRING:
     destroy_node(node->data.interpolated_string.expressions);
     break;
+  case AST_LIST_CONSTRUCTOR:
+    break;
   }
 
   destroy_node(node->next);
