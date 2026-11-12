@@ -38,7 +38,10 @@ struct token_stack_t {
 };
 
 bool push_nonterm(token_stack_t *stack, t_ast_node *node) {
-  if (stack == NULL) {
+  if (stack == NULL || node == NULL) {
+    return false;
+  }
+  if (stack->top == NULL) {
     return false;
   }
   element_token_t *elem = malloc(sizeof(element_token_t));
@@ -93,16 +96,18 @@ void destroy_token_stack(token_stack_t *stack) {
 }
 
 bool push_token(token_stack_t *stack, token_t *token) {
-  if (stack == NULL) {
+  if (stack == NULL || token == NULL) {
+    return false;
+  }
+  if (stack->top == NULL) {
     return false;
   }
   element_token_t *elem = malloc(sizeof(element_token_t));
-  elem->type = TOKEN;
-
-  elem->token.token = token;
-  if (elem->token.token == NULL) {
+  if (elem == NULL) {
     return false;
   }
+  elem->type = TOKEN;
+  elem->token.token = token;
 
   if (!stack_push(stack->top, elem)) {
     free(elem);
@@ -193,9 +198,16 @@ bool reduce(token_stack_t *stack) {
     case TOK_LIT_TRUE:
     case TOK_LIT_FALSE:
       stack_pop(stack->top);
-      bool ret = push_nonterm(stack, create_leaf_node(data->token.token));
+      t_ast_node *node = create_leaf_node(data->token.token);
       token_free(data->token.token);
       free(data);
+      if (node == NULL) {
+        return false;
+      }
+      bool ret = push_nonterm(stack, node);
+      if (!ret) {
+        destroy_node(node);
+      }
       stack->token_count--;
       return ret;
 
@@ -215,7 +227,7 @@ bool reduce(token_stack_t *stack) {
   if (data->type == NONTERMINAL) {
     return false;
   }
-  t_ast_node *node;
+  t_ast_node *leaf, *node;
   bool ret;
   switch (data->token.token->type) {
   // E -> unop E
@@ -223,15 +235,27 @@ bool reduce(token_stack_t *stack) {
   case TOK_UNARY_PLUS:
   case TOK_NOT:
     data = stack_pop(stack->top);
-    node = data->nonterminal.node;
+    leaf = data->nonterminal.node;
     free(data);
+    if (leaf == NULL) {
+      return false;
+    }
     data = stack_pop(stack->top);
 
-    ret = push_nonterm(
-        stack, create_unary_operation_node(data->token.token->type, node));
+    node = create_unary_operation_node(data->token.token->type, leaf);
 
     token_free(data->token.token);
     free(data);
+
+    if (node == NULL) {
+      destroy_node(leaf);
+      return false;
+    }
+    ret = push_nonterm(stack, node);
+    if (!ret) {
+      destroy_node(node);
+    }
+
     stack->token_count--;
     return ret;
 
@@ -262,17 +286,31 @@ bool reduce(token_stack_t *stack) {
       return false;
     }
     data = stack_pop(stack->top);
-    node = data->nonterminal.node;
+    leaf = data->nonterminal.node;
     free(data);
+    if (leaf == NULL) {
+      return false;
+    }
 
-    data = stack_pop(stack->top);
+    data = stack_pop(stack->top); // cant be NULL, already checked
     token_type_t type = data->token.token->type;
     token_free(data->token.token);
     free(data);
 
-    data = stack_pop(stack->top);
-    ret = push_nonterm(stack, create_binary_operation_node(
-                                  type, data->nonterminal.node, node));
+    data = stack_pop(stack->top); // cant be NULL, already checked
+
+    node = create_binary_operation_node(type, data->nonterminal.node, leaf);
+    if (node == NULL) {
+      destroy_node(leaf);
+      destroy_node(data->nonterminal.node);
+      return false;
+    }
+
+    ret = push_nonterm(stack, node);
+    if (!ret) {
+      destroy_node(node);
+      return false;
+    }
     free(data);
     stack->token_count--;
     return ret;
