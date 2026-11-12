@@ -3,6 +3,7 @@
  * @file symtable.h
  *
  * @author Tomáš Peňás      (xpenast00)
+ * @author Roman Skoupý     (xskoupr00)
  *
  * @brief Specification of symbol table interface and declaration
  * of symbol table interface functions
