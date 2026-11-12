@@ -3,6 +3,7 @@
  * @file symtable.c
  *
  * @author Tomáš Peňás      (xpenast00)
+ * @author Roman Skoupý     (xskoupr00)
  *
  * @brief Implementation of symbol table
  *

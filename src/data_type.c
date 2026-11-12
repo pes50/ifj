@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Indices correspond with primitive_t enum values of given datatype
 char *primitive_to_string[] = {
     "Int", "Double", "String", "Unit", "Boolean", "Any",
 };
@@ -353,10 +354,12 @@ bool are_data_types_identical(data_type_node_t *data_type_a,
 bool are_data_types_compatible(data_type_node_t *data_type_a,
                                data_type_node_t *data_type_b) {
 
+  // both types are the same
   if (are_data_types_identical(data_type_a, data_type_b)) {
     return true;
   }
 
+  // at least one of the types is union
   if (data_type_b->type == DATA_TYPE_UNION) {
     if (data_type_a->type == DATA_TYPE_UNION) {
       return is_union_subset(data_type_a, data_type_b);
@@ -364,6 +367,7 @@ bool are_data_types_compatible(data_type_node_t *data_type_a,
     return union_contains_type(data_type_a, data_type_b);
   }
 
+  // only other valid conversion is int->float
   return (data_type_a->type == DATA_TYPE_PRIMITIVE &&
           data_type_a->data.primitive_type == PRIMITIVE_INT &&
           data_type_b->type == DATA_TYPE_PRIMITIVE &&

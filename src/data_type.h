@@ -198,9 +198,9 @@ bool are_data_types_compatible(data_type_node_t *data_type_a,
                                data_type_node_t *data_type_b);
 
 /**
- * @brief Converts a type to string
+ * @brief Converts a type's name to a string
  *
- * @param data_type A pointer to the node to convert
+ * @param data_type A pointer to the node who's type's name to convert
  * @param result A pointer to store the result, the caller doesn't own the
  * string
  *
