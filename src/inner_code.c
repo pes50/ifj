@@ -56,7 +56,7 @@ inner_symbol_t create_const_symbol(inner_datatype_t datatype,
 inner_symbol_t create_arr_symbol(char *identificator) {
   inner_symbol_t arr;
 
-  arr.type = INNER_SYM_VAR;
+  arr.type = INNER_SYM_ARR;
   arr.data.identificator = identificator;
 
   return arr;

@@ -42,6 +42,7 @@ void codegen_print_string(const char *string) {
     } else {
       fprintf(stdout, "%c", string[character]);
     }
+    character++;
   }
 }
 
