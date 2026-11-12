@@ -37,7 +37,7 @@ void codegen_print_string(const char *string) {
          string[character] <= ESCAPABLE_CHAR_UPPER_BOUND) ||
         string[character] == HASHTAG_ASCII ||
         string[character] == BACKSLASH_ASCII) {
-      fprintf(stdout, "\\%3d", string[character]);
+      fprintf(stdout, "\\%03d", string[character]);
       // other characters normaly
     } else {
       fprintf(stdout, "%c", string[character]);
