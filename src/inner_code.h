@@ -253,14 +253,15 @@ inner_statement_t *create_statement(inner_statement_operation_t operation,
 
 /**
  * @brief Deallocates all memory held by the statement
- *       and returns the next one
+ *       and returns the next statement pointer
  *
- * @param statement Address of a pointer that points
- *                  to the statement struct memory, the pointer is set to NULL
- *                  after memory is deallocated
+ * @param statement Pointer to the statement struct memory
+ *                  is NOT set tu NULL -> caller mustn't access
+ *                  memory that it points at
+ *
  * @return Next statement pointer or
- *         NULL if the pointer at statement address was NULL
+ *         NULL if the pointer at statement was NULL
  */
-inner_statement_t *destroy_statement(inner_statement_t **statement);
+inner_statement_t *destroy_statement(inner_statement_t *statement);
 
 #endif
