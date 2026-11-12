@@ -90,7 +90,7 @@ token_type_t get_top_token_type(token_stack_t *stack);
  *
  * @return true if there are no tokens in token stack, else false
  */
-bool is_empty(token_stack_t *stack);
+bool is_token_empty(token_stack_t *stack);
 
 /**
  * @brief If there is only one final nonterminal in the stack,
