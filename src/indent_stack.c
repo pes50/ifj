@@ -30,7 +30,7 @@ size_t indent_stack_top(indent_stack_t *stack) {
 }
 
 err_code_t indent_stack_push(indent_stack_t *stack, size_t spaces) {
-  // Doble the capacity when the current number of values is top_idx + 1
+  // Double the capacity when the current number of values is top_idx + 1
   if (stack->top_idx + 1 >= stack->capacity) {
     size_t new_capacity = stack->capacity * 2;
     size_t *new_data =
@@ -53,8 +53,8 @@ void indent_stack_pop(indent_stack_t *stack) {
   if (stack->top_idx > 0) {
     stack->top_idx--;
 
-    // Halve the stack capacity when the number of values is bellow quarter and
-    // the current capacity is higher than INITIAL_INDENT.
+    // Halve the stack capacity when the number of values is bellow a quarter
+    // and the current capacity is higher than INITIAL_INDENT.
     size_t current_size = stack->top_idx + 1;
     if (stack->capacity > INITIAL_INDENT &&
         current_size <= stack->capacity / 4) {
