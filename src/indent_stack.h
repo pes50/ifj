@@ -49,7 +49,7 @@ size_t indent_stack_top(indent_stack_t *stack);
  * @param stack  Pointer to the stack.
  * @param spaces Value to be pushed on the top of the stack.
  *
- * @return NO_ERR on succeeds.
+ * @return NO_ERR on success.
  *         INTERNAL_ERR if the stack is full.
  */
 err_code_t indent_stack_push(indent_stack_t *stack, size_t spaces);
