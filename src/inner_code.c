@@ -89,14 +89,13 @@ inner_statement_t *create_statement(inner_statement_operation_t operation,
   return statement;
 }
 
-inner_statement_t *destroy_statement(inner_statement_t **statement) {
-  if (*statement == NULL) {
+inner_statement_t *destroy_statement(inner_statement_t *statement) {
+  if (statement == NULL) {
     return NULL;
   }
-  inner_statement_t *next_statement = (*statement)->next_statement;
+  inner_statement_t *next_statement = statement->next_statement;
 
-  free(*statement);
-  *statement = NULL;
+  free(statement);
 
   return next_statement;
 }
