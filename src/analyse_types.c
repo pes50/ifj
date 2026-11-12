@@ -159,6 +159,8 @@ err_code_t analyse_type(data_type_node_t *node, hashtable_t *symtable) {
       return err;
     }
     break;
+  case DATA_TYPE_GENERIC:
+    break;
   }
 
   if (node->next == NULL) {
