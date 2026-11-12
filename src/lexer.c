@@ -48,7 +48,7 @@ static const dictionary_t keywords[] = {
  * @brief Enumeration of lexer states.
  */
 typedef enum {
-  // States achiaveable from S_START
+  // States achievable from S_START
   S_START,
   S_START_AT_MAIN,
   S_S_PREFIX,
@@ -267,7 +267,7 @@ static err_code_t skip_block_comment(bool *had_newline) {
  * it's value.
  *
  * @param output_val Value of the token's attribute.
- * @param type       Pointer to token type which the lexer shold determine.
+ * @param type       Pointer to token type which the lexer should determine.
  *
  * @return NO_ERR on success.
  *         INTERNAL_ERR on internal error.
