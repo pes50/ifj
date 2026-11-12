@@ -41,6 +41,7 @@ typedef enum {
   AST_IDENTIFIER,
   AST_LITERAL,
   AST_INTERPOLATED_STRING,
+  AST_LIST_CONSTRUCTOR,
 } ast_type_t;
 
 /**

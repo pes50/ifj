@@ -50,6 +50,11 @@ data_type_node_t node_any = {
     .data.primitive_type = PRIMITIVE_ANY,
     .next = NULL,
 };
+data_type_node_t node_generic_t = {
+    .type = DATA_TYPE_GENERIC,
+    .data.generic_type.name = "T",
+    .next = NULL,
+};
 
 data_type_node_t *create_type_node() {
   return calloc(1, sizeof(data_type_node_t));
@@ -77,6 +82,9 @@ void destroy_type_node(data_type_node_t *node) {
     break;
   case DATA_TYPE_UNION:
     destroy_type_node(node->data.union_type.types);
+    break;
+  case DATA_TYPE_GENERIC:
+    free(node->data.generic_type.name);
     break;
   }
 
@@ -219,6 +227,14 @@ err_code_t duplicate_type_node(data_type_node_t *original,
       return INTERNAL_ERR;
     }
     break;
+  case DATA_TYPE_GENERIC:
+    node->data.generic_type.name =
+        string_duplicate(original->data.generic_type.name);
+    if (node->data.generic_type.name == NULL) {
+      destroy_type_node(node);
+      return INTERNAL_ERR;
+    }
+    break;
   }
 
   err_code_t err = duplicate_type_node(original->next, &node->next);
@@ -343,6 +359,12 @@ bool are_data_types_identical(data_type_node_t *data_type_a,
   case DATA_TYPE_UNION:
     if (!are_unions_equivalent(data_type_a->data.union_type.types,
                                data_type_b->data.union_type.types)) {
+      return false;
+    }
+    break;
+  case DATA_TYPE_GENERIC:
+    if (strcmp(data_type_a->data.generic_type.name,
+               data_type_b->data.generic_type.name) != 0) {
       return false;
     }
     break;

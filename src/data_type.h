@@ -22,6 +22,7 @@ typedef enum {
   DATA_TYPE_LIST,
   DATA_TYPE_PRIMITIVE,
   DATA_TYPE_UNION,
+  DATA_TYPE_GENERIC,
 } dt_type_t;
 
 /**
@@ -61,6 +62,10 @@ typedef struct data_type_node_t {
     struct {
       struct data_type_node_t *types;
     } union_type;
+
+    struct {
+      char *name;
+    } generic_type;
   } data;
 
   struct data_type_node_t *next;
@@ -73,6 +78,7 @@ extern data_type_node_t node_string;
 extern data_type_node_t node_unit;
 extern data_type_node_t node_boolean;
 extern data_type_node_t node_any;
+extern data_type_node_t node_generic_t;
 
 /**
  * @brief Allocates a new Data type node
