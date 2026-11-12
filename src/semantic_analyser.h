@@ -4,14 +4,13 @@
  *
  * @author Roman Skoupý      (xskoupr00)
  *
- * @brief Specification of functions used in semantic analysis
+ * @brief Specification of analyse function used in semantic analysis
  *
 \*****************************************************************************/
 
 #pragma once
 
 #include "ast_node.h"
-#include "err_codes.h"
 #include "symtable.h"
 
 /**
