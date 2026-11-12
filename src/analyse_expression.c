@@ -213,53 +213,59 @@ err_code_t analyse_binary_operation(ast_node_t *node, hashtable_t *symtable) {
   }
 
   err_code_t err = analyse_expression(left, symtable, NULL, true, false);
-  if (err == NO_ERR) {
-    err = analyse_expression(right, symtable, NULL, true, false);
-    if (err == NO_ERR &&
-        !are_data_types_compatible(left->data_type, right->data_type) &&
-        !are_data_types_compatible(right->data_type, left->data_type)) {
-      err = TYPE_COMPAT_ERR;
-    } else {
-      switch (node->data.binary_operation.op) {
-        // Operators
-      case TOK_BINARY_PLUS:
-        err = duplicate_superset_type(left->data_type, right->data_type,
-                                      &node->data_type);
-        if (err == NO_ERR) {
-          if (!are_data_types_compatible(node->data_type, &node_double) &&
-              !are_data_types_compatible(node->data_type, &node_string)) {
-            err = TYPE_COMPAT_ERR;
-          }
-        }
-        break;
-      case TOK_BINARY_MINUS:
-      case TOK_MUL:
-      case TOK_DIV:
-        err = duplicate_superset_type(left->data_type, right->data_type,
-                                      &node->data_type);
-        if (err == NO_ERR) {
-          if (!are_data_types_compatible(node->data_type, &node_double)) {
-            err = TYPE_COMPAT_ERR;
-          }
-        }
-        break;
-      case TOK_LOWER_T:
-      case TOK_LOWER_EQ:
-      case TOK_GREATER_T:
-      case TOK_GREATER_EQ:
-      case TOK_EQUAL:
-      case TOK_NOT_EQ:
-      case TOK_AND:
-      case TOK_OR:
-        err = duplicate_type_node(&node_boolean, &node->data_type);
-        break;
-      default:
-        return INTERNAL_ERR;
-      }
-    }
+  if (err != NO_ERR) {
+    return err;
+  }
+  err = analyse_expression(right, symtable, NULL, true, false);
+  if (err != NO_ERR) {
+    return err;
   }
 
-  return err;
+  if (!are_data_types_compatible(left->data_type, right->data_type) &&
+      !are_data_types_compatible(right->data_type, left->data_type)) {
+    return TYPE_COMPAT_ERR;
+  }
+  // TODO check type compatibility
+  switch (node->data.binary_operation.op) {
+    // Operators
+  case TOK_BINARY_PLUS:
+    err = duplicate_superset_type(left->data_type, right->data_type,
+                                  &node->data_type);
+    if (err != NO_ERR) {
+      return err;
+    }
+
+    if (!are_data_types_compatible(node->data_type, &node_double) &&
+        !are_data_types_compatible(node->data_type, &node_string)) {
+      return TYPE_COMPAT_ERR;
+    }
+    break;
+  case TOK_BINARY_MINUS:
+  case TOK_MUL:
+  case TOK_DIV:
+    err = duplicate_superset_type(left->data_type, right->data_type,
+                                  &node->data_type);
+    if (err != NO_ERR) {
+      return err;
+    }
+    if (!are_data_types_compatible(node->data_type, &node_double)) {
+      return TYPE_COMPAT_ERR;
+    }
+    break;
+  case TOK_LOWER_T:
+  case TOK_LOWER_EQ:
+  case TOK_GREATER_T:
+  case TOK_GREATER_EQ:
+  case TOK_EQUAL:
+  case TOK_NOT_EQ:
+  case TOK_AND:
+  case TOK_OR:
+    return duplicate_type_node(&node_boolean, &node->data_type);
+  default:
+    return INTERNAL_ERR;
+  }
+
+  return NO_ERR;
 }
 
 #pragma region Match
