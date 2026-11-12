@@ -112,9 +112,9 @@ actions_t get_action(token_type_t input, token_type_t stack) {
   // stack is more important
   if (input_p > stack_p) {
     return REDUCE;
-  } else if (input_p < stack_p) {
-    return SHIFT;
-  } else {
-    return get_assoc(stack_p);
   }
+  if (input_p < stack_p) {
+    return SHIFT;
+  }
+  return (actions_t)get_assoc(stack_p);
 }
