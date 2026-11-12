@@ -9,7 +9,6 @@
 \******************************************************************************/
 
 #include "code_gen.h"
-#include <stdio.h>
 #include <string.h>
 
 /********************\
@@ -25,8 +24,9 @@
  * @brief Prints string using ifjcode26 escape sequences
  *
  * @param string String with non-escaped characters or NULL (does nothing)
+ * @param stream Where to print the data (stdout,stderr,file,...)
  */
-void codegen_print_string(const char *string) {
+void codegen_print_string(const char *string, FILE *stream) {
   if (string == NULL) {
     return;
   }
@@ -37,10 +37,10 @@ void codegen_print_string(const char *string) {
          string[character] <= ESCAPABLE_CHAR_UPPER_BOUND) ||
         string[character] == HASHTAG_ASCII ||
         string[character] == BACKSLASH_ASCII) {
-      fprintf(stdout, "\\%03d", string[character]);
+      fprintf(stream, "\\%03d", string[character]);
       // other characters normaly
     } else {
-      fprintf(stdout, "%c", string[character]);
+      fprintf(stream, "%c", string[character]);
     }
     character++;
   }
@@ -50,232 +50,234 @@ void codegen_print_string(const char *string) {
  * @brief Prints ifjcode26 instruction's name (inner code operation)
  *
  * @param operation The operation to print
+ * @param stream Where to print the data (stdout,stderr,file,...)
  */
-void codegen_print_operation(inner_statement_operation_t operation) {
+void codegen_print_operation(inner_statement_operation_t operation,
+                             FILE *stream) {
   switch (operation) {
   // NOP is internal operation - is not printed
   case INNER_NOP_CUSTOM:
     break;
   // Frames and function calls instructions
   case INNER_MOVE:
-    fprintf(stdout, "MOVE");
+    fprintf(stream, "MOVE");
     break;
   case INNER_CREATEFRAME:
-    fprintf(stdout, "CREATEFRAME");
+    fprintf(stream, "CREATEFRAME");
     break;
   case INNER_PUSHFRAME:
-    fprintf(stdout, "PUSHFRAME");
+    fprintf(stream, "PUSHFRAME");
     break;
   case INNER_POPFRAME:
-    fprintf(stdout, "POPFRAME");
+    fprintf(stream, "POPFRAME");
     break;
   case INNER_DEFVAR:
-    fprintf(stdout, "DEFVAR");
+    fprintf(stream, "DEFVAR");
     break;
   case INNER_CALL:
-    fprintf(stdout, "CALL");
+    fprintf(stream, "CALL");
     break;
   case INNER_RETURN:
-    fprintf(stdout, "RETURN");
+    fprintf(stream, "RETURN");
     break;
 
   // Stack instructions
   case INNER_PUSHS:
-    fprintf(stdout, "PUSHS");
+    fprintf(stream, "PUSHS");
     break;
   case INNER_POPS:
-    fprintf(stdout, "POPS");
+    fprintf(stream, "POPS");
     break;
   case INNER_CLEARS:
-    fprintf(stdout, "CLEARS");
+    fprintf(stream, "CLEARS");
     break;
 
   // Aritmetic instructions
   case INNER_ADD:
-    fprintf(stdout, "ADD");
+    fprintf(stream, "ADD");
     break;
   case INNER_SUB:
-    fprintf(stdout, "SUB");
+    fprintf(stream, "SUB");
     break;
   case INNER_MUL:
-    fprintf(stdout, "MUL");
+    fprintf(stream, "MUL");
     break;
   case INNER_DIV:
-    fprintf(stdout, "DIV");
+    fprintf(stream, "DIV");
     break;
   case INNER_IDIV:
-    fprintf(stdout, "IDIV");
+    fprintf(stream, "IDIV");
     break;
   case INNER_ADDS:
-    fprintf(stdout, "ADDS");
+    fprintf(stream, "ADDS");
     break;
   case INNER_SUBS:
-    fprintf(stdout, "SUBS");
+    fprintf(stream, "SUBS");
     break;
   case INNER_MULS:
-    fprintf(stdout, "MULS");
+    fprintf(stream, "MULS");
     break;
   case INNER_DIVS:
-    fprintf(stdout, "DIVS");
+    fprintf(stream, "DIVS");
     break;
   case INNER_IDIVS:
-    fprintf(stdout, "IDIVS");
+    fprintf(stream, "IDIVS");
     break;
 
   // Relation instructions
   case INNER_LT:
-    fprintf(stdout, "LT");
+    fprintf(stream, "LT");
     break;
   case INNER_GT:
-    fprintf(stdout, "GT");
+    fprintf(stream, "GT");
     break;
   case INNER_EQ:
-    fprintf(stdout, "EQ");
+    fprintf(stream, "EQ");
     break;
   case INNER_LTS:
-    fprintf(stdout, "LTS");
+    fprintf(stream, "LTS");
     break;
   case INNER_GTS:
-    fprintf(stdout, "GTS");
+    fprintf(stream, "GTS");
     break;
   case INNER_EQS:
-    fprintf(stdout, "EQS");
+    fprintf(stream, "EQS");
     break;
 
   // Boolean instructions
   case INNER_AND:
-    fprintf(stdout, "AND");
+    fprintf(stream, "AND");
     break;
   case INNER_OR:
-    fprintf(stdout, "OR");
+    fprintf(stream, "OR");
     break;
   case INNER_NOT:
-    fprintf(stdout, "NOT");
+    fprintf(stream, "NOT");
     break;
   case INNER_ANDS:
-    fprintf(stdout, "ANDS");
+    fprintf(stream, "ANDS");
     break;
   case INNER_ORS:
-    fprintf(stdout, "ORS");
+    fprintf(stream, "ORS");
     break;
   case INNER_NOTS:
-    fprintf(stdout, "NOTS");
+    fprintf(stream, "NOTS");
     break;
 
   // Conversion instructions
   case INNER_INT2FLOAT:
-    fprintf(stdout, "INT2FLOAT");
+    fprintf(stream, "INT2FLOAT");
     break;
   case INNER_FLOAT2INT:
-    fprintf(stdout, "FLOAT2INT");
+    fprintf(stream, "FLOAT2INT");
     break;
   case INNER_INT2CHAR:
-    fprintf(stdout, "INT2CHAR");
+    fprintf(stream, "INT2CHAR");
     break;
   case INNER_STRI2INT:
-    fprintf(stdout, "STRI2INT");
+    fprintf(stream, "STRI2INT");
     break;
   case INNER_FLOAT2STR:
-    fprintf(stdout, "FLOAT2STR");
+    fprintf(stream, "FLOAT2STR");
     break;
   case INNER_INT2STR:
-    fprintf(stdout, "INT2STR");
+    fprintf(stream, "INT2STR");
     break;
   case INNER_INT2FLOATS:
-    fprintf(stdout, "INT2FLOATS");
+    fprintf(stream, "INT2FLOATS");
     break;
   case INNER_FLOAT2INTS:
-    fprintf(stdout, "FLOAT2INTS");
+    fprintf(stream, "FLOAT2INTS");
     break;
   case INNER_INT2CHARS:
-    fprintf(stdout, "INT2CHARS");
+    fprintf(stream, "INT2CHARS");
     break;
   case INNER_STRI2INTS:
-    fprintf(stdout, "STRI2INTS");
+    fprintf(stream, "STRI2INTS");
     break;
   case INNER_FLOAT2STRS:
-    fprintf(stdout, "FLOAT2STRS");
+    fprintf(stream, "FLOAT2STRS");
     break;
   case INNER_INT2STRS:
-    fprintf(stdout, "INT2STRS");
+    fprintf(stream, "INT2STRS");
     break;
 
     // I/O instructions
   case INNER_READ:
-    fprintf(stdout, "READ");
+    fprintf(stream, "READ");
     break;
   case INNER_WRITE:
-    fprintf(stdout, "WRITE");
+    fprintf(stream, "WRITE");
     break;
 
   // String instructions
   case INNER_CONCAT:
-    fprintf(stdout, "CONCAT");
+    fprintf(stream, "CONCAT");
     break;
   case INNER_STRLEN:
-    fprintf(stdout, "STRLEN");
+    fprintf(stream, "STRLEN");
     break;
   case INNER_GETCHAR:
-    fprintf(stdout, "GETCHAR");
+    fprintf(stream, "GETCHAR");
     break;
   case INNER_SETCHAR:
-    fprintf(stdout, "SETCHAR");
+    fprintf(stream, "SETCHAR");
     break;
 
   // Array instructions
   case INNER_NEWARRAY:
-    fprintf(stdout, "NEWARRAY");
+    fprintf(stream, "NEWARRAY");
     break;
   case INNER_ARRAYGET:
-    fprintf(stdout, "ARRAYGET");
+    fprintf(stream, "ARRAYGET");
     break;
   case INNER_ARRAYSET:
-    fprintf(stdout, "ARRAYSET");
+    fprintf(stream, "ARRAYSET");
     break;
 
   // Datatype detection instructions
   case INNER_TYPE:
-    fprintf(stdout, "TYPE");
+    fprintf(stream, "TYPE");
     break;
   case INNER_ISINT:
-    fprintf(stdout, "ISINT");
+    fprintf(stream, "ISINT");
     break;
   case INNER_TYPES:
-    fprintf(stdout, "TYPES");
+    fprintf(stream, "TYPES");
     break;
   case INNER_ISINTS:
-    fprintf(stdout, "ISINTS");
+    fprintf(stream, "ISINTS");
     break;
 
   // Jump instructions
   case INNER_LABEL:
-    fprintf(stdout, "LABEL");
+    fprintf(stream, "LABEL");
     break;
   case INNER_JUMP:
-    fprintf(stdout, "JUMP");
+    fprintf(stream, "JUMP");
     break;
   case INNER_JUMPIFEQ:
-    fprintf(stdout, "JUMPIFEQ");
+    fprintf(stream, "JUMPIFEQ");
     break;
   case INNER_JUMPIFNEQ:
-    fprintf(stdout, "JUMPIFNEQ");
+    fprintf(stream, "JUMPIFNEQ");
     break;
   case INNER_JUMPIFEQS:
-    fprintf(stdout, "JUMPIFEQS");
+    fprintf(stream, "JUMPIFEQS");
     break;
   case INNER_JUMPIFNEQS:
-    fprintf(stdout, "JUMPIFNEQS");
+    fprintf(stream, "JUMPIFNEQS");
     break;
   case INNER_EXIT:
-    fprintf(stdout, "EXIT");
+    fprintf(stream, "EXIT");
     break;
 
   // Debug instructions
   case INNER_BREAK:
-    fprintf(stdout, "BREAK");
+    fprintf(stream, "BREAK");
     break;
   case INNER_DPRINT:
-    fprintf(stdout, "DPRINT");
+    fprintf(stream, "DPRINT");
     break;
 
   // Default case should not happen
@@ -288,28 +290,29 @@ void codegen_print_operation(inner_statement_operation_t operation) {
  * @brief Prints constant's value on
  *
  * @param symbol The symbol containing the constant to print
+ * @param stream Where to print the data (stdout,stderr,file,...)
  */
-void codegen_print_constant(inner_symbol_t symbol) {
+void codegen_print_constant(inner_symbol_t symbol, FILE *stream) {
   switch (symbol.data.constant.datatype) {
   case INNER_NIL:
-    fprintf(stdout, " nil@nil");
+    fprintf(stream, " nil@nil");
     break;
   case INNER_BOOL:
     if (symbol.data.constant.value.inner_bool) {
-      fprintf(stdout, " bool@true");
+      fprintf(stream, " bool@true");
     } else {
-      fprintf(stdout, " bool@false");
+      fprintf(stream, " bool@false");
     }
     break;
   case INNER_INT:
-    fprintf(stdout, " int@%lld", symbol.data.constant.value.inner_int);
+    fprintf(stream, " int@%lld", symbol.data.constant.value.inner_int);
     break;
   case INNER_FLOAT:
-    fprintf(stdout, " float@%a", symbol.data.constant.value.inner_float);
+    fprintf(stream, " float@%a", symbol.data.constant.value.inner_float);
     break;
   case INNER_STRING:
-    fprintf(stdout, " string@");
-    codegen_print_string(symbol.data.constant.value.inner_string);
+    fprintf(stream, " string@");
+    codegen_print_string(symbol.data.constant.value.inner_string, stream);
     break;
   }
 }
@@ -318,17 +321,18 @@ void codegen_print_constant(inner_symbol_t symbol) {
  * @brief Prints one symbol (variable/array/label/constant)
  *
  * @param symbol The symbol to print
+ * @param stream Where to print the data (stdout,stderr,file,...)
  */
-void codegen_print_symbol(inner_symbol_t symbol) {
+void codegen_print_symbol(inner_symbol_t symbol, FILE *stream) {
   if (symbol.type == INNER_SYM_EMPTY) {
     return;
   }
 
   if (symbol.type == INNER_SYM_CONST) {
-    codegen_print_constant(symbol);
+    codegen_print_constant(symbol, stream);
   } else {
-    fprintf(stdout, " ");
-    codegen_print_string(symbol.data.identificator);
+    fprintf(stream, " ");
+    codegen_print_string(symbol.data.identificator, stream);
   }
 }
 
@@ -336,19 +340,21 @@ void codegen_print_symbol(inner_symbol_t symbol) {
  * @brief Prints one line of ifjcode26 (one statement) and frees its memory
  *
  * @param statement The statement to print
+ * @param stream Where to print the data (stdout,stderr,file,...)
  *
  * @return Pointer to next statement or NULL if it was the last one
  */
-inner_statement_t *codegen_print_statement(inner_statement_t *statement) {
+inner_statement_t *codegen_print_statement(inner_statement_t *statement,
+                                           FILE *stream) {
   if (statement == NULL) {
     return NULL;
   }
 
-  codegen_print_operation(statement->operation);
-  codegen_print_symbol(statement->destination);
-  codegen_print_symbol(statement->first_op);
-  codegen_print_symbol(statement->second_op);
-  fprintf(stdout, "\n");
+  codegen_print_operation(statement->operation, stream);
+  codegen_print_symbol(statement->destination, stream);
+  codegen_print_symbol(statement->first_op, stream);
+  codegen_print_symbol(statement->second_op, stream);
+  fprintf(stream, "\n");
 
   return destroy_statement(statement);
 }
@@ -357,9 +363,11 @@ inner_statement_t *codegen_print_statement(inner_statement_t *statement) {
  * Code generator interface implementation *
 \*******************************************/
 
-void codegen_print_program(inner_statement_t *statement) {
+void codegen_print_program(inner_statement_t *statement, FILE *stream) {
+  fprintf(stream, ".IFJcode26\n");
+
   inner_statement_t *next_statement = statement;
   do {
-    next_statement = codegen_print_statement(next_statement);
+    next_statement = codegen_print_statement(next_statement, stream);
   } while (next_statement != NULL);
 }

@@ -13,12 +13,14 @@
 
 #include "err_codes.h"
 #include "inner_code.h"
+#include <stdio.h>
 
 /**
  * @brief Prints the whole ifjcode26 program
  *
  * @param statement The first statement of the program
+ * @param stream Where to print the data (stdout,stderr,file,...)
  */
-void codegen_print_program(inner_statement_t *statement);
+void codegen_print_program(inner_statement_t *statement, FILE *stream);
 
 #endif
