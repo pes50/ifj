@@ -15,17 +15,17 @@
 #include <stdlib.h>
 
 err_code_t analyse(ast_node_t *root, hashtable_t *symtable,
-                   char **main_identifier) {
+                   ast_node_t **main_node) {
   if (root == NULL || symtable == NULL) {
     return INTERNAL_ERR;
   }
 
-  err_code_t err = collect_symbols(root, symtable, main_identifier);
+  err_code_t err = collect_symbols(root, symtable, main_node);
   if (err != NO_ERR) {
     return err;
   }
 
-  if (*main_identifier == NULL) {
+  if (*main_node == NULL) {
     return UNDEF_SYMBOL_ERR;
   }
 

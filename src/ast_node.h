@@ -65,12 +65,14 @@ typedef struct ast_node_t {
     struct {
       char *name;
       struct ast_node_t *argument_lists;
+      struct ast_node_t *calling;
     } function_call;
 
     struct {
       char *name;
       struct ast_node_t *target;
       struct ast_node_t *argument_lists;
+      struct ast_node_t *calling;
     } dot_function_call;
 
     struct {

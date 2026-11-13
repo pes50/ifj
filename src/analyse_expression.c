@@ -80,6 +80,14 @@ err_code_t analyse_argument_list(ast_node_t *parameter_list,
 err_code_t analyse_function_call(char *identifier, ast_node_t *node,
                                  hashtable_t *symtable,
                                  data_type_node_t *target_type) {
+  if (node == NULL || symtable == NULL) {
+    return INTERNAL_ERR;
+  }
+
+  if (node->type != AST_FUNCTION_CALL && node->type != AST_DOT_FUNCTION_CALL) {
+    return INTERNAL_ERR;
+  }
+
   ast_node_t *table_node;
   err_code_t err = ht_get_item(symtable, identifier, (void **)&table_node);
   if (err != NO_ERR) {
@@ -97,9 +105,18 @@ err_code_t analyse_function_call(char *identifier, ast_node_t *node,
 
   err = analyse_argument_list(
       table_node->data.function_declaration.parameter_lists,
-      node->data.function_call.argument_lists, symtable, target_type);
+      node->type == AST_FUNCTION_CALL
+          ? node->data.function_call.argument_lists
+          : node->data.dot_function_call.argument_lists,
+      symtable, target_type);
   if (err != NO_ERR) {
     return err;
+  }
+
+  if (node->type == AST_FUNCTION_CALL) {
+    node->data.function_call.calling = table_node;
+  } else {
+    node->data.dot_function_call.calling = table_node;
   }
 
   return duplicate_type_node(table_node->data_type, &node->data_type);
