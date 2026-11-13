@@ -595,7 +595,80 @@ static ast_node_t read_double_maybe_function_declaration = {
 
 #pragma endregion
 
-#pragma region List(v1, v2, ...) : List[T]
+static ast_node_t n_int_parameter_node = {
+    .type = AST_PARAMETER,
+    .data.parameter =
+        {
+            .name = "n",
+            .data_type = &node_int,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
+
+static ast_node_t n_int_parameter_list_node = {
+    .type = AST_PARAMETER_LIST,
+    .data.parameter_list =
+        {
+            .parameters = &n_int_parameter_node,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
+
+#pragma region to(n: Int) : $Range
+
+static ast_node_t to_function_declaration = {
+    .type = AST_FUNCTION_DECLARATION,
+    .data.function_declaration =
+        {
+            .body = NULL,
+            .is_main = false,
+            .name = "Int.to",
+            .return_type = &node_range,
+            .parameter_lists = &n_int_parameter_list_node,
+        },
+    .data_type = &node_range,
+    .next = NULL,
+};
+
+#pragma endregion
+
+#pragma region until(n: Int) : $Range
+
+static ast_node_t until_function_declaration = {
+    .type = AST_FUNCTION_DECLARATION,
+    .data.function_declaration =
+        {
+            .body = NULL,
+            .is_main = false,
+            .name = "Int.until",
+            .return_type = &node_range,
+            .parameter_lists = &n_int_parameter_list_node,
+        },
+    .data_type = &node_range,
+    .next = NULL,
+};
+
+#pragma endregion
+
+#pragma region by(n: Int) : $Range
+
+static ast_node_t by_function_declaration = {
+    .type = AST_FUNCTION_DECLARATION,
+    .data.function_declaration =
+        {
+            .body = NULL,
+            .is_main = false,
+            .name = "$Range.by",
+            .return_type = &node_range,
+            .parameter_lists = &n_int_parameter_list_node,
+        },
+    .data_type = &node_range,
+    .next = NULL,
+};
+
+#pragma endregion
 
 static data_type_node_t generic_list_node = {
     .type = DATA_TYPE_LIST,
@@ -606,9 +679,307 @@ static data_type_node_t generic_list_node = {
     .next = NULL,
 };
 
+#pragma region List(v1, v2, ...) : List[T]
+
 static ast_node_t list_constructor = {
     .type = AST_LIST_CONSTRUCTOR,
     .data_type = &generic_list_node,
+    .next = NULL,
+};
+
+#pragma endregion
+
+#pragma region drop(n): List[T]
+
+static ast_node_t drop_function_declaration = {
+    .type = AST_FUNCTION_DECLARATION,
+    .data.function_declaration =
+        {
+            .body = NULL,
+            .is_main = false,
+            .name = "List[T].drop",
+            .return_type = &generic_list_node,
+            .parameter_lists = &n_int_parameter_list_node,
+        },
+    .data_type = &generic_list_node,
+    .next = NULL,
+};
+
+#pragma endregion
+
+#pragma region take(n): List[T]
+
+static ast_node_t take_function_declaration = {
+    .type = AST_FUNCTION_DECLARATION,
+    .data.function_declaration =
+        {
+            .body = NULL,
+            .is_main = false,
+            .name = "List[T].take",
+            .return_type = &generic_list_node,
+            .parameter_lists = &n_int_parameter_list_node,
+        },
+    .data_type = &generic_list_node,
+    .next = NULL,
+};
+
+#pragma endregion
+
+#pragma region slice(from, until): List[T]
+
+static ast_node_t until_int_parameter_node = {
+    .type = AST_PARAMETER,
+    .data.parameter =
+        {
+            .name = "until",
+            .data_type = &node_int,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
+
+static ast_node_t from_int_parameter_node = {
+    .type = AST_PARAMETER,
+    .data.parameter =
+        {
+            .name = "from",
+            .data_type = &node_int,
+        },
+    .data_type = &node_unit,
+    .next = &until_int_parameter_node,
+};
+
+static ast_node_t from_until_parameter_list_node = {
+    .type = AST_PARAMETER_LIST,
+    .data.parameter_list =
+        {
+            .parameters = &from_int_parameter_node,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
+
+static ast_node_t slice_function_declaration = {
+    .type = AST_FUNCTION_DECLARATION,
+    .data.function_declaration =
+        {
+            .body = NULL,
+            .is_main = false,
+            .name = "List[T].slice",
+            .return_type = &generic_list_node,
+            .parameter_lists = &from_until_parameter_list_node,
+        },
+    .data_type = &generic_list_node,
+    .next = NULL,
+};
+
+#pragma endregion
+
+#pragma region head: T
+
+static ast_node_t head_function_declaration = {
+    .type = AST_FUNCTION_DECLARATION,
+    .data.function_declaration =
+        {
+            .body = NULL,
+            .is_main = false,
+            .name = "List[T].head",
+            .return_type = &node_generic_t,
+            .parameter_lists = NULL,
+        },
+    .data_type = &node_generic_t,
+    .next = NULL,
+};
+
+#pragma endregion
+
+#pragma region tail: List[T]
+
+static ast_node_t tail_function_declaration = {
+    .type = AST_FUNCTION_DECLARATION,
+    .data.function_declaration =
+        {
+            .body = NULL,
+            .is_main = false,
+            .name = "List[T].tail",
+            .return_type = &generic_list_node,
+            .parameter_lists = NULL,
+        },
+    .data_type = &generic_list_node,
+    .next = NULL,
+};
+
+#pragma endregion
+
+#pragma region List.range(start, end, [step]) : List[Int]
+
+static ast_node_t step_int_parameter_node = {
+    .type = AST_PARAMETER,
+    .data.parameter =
+        {
+            .name = "step",
+            .data_type = &node_int,
+            .optional = true,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
+
+static ast_node_t end_int_parameter_node = {
+    .type = AST_PARAMETER,
+    .data.parameter =
+        {
+            .name = "end",
+            .data_type = &node_int,
+        },
+    .data_type = &node_unit,
+    .next = &step_int_parameter_node,
+};
+
+static ast_node_t start_int_parameter_node = {
+    .type = AST_PARAMETER,
+    .data.parameter =
+        {
+            .name = "start",
+            .data_type = &node_int,
+        },
+    .data_type = &node_unit,
+    .next = &end_int_parameter_node,
+};
+
+static ast_node_t start_end_step_parameter_list_node = {
+    .type = AST_PARAMETER_LIST,
+    .data.parameter_list =
+        {
+            .parameters = &start_int_parameter_node,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
+
+static data_type_node_t list_int_node = {
+    .type = DATA_TYPE_LIST,
+    .data.list_type =
+        {
+            .elements_type = &node_int,
+        },
+    .next = NULL,
+};
+
+static ast_node_t range_function_declaration = {
+    .type = AST_FUNCTION_DECLARATION,
+    .data.function_declaration =
+        {
+            .body = NULL,
+            .is_main = false,
+            .name = "List.range",
+            .return_type = &list_int_node,
+            .parameter_lists = &start_end_step_parameter_list_node,
+        },
+    .data_type = &list_int_node,
+    .next = NULL,
+};
+
+#pragma endregion
+
+static data_type_node_t lambda_boolean_type_node = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = &node_generic_t,
+            .return_type = &node_boolean,
+        },
+    .next = NULL,
+};
+
+static ast_node_t func_parameter_node = {
+    .type = AST_PARAMETER,
+    .data.parameter =
+        {
+            .name = "func",
+            .data_type = &lambda_boolean_type_node,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
+
+static ast_node_t func_parameter_list_node = {
+    .type = AST_PARAMETER_LIST,
+    .data.parameter_list =
+        {
+            .parameters = &func_parameter_node,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
+
+#pragma region filter((T) => Boolean) : List[T]
+
+static ast_node_t filter_function_declaration = {
+    .type = AST_FUNCTION_DECLARATION,
+    .data.function_declaration =
+        {
+            .body = NULL,
+            .is_main = false,
+            .name = "List[T].filter",
+            .return_type = &generic_list_node,
+            .parameter_lists = &func_parameter_list_node,
+        },
+    .data_type = &generic_list_node,
+    .next = NULL,
+};
+
+#pragma endregion
+
+#pragma region takeWhile((T) => Boolean) : List[T]
+
+static ast_node_t take_while_function_declaration = {
+    .type = AST_FUNCTION_DECLARATION,
+    .data.function_declaration =
+        {
+            .body = NULL,
+            .is_main = false,
+            .name = "List[T].takeWhile",
+            .return_type = &generic_list_node,
+            .parameter_lists = &func_parameter_list_node,
+        },
+    .data_type = &generic_list_node,
+    .next = NULL,
+};
+
+#pragma endregion
+
+#pragma region dropWhile((T) => Boolean) : List[T]
+
+static ast_node_t drop_while_function_declaration = {
+    .type = AST_FUNCTION_DECLARATION,
+    .data.function_declaration =
+        {
+            .body = NULL,
+            .is_main = false,
+            .name = "List[T].dropWhile",
+            .return_type = &generic_list_node,
+            .parameter_lists = &func_parameter_list_node,
+        },
+    .data_type = &generic_list_node,
+    .next = NULL,
+};
+
+#pragma endregion
+
+#pragma region toList() : List[Int]
+
+static ast_node_t to_list_function_declaration = {
+    .type = AST_FUNCTION_DECLARATION,
+    .data.function_declaration =
+        {
+            .body = NULL,
+            .is_main = false,
+            .name = "$Range.toList",
+            .return_type = &list_int_node,
+            .parameter_lists = &parameter_list_empty,
+        },
+    .data_type = &list_int_node,
     .next = NULL,
 };
 
@@ -641,6 +1012,19 @@ hashtable_t *create_builtin_symtable() {
       &string_length_function_declaration,
       &read_int_maybe_function_declaration,
       &read_double_maybe_function_declaration,
+      &to_function_declaration,
+      &until_function_declaration,
+      &by_function_declaration,
+      &drop_function_declaration,
+      &take_function_declaration,
+      &slice_function_declaration,
+      &head_function_declaration,
+      &tail_function_declaration,
+      &range_function_declaration,
+      &filter_function_declaration,
+      &take_while_function_declaration,
+      &drop_while_function_declaration,
+      &to_list_function_declaration,
   };
 
   int functions_length = sizeof(functions) / sizeof(ast_node_t *);

@@ -65,6 +65,14 @@ err_code_t analyse_argument_list(ast_node_t *parameter_list,
     current_parameter = current_parameter->next;
   }
 
+  while (current_parameter != NULL) {
+    if (current_parameter->data.parameter.optional) {
+      current_parameter = current_parameter->next;
+    } else {
+      break;
+    }
+  }
+
   if (current_argument != NULL || current_parameter != NULL) {
     return ARG_MISMATCH_ERR;
   }
