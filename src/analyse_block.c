@@ -68,13 +68,7 @@ err_code_t analyse_variable_declaration(ast_node_t *node,
     return OTHER_SEMANTIC_ERR;
   }
 
-  err_code_t err = ht_insert_item(
-      symtable, node->data.variable_declaration.name, (void **)&node);
-  if (err != NO_ERR) {
-    return err;
-  }
-
-  err = analyse_expression(expression, symtable, NULL, true, false);
+  err_code_t err = analyse_expression(expression, symtable, NULL, true, false);
   if (err != NO_ERR) {
     return err;
   }
@@ -89,6 +83,12 @@ err_code_t analyse_variable_declaration(ast_node_t *node,
     if (!are_data_types_compatible(expression->data_type, data_type)) {
       return OTHER_SEMANTIC_ERR;
     }
+  }
+
+  err = ht_insert_item(symtable, node->data.variable_declaration.name,
+                       (void **)&node);
+  if (err != NO_ERR) {
+    return err;
   }
 
   err = duplicate_type_node(expression->data_type, &node->data_type);
