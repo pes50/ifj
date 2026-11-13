@@ -23,6 +23,8 @@ typedef enum {
   DATA_TYPE_PRIMITIVE,
   DATA_TYPE_UNION,
   DATA_TYPE_GENERIC,
+  DATA_TYPE_ANY,
+  DATA_TYPE_UNIT,
 } dt_type_t;
 
 /**
@@ -32,9 +34,7 @@ typedef enum {
   PRIMITIVE_INT,
   PRIMITIVE_DOUBLE,
   PRIMITIVE_STRING,
-  PRIMITIVE_UNIT,
   PRIMITIVE_BOOLEAN,
-  PRIMITIVE_ANY,
 } primitive_t;
 
 /**

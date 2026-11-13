@@ -15,11 +15,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Indices correspond with primitive_t enum values of given datatype
-char *primitive_to_string[] = {
-    "Int", "Double", "String", "Unit", "Boolean", "Any",
-};
-
 data_type_node_t node_int = {
     .type = DATA_TYPE_PRIMITIVE,
     .data.primitive_type = PRIMITIVE_INT,
@@ -36,8 +31,7 @@ data_type_node_t node_string = {
     .next = NULL,
 };
 data_type_node_t node_unit = {
-    .type = DATA_TYPE_PRIMITIVE,
-    .data.primitive_type = PRIMITIVE_UNIT,
+    .type = DATA_TYPE_UNIT,
     .next = NULL,
 };
 data_type_node_t node_boolean = {
@@ -46,8 +40,7 @@ data_type_node_t node_boolean = {
     .next = NULL,
 };
 data_type_node_t node_any = {
-    .type = DATA_TYPE_PRIMITIVE,
-    .data.primitive_type = PRIMITIVE_ANY,
+    .type = DATA_TYPE_ANY,
     .next = NULL,
 };
 data_type_node_t node_generic_t = {
@@ -79,6 +72,8 @@ void destroy_type_node(data_type_node_t *node) {
     destroy_type_node(node->data.list_type.elements_type);
     break;
   case DATA_TYPE_PRIMITIVE:
+  case DATA_TYPE_ANY:
+  case DATA_TYPE_UNIT:
     break;
   case DATA_TYPE_UNION:
     destroy_type_node(node->data.union_type.types);
@@ -235,6 +230,9 @@ err_code_t duplicate_type_node(data_type_node_t *original,
       return INTERNAL_ERR;
     }
     break;
+  case DATA_TYPE_ANY:
+  case DATA_TYPE_UNIT:
+    break;
   }
 
   err_code_t err = duplicate_type_node(original->next, &node->next);
@@ -368,6 +366,9 @@ bool are_data_types_identical(data_type_node_t *data_type_a,
       return false;
     }
     break;
+  case DATA_TYPE_ANY:
+  case DATA_TYPE_UNIT:
+    break;
   }
 
   return are_data_types_identical(data_type_a->next, data_type_b->next);
@@ -397,11 +398,30 @@ bool are_data_types_compatible(data_type_node_t *data_type_a,
 }
 
 err_code_t type_to_string(data_type_node_t *data_type, char **result) {
-  if (data_type->type == DATA_TYPE_PRIMITIVE) {
-    *result = primitive_to_string[data_type->data.primitive_type];
-  } else if (data_type->type == DATA_TYPE_CLASS) {
+  switch (data_type->type) {
+  case DATA_TYPE_PRIMITIVE:
+    switch (data_type->data.primitive_type) {
+    case PRIMITIVE_INT:
+      *result = "Int";
+      break;
+    case PRIMITIVE_DOUBLE:
+      *result = "Double";
+      break;
+    case PRIMITIVE_STRING:
+      *result = "String";
+      break;
+    case PRIMITIVE_BOOLEAN:
+      *result = "Boolean";
+      break;
+    }
+    break;
+  case DATA_TYPE_CLASS:
     *result = data_type->data.class_type.name;
-  } else {
+    break;
+  case DATA_TYPE_LIST:
+    *result = "List";
+    break;
+  default:
     // Type is not supported
     return OTHER_SEMANTIC_ERR;
   }

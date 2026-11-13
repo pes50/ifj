@@ -525,8 +525,7 @@ static ast_node_t string_length_function_declaration = {
 #pragma endregion
 
 static data_type_node_t union_unit = {
-    .type = DATA_TYPE_PRIMITIVE,
-    .data.primitive_type = PRIMITIVE_UNIT,
+    .type = DATA_TYPE_UNIT,
     .next = NULL,
 };
 
