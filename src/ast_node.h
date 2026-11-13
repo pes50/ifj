@@ -88,6 +88,7 @@ typedef struct ast_node_t {
     struct {
       char *name;
       data_type_node_t *data_type;
+      bool optional;
     } parameter;
 
     struct {

@@ -222,23 +222,39 @@ err_code_t analyse_for_do(ast_node_t *node, hashtable_t *symtable,
   }
 
   if (generator->data_type == NULL ||
-      generator->data_type->type != DATA_TYPE_LIST) {
+      (generator->data_type->type != DATA_TYPE_LIST &&
+       generator->data_type->type != DATA_TYPE_RANGE)) {
     return TYPE_COMPAT_ERR;
   }
 
-  data_type_node_t *elements_type =
-      generator->data_type->data.list_type.elements_type;
+  if (generator->data_type->type == DATA_TYPE_LIST) {
+    data_type_node_t *elements_type =
+        generator->data_type->data.list_type.elements_type;
 
-  if (iterator->data.parameter.data_type == NULL) {
-    err =
-        duplicate_type_node(elements_type, &iterator->data.parameter.data_type);
-    if (err != NO_ERR) {
-      return err;
+    if (iterator->data.parameter.data_type == NULL) {
+      err = duplicate_type_node(elements_type,
+                                &iterator->data.parameter.data_type);
+      if (err != NO_ERR) {
+        return err;
+      }
+    } else {
+      if (!are_data_types_compatible(iterator->data.parameter.data_type,
+                                     elements_type)) {
+        return TYPE_COMPAT_ERR;
+      }
     }
   } else {
-    if (!are_data_types_compatible(iterator->data.parameter.data_type,
-                                   elements_type)) {
-      return TYPE_COMPAT_ERR;
+    // Range
+    if (iterator->data.parameter.data_type == NULL) {
+      err = duplicate_type_node(&node_int, &iterator->data.parameter.data_type);
+      if (err != NO_ERR) {
+        return err;
+      }
+    } else {
+      if (!are_data_types_identical(&node_int,
+                                    iterator->data.parameter.data_type)) {
+        return TYPE_COMPAT_ERR;
+      }
     }
   }
 
