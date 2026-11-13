@@ -10,7 +10,6 @@
 
 #include "collect_symbols.h"
 #include "string_concatenate_dot.h"
-#include "string_duplicate.h"
 
 #pragma region Helpers
 
@@ -55,7 +54,7 @@ bool is_parameter_list_chain(ast_node_t *parameter_list) {
 #pragma endregion
 
 err_code_t collect_function(ast_node_t *node, hashtable_t *symtable,
-                            char **main_identifier) {
+                            ast_node_t **main_node) {
   // Check if symbol is defined
   void *data;
   err_code_t err =
@@ -70,7 +69,7 @@ err_code_t collect_function(ast_node_t *node, hashtable_t *symtable,
 
   // Check if this is the main function
   if (node->data.function_declaration.is_main) {
-    if (*main_identifier != NULL) {
+    if (*main_node != NULL) {
       // Multiple @main
       return REDEF_SYMBOL_ERR;
     }
@@ -96,10 +95,7 @@ err_code_t collect_function(ast_node_t *node, hashtable_t *symtable,
       return TYPE_COMPAT_ERR;
     }
 
-    *main_identifier = string_duplicate(node->data.function_declaration.name);
-    if (*main_identifier == NULL) {
-      return INTERNAL_ERR;
-    }
+    *main_node = node;
   } else {
     if (node->data.function_declaration.parameter_lists != NULL &&
         !is_parameter_list_chain(
@@ -285,7 +281,7 @@ err_code_t collect_class(ast_node_t *node, hashtable_t *symtable) {
 }
 
 err_code_t collect_symbols(ast_node_t *root, hashtable_t *symtable,
-                           char **main_identifier) {
+                           ast_node_t **main_node) {
   if (root == NULL || symtable == NULL) {
     return INTERNAL_ERR;
   }
@@ -300,7 +296,7 @@ err_code_t collect_symbols(ast_node_t *root, hashtable_t *symtable,
 
     switch (current->type) {
     case AST_FUNCTION_DECLARATION:
-      err = collect_function(current, symtable, main_identifier);
+      err = collect_function(current, symtable, main_node);
       break;
     case AST_EXTENSION_DECLARATION:
       err = collect_extension(current, symtable);
