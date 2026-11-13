@@ -389,6 +389,10 @@ bool are_data_types_compatible(data_type_node_t *data_type_a,
     return true;
   }
 
+  if (data_type_a == NULL || data_type_b == NULL) {
+    return false;
+  }
+
   // at least one of the types is union
   if (data_type_b->type == DATA_TYPE_UNION) {
     if (data_type_a->type == DATA_TYPE_UNION) {
