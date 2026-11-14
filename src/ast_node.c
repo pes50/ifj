@@ -486,6 +486,19 @@ ast_node_t *create_match_case_node(ast_node_t *pattern, ast_node_t *guard,
   return node;
 }
 
+void node_append(ast_node_t *entry_node, ast_node_t *node_to_append) {
+  if (entry_node == NULL) {
+    return;
+  }
+
+  ast_node_t *current = entry_node;
+  while (current->next != NULL) {
+    current = current->next;
+  }
+
+  current->next = node_to_append;
+}
+
 ast_node_t *create_binary_operation_node(token_type_t operation,
                                          ast_node_t *left, ast_node_t *right) {
   // TODO validate operation
