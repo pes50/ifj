@@ -926,7 +926,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         // Top-level comment closed.
         *type = TOK_EOL;
         indent_level = 0;
-        next_state = S_START;
+        next_state = S_LINE_START;
         lexer_run = false;
       } else {
         // Single-line block comment closed.
