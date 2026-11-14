@@ -137,6 +137,11 @@ err_code_t analyse_function_call(char *identifier, ast_node_t *node,
     if (err != NO_ERR) {
       return err;
     }
+
+    err = duplicate_type_node(table_node->data_type, &node->data_type);
+    if (err != NO_ERR) {
+      return err;
+    }
   } else {
     err = analyse_function_declaration(table_node, ht_get_root(symtable));
     if (err != NO_ERR) {
@@ -152,17 +157,18 @@ err_code_t analyse_function_call(char *identifier, ast_node_t *node,
     if (err != NO_ERR) {
       return err;
     }
+
+    err = duplicate_type_node(table_node->data.function_declaration.return_type,
+                              &node->data_type);
+    if (err != NO_ERR) {
+      return err;
+    }
   }
 
   if (node->type == AST_FUNCTION_CALL) {
     node->data.function_call.calling = table_node;
   } else {
     node->data.dot_function_call.calling = table_node;
-  }
-
-  err = duplicate_type_node(table_node->data_type, &node->data_type);
-  if (err != NO_ERR) {
-    return err;
   }
 
   return NO_ERR;
