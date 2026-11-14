@@ -332,6 +332,14 @@ create_extension_declaration_node(ast_node_t *parameter,
 ast_node_t *create_block_node(ast_node_t *statement);
 
 /**
+ * @brief Appends node to the and of a node chain
+ *
+ * @param entry_node A pointer to an AST node to start from
+ * @param node_to_append A pointer to an AST node that will be appended
+ */
+void node_append(ast_node_t *entry_node, ast_node_t *node_to_append);
+
+/**
  * @brief Creates an AST node for variable declaration
  *
  * @param name Variable name
