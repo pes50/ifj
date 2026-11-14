@@ -85,8 +85,7 @@ err_code_t analyse_variable_declaration(ast_node_t *node,
     }
   }
 
-  err = ht_insert_item(symtable, node->data.variable_declaration.name,
-                       (void **)&node);
+  err = ht_insert_item(symtable, node->data.variable_declaration.name, node);
   if (err != NO_ERR) {
     return err;
   }
@@ -288,8 +287,7 @@ err_code_t analyse_for_do(ast_node_t *node, hashtable_t *symtable,
     return err;
   }
 
-  err = ht_insert_item(current_scope, iterator->data.parameter.name,
-                       (void **)&iterator);
+  err = ht_insert_item(current_scope, iterator->data.parameter.name, iterator);
   if (err != NO_ERR) {
     ht_destruct(&current_scope);
     return err;
@@ -325,10 +323,10 @@ err_code_t analyse_block(ast_node_t *node, hashtable_t *symtable,
     case AST_FUNCTION_DECLARATION:
     case AST_PARAMETER_LIST:
     case AST_PARAMETER:
+    case AST_ARGUMENT_LIST:
     case AST_CLASS_DECLARATION:
     case AST_TYPE_DECLARATION:
     case AST_EXTENSION_DECLARATION:
-    case AST_MATCH:
     case AST_MATCH_CASE:
     case AST_LIST_CONSTRUCTOR:
       err = OTHER_SEMANTIC_ERR;
@@ -341,6 +339,7 @@ err_code_t analyse_block(ast_node_t *node, hashtable_t *symtable,
     case AST_LITERAL:
     case AST_INTERPOLATED_STRING:
     case AST_IF:
+    case AST_MATCH:
       err = analyse_expression(current, symtable, explicit_data_type,
                                current->next == NULL, true);
       if (err == NO_ERR) {

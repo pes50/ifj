@@ -49,9 +49,12 @@ void destroy_node(ast_node_t *node) {
     free(node->data.parameter.name);
     destroy_type_node(node->data.parameter.data_type);
     break;
+  case AST_ARGUMENT_LIST:
+    destroy_node(node->data.argument_list.arguments);
+    break;
   case AST_CLASS_DECLARATION:
     free(node->data.class_declaration.name);
-    destroy_node(node->data.class_declaration.attributes);
+    destroy_node(node->data.class_declaration.attribute_list);
     break;
   case AST_TYPE_DECLARATION:
     free(node->data.type_declaration.name);
@@ -250,6 +253,20 @@ ast_node_t *create_parameter_node(char *name, data_type_node_t *data_type) {
   return node;
 }
 
+ast_node_t *create_argument_list_node(ast_node_t *arguments) {
+  // Create node
+  ast_node_t *node = create_node();
+  if (node == NULL) {
+    return NULL;
+  }
+
+  // Initialize
+  node->type = AST_ARGUMENT_LIST;
+  node->data.argument_list.arguments = arguments;
+
+  return node;
+}
+
 ast_node_t *create_class_declaration_node(char *name, ast_node_t *attributes) {
   // Create node
   ast_node_t *node = create_node();
@@ -260,7 +277,7 @@ ast_node_t *create_class_declaration_node(char *name, ast_node_t *attributes) {
   // Initialize
   node->type = AST_CLASS_DECLARATION;
   node->data.class_declaration.name = string_duplicate(name);
-  node->data.class_declaration.attributes = attributes;
+  node->data.class_declaration.attribute_list = attributes;
 
   // Check if string_duplicate failed
   if (node->data.class_declaration.name == NULL) {
@@ -542,6 +559,11 @@ ast_node_t *create_leaf_node(token_t *token) {
     node->data.literal.data_type = &node_boolean;
     node->data.literal.raw = string_duplicate(token->value);
     break;
+  case TOK_UNDERSCORE:
+    node->type = AST_LITERAL;
+    node->data.literal.data_type = &node_any;
+    node->data.literal.raw = string_duplicate(token->value);
+    break;
   default:
     // Invalid token for leaf node
     destroy_node(node);
@@ -574,6 +596,27 @@ ast_node_t *create_interpolated_string_node(ast_node_t *expressions) {
   // Initialize
   node->type = AST_INTERPOLATED_STRING;
   node->data.interpolated_string.expressions = expressions;
+
+  return node;
+}
+
+ast_node_t *create_unit_literal_node() {
+  // Create node
+  ast_node_t *node = create_node();
+  if (node == NULL) {
+    return NULL;
+  }
+
+  // Initialize
+  node->type = AST_LITERAL;
+  node->data.literal.raw = string_duplicate("()");
+  node->data.literal.data_type = &node_unit;
+
+  // Check if string_duplicate failed
+  if (node->data.literal.raw == NULL) {
+    destroy_node(node);
+    return NULL;
+  }
 
   return node;
 }

@@ -24,6 +24,7 @@ typedef enum {
   AST_LAMBDA_DECLARATION,
   AST_PARAMETER_LIST,
   AST_PARAMETER,
+  AST_ARGUMENT_LIST,
   AST_CLASS_DECLARATION,
   AST_TYPE_DECLARATION,
   AST_EXTENSION_DECLARATION,
@@ -92,8 +93,12 @@ typedef struct ast_node_t {
     } parameter;
 
     struct {
+      struct ast_node_t *arguments;
+    } argument_list;
+
+    struct {
       char *name;
-      struct ast_node_t *attributes;
+      struct ast_node_t *attribute_list;
     } class_declaration;
 
     struct {
@@ -274,10 +279,19 @@ ast_node_t *create_parameter_list_node(ast_node_t *parameters);
 ast_node_t *create_parameter_node(char *name, data_type_node_t *data_type);
 
 /**
+ * @brief Creates an AST node for argument list
+ *
+ * @param arguments A pointer to the AST node representing the first argument
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+ast_node_t *create_argument_list_node(ast_node_t *arguments);
+
+/**
  * @brief Creates an AST node for class declaration
  *
  * @param name Class identifier
- * @param attributes A pointer to the AST node representing the first attribute
+ * @param attributes A pointer to the AST node representing the attribute list
  *
  * @return A pointer to created node or NULL if failed
  */
@@ -458,3 +472,10 @@ ast_node_t *create_leaf_node(token_t *token);
  * @return A pointer to created node or NULL if failed
  */
 ast_node_t *create_interpolated_string_node(ast_node_t *expressions);
+
+/**
+ * @brief Creates an AST node for UNIT literal
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+ast_node_t *create_unit_literal_node();

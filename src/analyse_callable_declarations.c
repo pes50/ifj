@@ -15,7 +15,9 @@ analyse_lambda_declaration for semantic analysis
 #include "analyse_types.h"
 
 err_code_t add_parameters_to_scope(ast_node_t *node, hashtable_t *symtable) {
+  err_code_t err = NO_ERR;
   ast_node_t *current_list = node->data.function_declaration.parameter_lists;
+
   while (current_list != NULL) {
     ast_node_t *current_parameter =
         current_list->data.parameter_list.parameters;
@@ -24,18 +26,34 @@ err_code_t add_parameters_to_scope(ast_node_t *node, hashtable_t *symtable) {
         return INTERNAL_ERR;
       }
 
-      err_code_t err =
-          analyse_type(current_parameter->data.parameter.data_type, symtable);
+      err = analyse_type(current_parameter->data.parameter.data_type, symtable);
       if (err != NO_ERR) {
         return err;
       }
 
       err = ht_insert_item(symtable, current_parameter->data.parameter.name,
-                           (void **)&current_parameter);
+                           current_parameter);
       if (err != NO_ERR) {
         return err;
       }
+
+      if (current_parameter->data_type == NULL) {
+        err = duplicate_type_node(current_parameter->data.parameter.data_type,
+                                  &current_parameter->data_type);
+      }
+
+      if (err != NO_ERR) {
+        return err;
+      }
+
       current_parameter = current_parameter->next;
+    }
+    if (current_list->data_type == NULL) {
+      err = duplicate_type_node(&node_unit, &current_list->data_type);
+    }
+
+    if (err != NO_ERR) {
+      return err;
     }
     current_list = current_list->next;
   }
@@ -60,7 +78,10 @@ err_code_t analyse_function_declaration(ast_node_t *node,
 
   // Recursive function without defined type
   if (node->_visited) {
-    return TYPE_COMPAT_ERR;
+    if (node->data.function_declaration.return_type == NULL) {
+      return TYPE_COMPAT_ERR;
+    }
+    return NO_ERR;
   }
 
   ast_node_t *body = node->data.function_declaration.body;
@@ -90,34 +111,24 @@ err_code_t analyse_function_declaration(ast_node_t *node,
     goto fun_err;
   }
 
-  // Return type is known => function body must return this type
-  if (return_type != NULL) {
-    // Duplicate type
-    err = duplicate_type_node(return_type, &body->data_type);
-    if (err != NO_ERR) {
-      goto fun_err;
-    }
-  }
-
   node->_visited = true;
   err = analyse_block(body, current_scope, return_type, true);
   if (err != NO_ERR) {
     goto fun_err;
   }
 
-  // Update if return type of function was unknown during the collecting
-  // symbols phase
-  if (node->data.function_declaration.return_type == NULL) {
-    // Duplicate type
-    err = duplicate_type_node(body->data_type, &node->data_type);
-    if (err != NO_ERR) {
-      goto fun_err;
-    }
-  } else if (!are_data_types_identical(node->data_type, &node_unit)) {
-    if (!are_data_types_compatible(body->data_type, node->data_type)) {
+  if (return_type != NULL &&
+      !are_data_types_identical(node->data_type, &node_unit)) {
+    if (!are_data_types_compatible(body->data_type, return_type)) {
       err = TYPE_COMPAT_ERR;
       goto fun_err;
     }
+  }
+
+  // Duplicate type
+  err = duplicate_type_node(body->data_type, &node->data_type);
+  if (err != NO_ERR) {
+    goto fun_err;
   }
 
   node->_visited = false;

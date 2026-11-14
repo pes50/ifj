@@ -253,11 +253,14 @@ err_code_t duplicate_type_node(data_type_node_t *original,
 
 bool union_contains_type(data_type_node_t *target_type,
                          data_type_node_t *union_type) {
+  if (target_type == NULL || union_type == NULL) {
+    return false;
+  }
 
   data_type_node_t target_no_next = *target_type;
   target_no_next.next = NULL;
 
-  data_type_node_t *current = union_type;
+  data_type_node_t *current = union_type->data.union_type.types;
   while (current != NULL) {
 
     data_type_node_t current_no_next = *current;
@@ -272,7 +275,11 @@ bool union_contains_type(data_type_node_t *target_type,
 }
 
 bool is_union_subset(data_type_node_t *union_a, data_type_node_t *union_b) {
-  data_type_node_t *current_a = union_a;
+  if (union_a == NULL || union_a->type != DATA_TYPE_UNION) {
+    return false;
+  }
+
+  data_type_node_t *current_a = union_a->data.union_type.types;
   while (current_a != NULL) {
     if (!union_contains_type(current_a, union_b)) {
       return false;
@@ -383,6 +390,9 @@ bool are_data_types_identical(data_type_node_t *data_type_a,
 
 bool are_data_types_compatible(data_type_node_t *data_type_a,
                                data_type_node_t *data_type_b) {
+  if (are_data_types_identical(&node_any, data_type_b)) {
+    return true;
+  }
 
   // both types are the same
   if (are_data_types_identical(data_type_a, data_type_b)) {
