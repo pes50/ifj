@@ -1,0 +1,805 @@
+/**************************** IFJ/IAL-Compiler-2026 ***************************\
+ *
+ * @file lexer_test.cpp
+ *
+ * @author Simon Šmíd      (xsmidsi00)
+ *
+ * @brief Unit tests for lexer.
+ *
+\*****************************************************************************/
+
+extern "C" {
+#include "lexer.h"
+}
+#include <gtest/gtest.h>
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <memory>
+#include <string>
+#include <unistd.h>
+
+/***********\
+ * Fixture *
+\***********/
+
+class LexerFixture : public ::testing::Test {
+protected:
+  char path[64];
+
+  using token_ptr = std::unique_ptr<token_t, decltype(&token_free)>;
+
+  void SetUp() override { path[0] = '\0'; }
+
+  void TearDown() override {
+    lexer_destroy();
+    if (path[0] != '\0') {
+      unlink(path);
+    }
+  }
+
+  // Writes the input to a temporary file and makes it the stdin of the lexer.
+  void feed(const std::string &input) {
+    std::strcpy(path, "/tmp/lexer_test_XXXXXX");
+    int fd = mkstemp(path);
+    ASSERT_NE(fd, -1);
+    ssize_t written = write(fd, input.data(), input.size());
+    ASSERT_EQ(static_cast<size_t>(written), input.size());
+    close(fd);
+    ASSERT_NE(freopen(path, "r", stdin), nullptr);
+  }
+
+  static void check_token(const token_t *tok, token_type_t type,
+                          const char *value) {
+    EXPECT_EQ(tok->type, type);
+    if (value == nullptr) {
+      EXPECT_EQ(tok->value, nullptr);
+      EXPECT_EQ(tok->length, 0u);
+    } else {
+      ASSERT_NE(tok->value, nullptr);
+      EXPECT_STREQ(tok->value, value);
+      EXPECT_EQ(tok->length, std::strlen(value));
+    }
+  }
+
+  // Next token must have the given type and value (nullptr = no value).
+  void expect_get(token_type_t type, const char *value = nullptr,
+                  eol_code_t eol = ALLOWED) {
+    token_ptr tok(token_create(), token_free);
+    ASSERT_NE(tok.get(), nullptr);
+    ASSERT_EQ(lexer_get_token(tok.get(), eol), NO_ERR);
+    check_token(tok.get(), type, value);
+  }
+
+  // Next get must fail with the given error code.
+  void expect_get_err(err_code_t err, eol_code_t eol = ALLOWED) {
+    token_ptr tok(token_create(), token_free);
+    ASSERT_NE(tok.get(), nullptr);
+    EXPECT_EQ(lexer_get_token(tok.get(), eol), err);
+  }
+
+  void expect_peek(size_t offset, token_type_t type,
+                   const char *value = nullptr, eol_code_t eol = ALLOWED) {
+    token_ptr tok(token_create(), token_free);
+    ASSERT_NE(tok.get(), nullptr);
+    ASSERT_EQ(lexer_peek_token(tok.get(), eol, offset), NO_ERR);
+    check_token(tok.get(), type, value);
+  }
+
+  void expect_peek_err(size_t offset, err_code_t err,
+                       eol_code_t eol = ALLOWED) {
+    token_ptr tok(token_create(), token_free);
+    ASSERT_NE(tok.get(), nullptr);
+    EXPECT_EQ(lexer_peek_token(tok.get(), eol, offset), err);
+  }
+
+  // Input ended with "\n": EOL was already returned, only EOF remains.
+  void expect_eof() { expect_get(TOK_EOF); }
+};
+
+/****************\
+ * Basic tokens *
+\****************/
+
+TEST_F(LexerFixture, EmptyInput) {
+  feed("");
+  expect_eof();
+  expect_eof(); // EOF is returned repeatedly
+}
+
+TEST_F(LexerFixture, Separators) {
+  feed("( ) [ ] , ; :\n");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_L_BRACKET);
+  expect_get(TOK_R_BRACKET);
+  expect_get(TOK_COMMA);
+  expect_get(TOK_SEMICOLON);
+  expect_get(TOK_COLON);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, MissingFinalNewlineStillGivesEol) {
+  feed("a");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, WhitespaceInsideLineIsSkipped) {
+  feed("a\tb  c\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_IDENTIFIER, "c");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, CrLfLineEndings) {
+  feed("a\r\nb\r\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_EOL);
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, UnknownCharacter) {
+  feed("a # b\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, Dot) {
+  feed("a.b\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+/*****************************\
+ * Identifiers and keywords *
+\*****************************/
+
+TEST_F(LexerFixture, Identifiers) {
+  feed("foo _bar sum s x1\n");
+  expect_get(TOK_IDENTIFIER, "foo");
+  expect_get(TOK_IDENTIFIER, "_bar");
+  expect_get(TOK_IDENTIFIER, "sum");
+  expect_get(TOK_IDENTIFIER, "s");
+  expect_get(TOK_IDENTIFIER, "x1");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, UnderscoreAlone) {
+  feed("_ \n");
+  expect_get(TOK_UNDERSCORE);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, Keywords) {
+  feed("def do else if import return then val var while\n");
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_KW_DO);
+  expect_get(TOK_KW_ELSE);
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_KW_RETURN);
+  expect_get(TOK_KW_THEN);
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_KW_VAR);
+  expect_get(TOK_KW_WHILE);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, TypeKeywords) {
+  feed("Int Double String Unit Boolean List\n");
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_KW_DOUBLE);
+  expect_get(TOK_KW_STRING);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_KW_BOOLEAN);
+  expect_get(TOK_KW_LIST);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, BooleanLiterals) {
+  feed("true false\n");
+  expect_get(TOK_LIT_TRUE);
+  expect_get(TOK_LIT_FALSE);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, KeywordPrefixIsIdentifier) {
+  feed("iff define Integer\n");
+  expect_get(TOK_IDENTIFIER, "iff");
+  expect_get(TOK_IDENTIFIER, "define");
+  expect_get(TOK_IDENTIFIER, "Integer");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, AtMain) {
+  feed("@main\n");
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, AtMainFollowedByIdentifierCharacter) {
+  feed("@mainx\n");
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, AtUnknown) {
+  feed("@foo\n");
+  expect_get_err(LEXICAL_ERR);
+}
+
+/***********\
+ * Numbers *
+\***********/
+
+TEST_F(LexerFixture, Numbers) {
+  feed("42 0 1_000 3.14 .5 1e5 2.5E-3d 0.5\n");
+  expect_get(TOK_LIT_INT, "42");
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_LIT_INT, "1000");
+  expect_get(TOK_LIT_DOUBLE, "3.14");
+  expect_get(TOK_LIT_DOUBLE, ".5");
+  expect_get(TOK_LIT_DOUBLE, "1e5");
+  expect_get(TOK_LIT_DOUBLE, "2.5E-3"); // the 'd' suffix is not stored
+  expect_get(TOK_LIT_DOUBLE, "0.5");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, LeadingZeroIsForbidden) {
+  feed("007\n");
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, UnderscoreMustBeFollowedByDigit) {
+  feed("1_\n");
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, DecimalPointMustBeFollowedByDigit) {
+  feed("1.\n");
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, ExponentMustHaveDigits) {
+  feed("1e\n");
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, NumberFollowedByOperator) {
+  feed("1+2\n");
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+/*************\
+ * Operators *
+\*************/
+
+TEST_F(LexerFixture, Operators) {
+  feed("* == != <= >= < > = => <- && || | !\n");
+  expect_get(TOK_MUL);
+  expect_get(TOK_EQUAL);
+  expect_get(TOK_NOT_EQ);
+  expect_get(TOK_LOWER_EQ);
+  expect_get(TOK_GREATER_EQ);
+  expect_get(TOK_LOWER_T);
+  expect_get(TOK_GREATER_T);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_ARROW_LEFT);
+  expect_get(TOK_AND);
+  expect_get(TOK_OR);
+  expect_get(TOK_PIPE);
+  expect_get(TOK_NOT);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, Division) {
+  feed("a / b\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_DIV);
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, SingleAmpersandIsError) {
+  feed("a & b\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, BinaryPlusAndMinus) {
+  feed("a + b - c\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_BINARY_MINUS);
+  expect_get(TOK_IDENTIFIER, "c");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, UnaryPlusAndMinusAtStart) {
+  feed("-a\n+b\n");
+  expect_get(TOK_UNARY_MINUS);
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_EOL);
+  expect_get(TOK_UNARY_PLUS);
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, UnaryMinusAfterOperatorOrParen) {
+  feed("a * -b\n(-c)\nx = -1\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_MUL);
+  expect_get(TOK_UNARY_MINUS);
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_UNARY_MINUS);
+  expect_get(TOK_IDENTIFIER, "c");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_UNARY_MINUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, BinaryMinusAfterParenAndLiteral) {
+  feed("(a) - b\n3 - 1\n");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_BINARY_MINUS);
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_get(TOK_LIT_INT, "3");
+  expect_get(TOK_BINARY_MINUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, Concatenation) {
+  feed("a ++ b\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_CONCAT_LIST);
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+/***********\
+ * Strings *
+\***********/
+
+TEST_F(LexerFixture, SimpleString) {
+  feed(R"("hello")"
+       "\n");
+  expect_get(TOK_LIT_STRING, "hello");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, EmptyString) {
+  feed(R"("")"
+       "\n");
+  expect_get(TOK_LIT_STRING, "");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, StringEscapeSequences) {
+  feed(R"("a\nb\tc\\d\"e")"
+       "\n");
+  expect_get(TOK_LIT_STRING, "a\nb\tc\\d\"e");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, StringStartingWithEscape) {
+  feed(R"("\nabc")"
+       "\n");
+  expect_get(TOK_LIT_STRING, "\nabc");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, UnterminatedString) {
+  feed("\"abc\n");
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, InvalidEscapeSequence) {
+  feed(R"("a\qb")"
+       "\n");
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, MultilineString) {
+  feed(R"("""line1)"
+       "\n"
+       R"(line2""")"
+       "\n");
+  expect_get(TOK_LIT_M_STRING, "line1\nline2");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, MultilineStringWithInnerQuotes) {
+  feed(R"("""He said "hi" ok""")"
+       "\n");
+  expect_get(TOK_LIT_M_STRING, "He said \"hi\" ok");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, UnterminatedMultilineString) {
+  feed("\"\"\"abc\n");
+  expect_get_err(LEXICAL_ERR);
+}
+
+/************************\
+ * Interpolated strings *
+\************************/
+
+TEST_F(LexerFixture, InterpolatedStringWithoutInterpolation) {
+  feed(R"(s"plain")"
+       "\n");
+  expect_get(TOK_LIT_INTERP_STRING_END, "plain");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, EmptyInterpolatedString) {
+  feed(R"(s"")"
+       "\n");
+  expect_get(TOK_LIT_INTERP_STRING_END, "");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, InterpolatedStringWithIdentifier) {
+  feed(R"(s"a $x b")"
+       "\n");
+  expect_get(TOK_LIT_INTERP_STRING_PART, "a ");
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_LIT_INTERP_STRING_END, " b");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, InterpolatedStringWithExpression) {
+  feed(R"(s"v ${1 + 2}!")"
+       "\n");
+  expect_get(TOK_LIT_INTERP_STRING_PART, "v ");
+  expect_get(TOK_EXPRESSION_START);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_EXPRESSION_END);
+  expect_get(TOK_LIT_INTERP_STRING_END, "!");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, InterpolatedStringFromAssignment) {
+  // Example from the assignment: s"$name${n + 1} costs $$0"
+  feed(R"(s"$name${n + 1} costs $$0")"
+       "\n");
+  expect_get(TOK_LIT_INTERP_STRING_PART, "");
+  expect_get(TOK_IDENTIFIER, "name");
+  expect_get(TOK_LIT_INTERP_STRING_PART, "");
+  expect_get(TOK_EXPRESSION_START);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EXPRESSION_END);
+  expect_get(TOK_LIT_INTERP_STRING_END, " costs $0");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, InterpolatedStringDoubleDollar) {
+  feed(R"(s"cost $$5")"
+       "\n");
+  expect_get(TOK_LIT_INTERP_STRING_END, "cost $5");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, InterpolatedStringEscapedQuote) {
+  feed(R"(s"a\"b")"
+       "\n");
+  expect_get(TOK_LIT_INTERP_STRING_END, "a\"b");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, InterpolatedStringInvalidDollar) {
+  feed(R"(s"a $ b")"
+       "\n");
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, InterpolatedMultilineString) {
+  feed(R"(s"""He said "hello", $name.)"
+       "\n"
+       R"(Second""")"
+       "\n");
+  expect_get(TOK_LIT_INTERP_M_STRING_PART, "He said \"hello\", ");
+  expect_get(TOK_IDENTIFIER, "name");
+  expect_get(TOK_LIT_INTERP_M_STRING_END, ".\nSecond");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, InterpolatedMultilineStringEndsRightAfterIdentifier) {
+  feed(R"(s"""a$b""")"
+       "\n");
+  expect_get(TOK_LIT_INTERP_M_STRING_PART, "a");
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_LIT_INTERP_M_STRING_END, "");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+/************\
+ * Comments *
+\************/
+
+TEST_F(LexerFixture, LineComment) {
+  feed("a // comment\nb\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_EOL);
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, CommentOnlyLineIsIgnored) {
+  feed("// comment\nx\n");
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, InlineBlockCommentActsAsWhitespace) {
+  feed("a /* x */ b\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, NestedBlockComment) {
+  feed("a /* x /* y */ z */ b\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, BlockCommentWithNewlineGivesEol) {
+  feed("a /* x\ny */ b\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_EOL);
+  expect_get(TOK_INDENT);
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_get(TOK_DEDENT);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, UnterminatedBlockComment) {
+  feed("a /* abc");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, BlockCommentAtLineStart) {
+  feed("/* c */ x\n");
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+/***************\
+ * Indentation *
+\***************/
+
+TEST_F(LexerFixture, IndentAndDedent) {
+  feed("if x\n  y\nz\n");
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_EOL);
+  expect_get(TOK_INDENT);
+  expect_get(TOK_IDENTIFIER, "y");
+  expect_get(TOK_EOL);
+  expect_get(TOK_DEDENT);
+  expect_get(TOK_IDENTIFIER, "z");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, DedentBeforeEof) {
+  feed("if x\n  y\n");
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_EOL);
+  expect_get(TOK_INDENT);
+  expect_get(TOK_IDENTIFIER, "y");
+  expect_get(TOK_EOL);
+  expect_get(TOK_DEDENT);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, MultipleDedents) {
+  feed("a\n  b\n    c\nd\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_EOL);
+  expect_get(TOK_INDENT);
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_get(TOK_INDENT);
+  expect_get(TOK_IDENTIFIER, "c");
+  expect_get(TOK_EOL);
+  expect_get(TOK_DEDENT);
+  expect_get(TOK_DEDENT);
+  expect_get(TOK_IDENTIFIER, "d");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, InconsistentDedent) {
+  feed("a\n    b\n  c\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_EOL);
+  expect_get(TOK_INDENT);
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, TabInIndentationIsForbidden) {
+  feed("a\n\tb\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_EOL);
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, BlankLinesProduceNoTokens) {
+  feed("a\n\n\nb\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_EOL);
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, IndentedCommentLineDoesNotChangeIndentation) {
+  feed("a\n  // c\nb\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_EOL);
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, IndentedBlockCommentBeforeCode) {
+  feed("a\n  /* c */ b\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_EOL);
+  expect_get(TOK_INDENT);
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_EOL);
+  expect_get(TOK_DEDENT);
+  expect_eof();
+}
+
+/*****************************\
+ * EOL codes and peek / get *
+\*****************************/
+
+TEST_F(LexerFixture, EolForbidden) {
+  feed("a\n");
+  expect_get(TOK_IDENTIFIER, "a", FORBIDDEN);
+  expect_get_err(SYNTAX_ERR, FORBIDDEN);
+}
+
+TEST_F(LexerFixture, EolRequired) {
+  feed("a\n");
+  expect_get_err(SYNTAX_ERR, REQUIRED);
+}
+
+TEST_F(LexerFixture, EolRequiredAccepted) {
+  feed("a\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_EOL, nullptr, REQUIRED);
+}
+
+TEST_F(LexerFixture, PeekDoesNotConsume) {
+  feed("a b\n");
+  expect_peek(0, TOK_IDENTIFIER, "a");
+  expect_peek(0, TOK_IDENTIFIER, "a");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_IDENTIFIER, "b");
+}
+
+TEST_F(LexerFixture, PeekThenGetKeepsOrder) {
+  feed("a b c d e\n");
+  expect_peek(2, TOK_IDENTIFIER, "c");
+  expect_peek(0, TOK_IDENTIFIER, "a");
+  expect_peek(4, TOK_IDENTIFIER, "e");
+  expect_peek(1, TOK_IDENTIFIER, "b");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_IDENTIFIER, "c");
+  expect_peek(0, TOK_IDENTIFIER, "d");
+  expect_get(TOK_IDENTIFIER, "d");
+  expect_get(TOK_IDENTIFIER, "e");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, PeekAtMaximumOffset) {
+  feed("a b c d e f g h i j k l\n");
+  expect_peek(LEXER_MAX_LOOKAHEAD, TOK_IDENTIFIER, "k");
+  expect_get(TOK_IDENTIFIER, "a");
+}
+
+TEST_F(LexerFixture, PeekOffsetTooBig) {
+  feed("a b\n");
+  expect_peek_err(LEXER_MAX_LOOKAHEAD + 1, INTERNAL_ERR);
+}
+
+TEST_F(LexerFixture, PeekRespectsEolCode) {
+  feed("a\n");
+  expect_peek(0, TOK_IDENTIFIER, "a", FORBIDDEN);
+  expect_peek_err(1, SYNTAX_ERR, FORBIDDEN);
+  expect_peek(1, TOK_EOL, nullptr, REQUIRED);
+}
+
+TEST_F(LexerFixture, PeekReportsLexicalError) {
+  feed("a 007\n");
+  expect_peek(0, TOK_IDENTIFIER, "a");
+  expect_peek_err(1, LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, PeekedUnaryMinusUsesCorrectPreviousToken) {
+  feed("a - -b\n");
+  expect_peek(2, TOK_UNARY_MINUS);
+  expect_peek(1, TOK_BINARY_MINUS);
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_BINARY_MINUS);
+  expect_get(TOK_UNARY_MINUS);
+  expect_get(TOK_IDENTIFIER, "b");
+}
