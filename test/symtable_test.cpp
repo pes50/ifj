@@ -13,6 +13,8 @@ extern "C" {
 }
 #include <gtest/gtest.h>
 
+#define HT_INITIAL_CAPACITY 4096
+
 /****************************\
  * Hash table test fixtures *
 \****************************/
