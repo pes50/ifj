@@ -267,7 +267,7 @@ err_code_t collect_class(ast_node_t *node, hashtable_t *symtable) {
     return err;
   }
 
-  if (!is_parameter_chain(node->data.class_declaration.attributes)) {
+  if (!is_parameter_list_chain(node->data.class_declaration.attribute_list)) {
     return OTHER_SEMANTIC_ERR;
   }
 
