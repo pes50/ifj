@@ -157,6 +157,19 @@ data_type_node_t *create_primitive_type_node(primitive_t primitive) {
   return node;
 }
 
+data_type_node_t *create_unit_type_node() {
+  // Create node
+  data_type_node_t *node = create_type_node();
+  if (node == NULL) {
+    return NULL;
+  }
+
+  // Initialize
+  node->type = DATA_TYPE_UNIT;
+
+  return node;
+}
+
 data_type_node_t *create_union_type_node(data_type_node_t *types) {
   // Create node
   data_type_node_t *node = create_type_node();

@@ -139,6 +139,13 @@ data_type_node_t *create_list_type_node(data_type_node_t *element_type);
 data_type_node_t *create_primitive_type_node(primitive_t primitive);
 
 /**
+ * @brief Creates a data type node for a UNIT
+ *
+ * @return A pointer to created node or NULL if failed
+ */
+data_type_node_t *create_unit_type_node();
+
+/**
  * @brief Creates a data type node for union
  *
  * @param types A pointer to the first type in the union
