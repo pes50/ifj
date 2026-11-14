@@ -20,9 +20,6 @@
  * Constants and types definitons *
 \*********************************/
 
-// 2^12 (to save memory because of scopes)
-#define HT_INITIAL_CAPACITY 4096
-
 #define HT_MAX_ALLOWED_LOAD_FACTOR 0.65
 
 // fnv-1a offset basis for 32 bit hashing
@@ -119,8 +116,6 @@ err_code_t ht_insert_item(hashtable_t *hashtable, const char *identificator,
  *
  * @return INTERNAL_ERR if id of the symbol is empty string
  *                      or the hashtable has capacity = 0
- *                      or the index of item was invalid (out of bounds)
- *                      or the item at the index was EMPTY/DELETED
  *         UNDEF_SYMBOL_ERR if symbol of that id is not in hashtable,
  *         NO_ERR otherwise
  */
@@ -143,7 +138,8 @@ err_code_t ht_delete_item(hashtable_t *hashtable, const char *identificator);
 /**
  * @brief Finds the root table
  *
- * @param hashtable A pointer to the hashtable from which we start to look for a root
+ * @param hashtable A pointer to the hashtable from which
+ *                  we start to look for a root
  *
  * @return A pointer to the root table, NULL if supplied hastable is NULL
  */
