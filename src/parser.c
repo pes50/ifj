@@ -50,17 +50,18 @@ err_code_t for_loop(token_t *token, ast_node_t **node);
 err_code_t while_loop(token_t *token, ast_node_t **node);
 err_code_t ext_list(token_t *token, ast_node_t **node);
 
-err_code_t parse() {
+err_code_t parse(ast_node_t **node, FILE *stream) {
   token_t *token = token_create();
   if (token == NULL) {
     return INTERNAL_ERR;
   }
 
-  ast_node_t *node;
-
-  err_code_t ret = start(token, &node);
+  err_code_t ret = lexer_init(stream);
+  if (ret != NO_ERR) {
+    return ret;
+  }
+  ret = start(token, node);
   token_free(token);
-  // destroy_node(node); // should do smth with it first
   lexer_destroy();
   return ret;
 }
