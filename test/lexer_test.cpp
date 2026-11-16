@@ -805,3 +805,125 @@ TEST_F(LexerFixture, PeekedUnaryMinusUsesCorrectPreviousToken) {
   expect_get(TOK_UNARY_MINUS);
   expect_get(TOK_IDENTIFIER, "b");
 }
+
+TEST_F(LexerFixture, NestedInterpolatedString) {
+  feed(R"(s"outer ${s"inner $x"} end")"
+       "\n");
+  expect_get(TOK_LIT_INTERP_STRING_PART, "outer ");
+  expect_get(TOK_EXPRESSION_START);
+  expect_get(TOK_LIT_INTERP_STRING_PART, "inner ");
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_LIT_INTERP_STRING_END, "");
+  expect_get(TOK_EXPRESSION_END);
+  expect_get(TOK_LIT_INTERP_STRING_END, " end");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, DeeplyNestedInterpolatedStringsWithExpressions) {
+  feed(R"(s"L1 ${1 + s"L2 ${s"L3 ${a * 2}"}"}")"
+       "\n");
+  expect_get(TOK_LIT_INTERP_STRING_PART, "L1 ");
+  expect_get(TOK_EXPRESSION_START);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_LIT_INTERP_STRING_PART, "L2 ");
+  expect_get(TOK_EXPRESSION_START);
+  expect_get(TOK_LIT_INTERP_STRING_PART, "L3 ");
+  expect_get(TOK_EXPRESSION_START);
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_MUL);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_EXPRESSION_END);
+  expect_get(TOK_LIT_INTERP_STRING_END, "");
+  expect_get(TOK_EXPRESSION_END);
+  expect_get(TOK_LIT_INTERP_STRING_END, "");
+  expect_get(TOK_EXPRESSION_END);
+  expect_get(TOK_LIT_INTERP_STRING_END, "");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, NestedMultilineAndSingleLineInterpolatedStrings) {
+  feed(R"(s"""line1 ${s"inner ${1 + 2}"}""" )"
+       "\n");
+  expect_get(TOK_LIT_INTERP_M_STRING_PART, "line1 ");
+  expect_get(TOK_EXPRESSION_START);
+  expect_get(TOK_LIT_INTERP_STRING_PART, "inner ");
+  expect_get(TOK_EXPRESSION_START);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_EXPRESSION_END);
+  expect_get(TOK_LIT_INTERP_STRING_END, "");
+  expect_get(TOK_EXPRESSION_END);
+  expect_get(TOK_LIT_INTERP_M_STRING_END, "");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+/*************\
+ * For loops *
+\*************/
+
+TEST_F(LexerFixture, NestedForLoopWithSoftKeywordsAsIdentifiers) {
+  feed("for i <- 1 to 10 by 2 do\n"
+       "  val by = i\n"
+       "  val until = -by\n"
+       "  for j <- by by until step -1 do\n"
+       "    print(i)\n");
+
+  // for i <- 1 to 10 by 2 do
+  expect_get(TOK_KW_FOR);
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_ARROW_LEFT);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_IDENTIFIER, "to");
+  expect_get(TOK_LIT_INT, "10");
+  expect_get(TOK_IDENTIFIER, "by");
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_KW_DO);
+  expect_get(TOK_EOL);
+
+  //   val by = i
+  expect_get(TOK_INDENT);
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "by");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_EOL);
+
+  //   val until = -by
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "until");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_UNARY_MINUS);
+  expect_get(TOK_IDENTIFIER, "by");
+  expect_get(TOK_EOL);
+
+  //   for j <- by by until step -1 do
+  expect_get(TOK_KW_FOR);
+  expect_get(TOK_IDENTIFIER, "j");
+  expect_get(TOK_ARROW_LEFT);
+  expect_get(TOK_IDENTIFIER, "by");
+  expect_get(TOK_IDENTIFIER, "by");
+  expect_get(TOK_IDENTIFIER, "until");
+  expect_get(TOK_IDENTIFIER, "step");
+  expect_get(TOK_UNARY_MINUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_KW_DO);
+  expect_get(TOK_EOL);
+
+  //     print(i)
+  expect_get(TOK_INDENT);
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // Dedents back to top level
+  expect_get(TOK_DEDENT);
+  expect_get(TOK_DEDENT);
+  expect_eof();
+}
