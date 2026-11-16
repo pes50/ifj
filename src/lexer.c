@@ -10,6 +10,7 @@
 
 #include "lexer.h"
 #include "dynstr.h"
+#include "expresion_stack.h"
 #include "indent_stack.h"
 
 #include <ctype.h>
@@ -114,9 +115,10 @@ static size_t token_buf_count = 0;
 static token_type_t token_prev_type = TOK_EMPTY;
 
 // Variables used to decide whether the lexer is in interpolated string.
-static bool in_expression = false;
 static bool interpolated_ml_str = false;
 static bool in_interpolated_str = false;
+static expresion_stack_t expresion_stack;
+static bool expresion_stack_initialized = false;
 
 // Variables used for work with indentation stack.
 static indent_stack_t indent_stack;
@@ -301,6 +303,14 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
     indent_stack_initialized = true;
   }
 
+  // Initialization of epresion stack.
+  if (!expresion_stack_initialized) {
+    if (expresion_stack_init(&expresion_stack) != NO_ERR) {
+      return INTERNAL_ERR;
+    }
+    expresion_stack_initialized = true;
+  }
+
   // Main loop
   while (lexer_run) {
 
@@ -346,7 +356,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         break;
 
       case EOF:
-        if (in_expression) {
+        if (!expresion_stack_empty(&expresion_stack)) {
           return LEXICAL_ERR;
         }
 
@@ -369,7 +379,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       // The scan after '\n' must start by measuring
       // the indentation of the new line.
       case '\n':
-        if (in_expression) {
+        if (!expresion_stack_empty(&expresion_stack)) {
           return LEXICAL_ERR;
         }
 
@@ -402,12 +412,13 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       case '}':
         // '}' closes an interpolation expression ${ ... }
         // The lexer continues reading the interpolated string.
-        if (!in_expression) {
+        if (expresion_stack_empty(&expresion_stack)) {
           return LEXICAL_ERR;
         }
-        *type = TOK_EXPRESSION_END;
-        in_expression = false;
+
+        interpolated_ml_str = expresion_stack_pop(&expresion_stack);
         in_interpolated_str = true;
+        *type = TOK_EXPRESSION_END;
         lexer_run = false;
         break;
 
@@ -1159,9 +1170,13 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
     case S_DOLAR_NEXT:
       if (character == '{') {
         // Go to expression reading state.
-        *type = TOK_EXPRESSION_START;
+        if (expresion_stack_push(&expresion_stack, interpolated_ml_str) !=
+            NO_ERR) {
+          return INTERNAL_ERR;
+        }
+
         in_interpolated_str = false;
-        in_expression = true;
+        *type = TOK_EXPRESSION_START;
         lexer_run = false;
       } else {
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
@@ -1482,12 +1497,15 @@ void lexer_destroy(void) {
   inside_for_loop = false;
   token_prev_for_kw = false;
   indent_level = 0;
-  in_expression = false;
   in_interpolated_str = false;
   interpolated_ml_str = false;
   if (indent_stack_initialized) {
     indent_stack_free(&indent_stack);
     indent_stack_initialized = false;
+  }
+  if (expresion_stack_initialized) {
+    expresion_stack_free(&expresion_stack);
+    expresion_stack_initialized = false;
   }
 }
 
