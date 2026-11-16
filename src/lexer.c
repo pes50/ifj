@@ -14,7 +14,6 @@
 
 #include <ctype.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
 
 #define LEXER_BUF_SIZE (LEXER_MAX_LOOKAHEAD + 1)
@@ -125,6 +124,7 @@ static bool indent_stack_initialized = false;
 static size_t indent_level = 0;
 
 static lexer_state_t next_state = S_LINE_START;
+static FILE *input_stream = NULL;
 
 /**
  * @brief Determine whether the token should have value.
@@ -241,7 +241,7 @@ static err_code_t skip_block_comment(bool *had_newline) {
   int ignored_char;
 
   while (depth > 0) {
-    ignored_char = getchar();
+    ignored_char = getc(input_stream);
     if (ignored_char == EOF) {
       return LEXICAL_ERR;
     }
@@ -263,8 +263,7 @@ static err_code_t skip_block_comment(bool *had_newline) {
 }
 
 /**
- * @brief Scans upcoming stream of data on stdin and determines token's type and
- * it's value.
+ * @brief Scans upcoming stream of data and determines token's type and it's value.
  *
  * @param output_val Value of the token's attribute.
  * @param type       Pointer to token type which the lexer should determine.
@@ -303,7 +302,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       }
     }
 
-    character = getchar();
+    character = getc(input_stream);
 
     switch (state) {
 
@@ -512,7 +511,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
     // Whether the sign is binary or unary is  decided by the previous token.
     case S_MINUS:
-      ungetc(character, stdin);
+      ungetc(character, input_stream);
       if (is_binary_operator()) {
         *type = TOK_BINARY_MINUS;
       } else {
@@ -525,7 +524,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       if (character == '+') {
         *type = TOK_CONCAT_LIST;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
 
         if (is_binary_operator()) {
           *type = TOK_BINARY_PLUS;
@@ -542,7 +541,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else if (character == '-') {
         *type = TOK_ARROW_LEFT;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         *type = TOK_LOWER_T;
       }
       lexer_run = false;
@@ -552,7 +551,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       if (character == '=') {
         *type = TOK_GREATER_EQ;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         *type = TOK_GREATER_T;
       }
       lexer_run = false;
@@ -564,7 +563,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else if (character == '>') {
         *type = TOK_ARROW_RIGHT;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         *type = TOK_ASSIGN;
       }
       lexer_run = false;
@@ -574,7 +573,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       if (character == '=') {
         *type = TOK_NOT_EQ;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         *type = TOK_NOT;
       }
       lexer_run = false;
@@ -584,7 +583,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       if (character == '|') {
         *type = TOK_OR;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         *type = TOK_PIPE;
       }
       lexer_run = false;
@@ -607,7 +606,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
     case S_START_AT_MAIN:
       for (size_t index = 0; LEXER_AT_MAIN[index] != '\0'; index++) {
         if (index > 0) {
-          character = getchar();
+          character = getc(input_stream);
         }
         if (character != LEXER_AT_MAIN[index]) {
           return LEXICAL_ERR;
@@ -615,11 +614,11 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       }
 
       // Identifier cannot exist right after "@main".
-      character = getchar();
+      character = getc(input_stream);
       if (isalnum(character) || character == '_') {
         return LEXICAL_ERR;
       }
-      ungetc(character, stdin);
+      ungetc(character, input_stream);
 
       *type = TOK_AT_MAIN;
       lexer_run = false;
@@ -641,7 +640,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         state = S_ID;
       } else {
         // 's' can be identifier on its own.
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         if (dynstr_append_char(output_val, 's') != NO_ERR) {
           return INTERNAL_ERR;
         }
@@ -657,7 +656,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         state = S_ID;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         *type = TOK_UNDERSCORE;
         lexer_run = false;
       }
@@ -670,7 +669,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         state = S_ID;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         // Decide whether the value is keyword or identifier.
         *type = is_keyword(output_val->data);
         lexer_run = false;
@@ -700,7 +699,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         state = S_E;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         *type = TOK_LIT_INT;
         lexer_run = false;
       }
@@ -720,7 +719,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else if ((character >= '0' && character <= '9') || character == '_') {
         return LEXICAL_ERR;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         *type = TOK_LIT_INT;
         lexer_run = false;
       }
@@ -733,7 +732,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         state = S_DEC;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         *type = TOK_DOT;
         lexer_run = false;
       }
@@ -800,7 +799,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         *type = TOK_LIT_DOUBLE;
         lexer_run = false;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         *type = TOK_LIT_DOUBLE;
         lexer_run = false;
       }
@@ -834,7 +833,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         state = S_E;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         *type = TOK_LIT_DOUBLE;
         lexer_run = false;
       }
@@ -861,7 +860,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else if (character == '*') {
         state = S_BLOCK_COMMENT;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         *type = TOK_DIV;
         lexer_run = false;
       }
@@ -872,7 +871,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         // Leave EOF in the stream so the lexer
         // can properly handle it on the next call.
         if (character == EOF) {
-          ungetc(character, stdin);
+          ungetc(character, input_stream);
         }
         *type = TOK_EOL;
         indent_level = 0;
@@ -900,7 +899,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         comment_depth_cnt++;
         state = S_BLOCK_COMMENT;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         state = S_BLOCK_COMMENT;
       }
       break;
@@ -911,13 +910,13 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else if (character == '/') {
         state = S_BLOCK_COMMENT_END;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         state = S_BLOCK_COMMENT;
       }
       break;
 
     case S_BLOCK_COMMENT_END:
-      ungetc(character, stdin);
+      ungetc(character, input_stream);
       if (comment_depth_cnt > 0) {
         // Nested comment closed.
         comment_depth_cnt--;
@@ -995,7 +994,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       if (character == '"') {
         state = S_START_ML;
       } else if (!(character == '"')) {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         *type = TOK_LIT_STRING;
         lexer_run = false;
       }
@@ -1132,7 +1131,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else if (isalpha(character) || character == '_' || character == '{') {
         // A single '$' indicates start of an identifier or expression.
         // Return the accumulated string part and pause string parsing.
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
 
         if (interpolated_ml_str) {
           *type = TOK_LIT_INTERP_M_STRING_PART;
@@ -1169,7 +1168,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         state = S_READ_ID;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         *type = TOK_IDENTIFIER;
         lexer_run = false;
       }
@@ -1180,7 +1179,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         interpolated_ml_str = true;
         state = S_START_S_ML;
       } else {
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         *type = TOK_LIT_INTERP_STRING_END;
         in_interpolated_str = false;
         lexer_run = false;
@@ -1267,7 +1266,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else if (character == EOF) {
         indent_level = 0;
         tab_on_line = false;
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         state = S_LINE;
       } else if (character == '/') {
         state = S_LINE_SLASH;
@@ -1276,7 +1275,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         if (tab_on_line) {
           return LEXICAL_ERR;
         }
-        ungetc(character, stdin);
+        ungetc(character, input_stream);
         state = S_LINE;
       }
       break;
@@ -1285,11 +1284,11 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       if (character == '/') {
         // It is a comment. Ignore all characters until the end of the line.
         int ignored_char;
-        while ((ignored_char = getchar()) != '\n' && ignored_char != EOF) {
+        while ((ignored_char = getc(input_stream)) != '\n' && ignored_char != EOF) {
         }
 
         if (ignored_char == EOF) {
-          ungetc(ignored_char, stdin);
+          ungetc(ignored_char, input_stream);
         }
 
         indent_level = 0;
@@ -1320,7 +1319,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
     case S_LINE:
       // Return the first non-whitespace character back to the stream.
-      ungetc(character, stdin);
+      ungetc(character, input_stream);
 
       // Indentation increased.
       if (indent_level > indent_stack_top(&indent_stack)) {
@@ -1461,5 +1460,14 @@ void lexer_destroy(void) {
   if (indent_stack_initialized) {
     indent_stack_free(&indent_stack);
     indent_stack_initialized = false;
+  }
+}
+
+void lexer_init(FILE *stream) {
+  lexer_destroy();
+  if (stream == NULL) {
+    input_stream = stdin;
+  } else{
+    input_stream = stream;
   }
 }

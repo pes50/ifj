@@ -15,6 +15,7 @@
 #include "token.h"
 
 #include <stddef.h>
+#include <stdio.h>
 
 // Maximum number of tokens the lexer can look ahead.
 #define LEXER_MAX_LOOKAHEAD 10
@@ -31,7 +32,16 @@ typedef enum {
 } eol_code_t;
 
 /**
- * @brief Reads the next token from stdin.
+ * @brief Sets lexer's input stream and resets lexer.
+ *
+ * Must be called before the first lexer_get_token()/lexer_peek_token().
+ *
+ * @param stream Input stream. If NULL, stdin is used.
+ */
+void lexer_init(FILE *stream);
+
+/**
+ * @brief Reads the next token from given stream.
  *
  * @param token    Empty token the lexer is supposed to return filled with copy
  *                 of the peeked token. The lexer allocates memory for the
@@ -49,7 +59,7 @@ typedef enum {
 err_code_t lexer_get_token(token_t *token, eol_code_t eol_code);
 
 /**
- * @brief Reads the number of tokens given ahead from stdin.
+ * @brief Reads the number of tokens given ahead from stream.
  *
  * @param token            Empty token the lexer is supposed to return filled.
  *                         It must be initialized (empty) before the call.
