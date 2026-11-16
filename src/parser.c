@@ -42,6 +42,7 @@ err_code_t fun_body(token_t *token, ast_node_t **node);
 err_code_t block(token_t *token, ast_node_t **node);
 err_code_t stmt_tail(token_t *token, ast_node_t **node);
 err_code_t stmt(token_t *token, ast_node_t **node);
+err_code_t var_dec(token_t *token, ast_node_t **node, bool is_const);
 err_code_t id_stmt(token_t *token, ast_node_t **node);
 err_code_t if_stmt(token_t *token, ast_node_t **node);
 err_code_t if_stmt_tail(token_t *token, ast_node_t **true_branch,
@@ -888,6 +889,12 @@ err_code_t stmt(token_t *token, ast_node_t **node) {
   case TOK_IDENTIFIER:
     return id_stmt(token, node);
 
+  case TOK_KW_VAL:
+    return var_dec(token, node, true);
+
+  case TOK_KW_VAR:
+    return var_dec(token, node, false);
+
   default:
     return expr(token, node);
   }
@@ -1480,4 +1487,68 @@ err_code_t if_guard(token_t *token, ast_node_t **node) {
   }
 
   return expr(token, node);
+}
+
+err_code_t var_dec(token_t *token, ast_node_t **node, bool is_const) {
+  token_clear(token);
+  err_code_t ret = lexer_get_token(token, FORBIDDEN);
+  if (ret != NO_ERR) {
+    return ret;
+  }
+
+  if (token->type != TOK_IDENTIFIER) {
+    return SYNTAX_ERR;
+  }
+
+  char *name = string_duplicate(token->value);
+  if (name == NULL) {
+    return INTERNAL_ERR;
+  }
+
+  token_clear(token);
+  ret = lexer_get_token(token, FORBIDDEN);
+  if (ret != NO_ERR) {
+    free(name);
+    return ret;
+  }
+
+  data_type_node_t *data_type = NULL;
+  ret = ret_type(token, &data_type);
+  if (ret != NO_ERR) {
+    free(name);
+    return ret;
+  }
+
+  if (token->type != TOK_EQUAL) {
+    free(name);
+    destroy_type_node(data_type);
+    return SYNTAX_ERR;
+  }
+
+  token_clear(token);
+  ret = lexer_get_token(token, FORBIDDEN);
+  if (ret != NO_ERR) {
+    free(name);
+    destroy_type_node(data_type);
+    return ret;
+  }
+
+  ast_node_t *expression = NULL;
+  ret = expr(token, &expression);
+  if (ret != NO_ERR) {
+    free(name);
+    destroy_type_node(data_type);
+    return ret;
+  }
+
+  *node =
+      create_variable_declaration_node(name, data_type, is_const, expression);
+
+  free(name);
+  if (*node == NULL) {
+    destroy_type_node(data_type);
+    destroy_node(expression);
+    return SYNTAX_ERR;
+  }
+  return NO_ERR;
 }
