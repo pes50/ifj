@@ -48,6 +48,8 @@ protected:
     ASSERT_EQ(static_cast<size_t>(written), input.size());
     close(fd);
     ASSERT_NE(freopen(path, "r", stdin), nullptr);
+
+    lexer_init(stdin);
   }
 
   static void check_token(const token_t *tok, token_type_t type,
