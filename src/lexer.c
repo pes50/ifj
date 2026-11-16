@@ -126,6 +126,11 @@ static size_t indent_level = 0;
 static lexer_state_t next_state = S_LINE_START;
 static FILE *input_stream = NULL;
 
+// "by", "until", "to" can be identifier. Because of that we have to decide
+// wheter it was used inside for loop or not.
+static bool inside_for_loop = false;
+static bool token_prev_for_kw = false;
+
 /**
  * @brief Determine whether the token should have value.
  *
@@ -159,6 +164,10 @@ static bool has_value(token_type_t type) {
  *         false if the sign shouldn't.
  */
 static bool is_binary_operator(void) {
+  if (token_prev_for_kw) {
+    return false;
+  }
+
   switch (token_prev_type) {
   case TOK_IDENTIFIER:
   case TOK_LIT_INT:
@@ -263,7 +272,8 @@ static err_code_t skip_block_comment(bool *had_newline) {
 }
 
 /**
- * @brief Scans upcoming stream of data and determines token's type and it's value.
+ * @brief Scans upcoming stream of data and determines token's type and it's
+ * value.
  *
  * @param output_val Value of the token's attribute.
  * @param type       Pointer to token type which the lexer should determine.
@@ -1284,7 +1294,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       if (character == '/') {
         // It is a comment. Ignore all characters until the end of the line.
         int ignored_char;
-        while ((ignored_char = getc(input_stream)) != '\n' && ignored_char != EOF) {
+        while ((ignored_char = getc(input_stream)) != '\n' &&
+               ignored_char != EOF) {
         }
 
         if (ignored_char == EOF) {
@@ -1388,6 +1399,21 @@ static err_code_t lexer_scan_token(token_t *token) {
 
   if (err == NO_ERR) {
     token_prev_type = type;
+
+    if (type == TOK_KW_FOR) {
+      inside_for_loop = true;
+    } else if (type == TOK_KW_DO) {
+      inside_for_loop = false;
+    }
+
+    if (inside_for_loop && type == TOK_IDENTIFIER &&
+        (strcmp(output_val.data, "by") == 0 ||
+         strcmp(output_val.data, "to") == 0 ||
+         strcmp(output_val.data, "until") == 0)) {
+      token_prev_for_kw = true;
+    } else {
+      token_prev_for_kw = false;
+    }
   }
   dynstr_free(&output_val);
   return err;
@@ -1453,6 +1479,8 @@ void lexer_destroy(void) {
   token_buf_count = 0;
   next_state = S_LINE_START;
   token_prev_type = TOK_EMPTY;
+  inside_for_loop = false;
+  token_prev_for_kw = false;
   indent_level = 0;
   in_expression = false;
   in_interpolated_str = false;
@@ -1467,7 +1495,7 @@ void lexer_init(FILE *stream) {
   lexer_destroy();
   if (stream == NULL) {
     input_stream = stdin;
-  } else{
+  } else {
     input_stream = stream;
   }
 }
