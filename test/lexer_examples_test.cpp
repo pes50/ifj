@@ -1,0 +1,3078 @@
+/**************************** IFJ/IAL-Compiler-2026 ***************************\
+ *
+ * @file lexer_examples_test.cpp
+ *
+ * @author Simon Šmíd      (xsmidsi00)
+ *
+ * @brief Test lexer on example programs.
+ *
+\*****************************************************************************/
+
+extern "C" {
+#include "lexer.h"
+}
+#include <gtest/gtest.h>
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <unistd.h>
+
+/***********\
+ * Fixture *
+\***********/
+
+class LexerFixture : public ::testing::Test {
+protected:
+  char path[64];
+
+  using token_ptr = std::unique_ptr<token_t, decltype(&token_free)>;
+
+  void SetUp() override { path[0] = '\0'; }
+
+  void TearDown() override {
+    lexer_destroy();
+    if (path[0] != '\0') {
+      unlink(path);
+    }
+  }
+
+  // Writes the input to a temporary file and makes it the stdin of the lexer.
+  void feed(const std::string &input) {
+    std::strcpy(path, "/tmp/lexer_test_XXXXXX");
+    int fd = mkstemp(path);
+    ASSERT_NE(fd, -1);
+    ssize_t written = write(fd, input.data(), input.size());
+    ASSERT_EQ(static_cast<size_t>(written), input.size());
+    close(fd);
+    ASSERT_NE(freopen(path, "r", stdin), nullptr);
+
+    lexer_init(stdin);
+  }
+
+  static void check_token(const token_t *tok, token_type_t type,
+                          const char *value) {
+    EXPECT_EQ(tok->type, type);
+    if (value == nullptr) {
+      EXPECT_EQ(tok->value, nullptr);
+      EXPECT_EQ(tok->length, 0u);
+    } else {
+      ASSERT_NE(tok->value, nullptr);
+      EXPECT_STREQ(tok->value, value);
+      EXPECT_EQ(tok->length, std::strlen(value));
+    }
+  }
+
+  // Next token must have the given type and value (nullptr = no value).
+  void expect_get(token_type_t type, const char *value = nullptr,
+                  eol_code_t eol = ALLOWED) {
+    token_ptr tok(token_create(), token_free);
+    ASSERT_NE(tok.get(), nullptr);
+    ASSERT_EQ(lexer_get_token(tok.get(), eol), NO_ERR);
+    check_token(tok.get(), type, value);
+  }
+
+  // Next get must fail with the given error code.
+  void expect_get_err(err_code_t err, eol_code_t eol = ALLOWED) {
+    token_ptr tok(token_create(), token_free);
+    ASSERT_NE(tok.get(), nullptr);
+    EXPECT_EQ(lexer_get_token(tok.get(), eol), err);
+  }
+
+  void expect_peek(size_t offset, token_type_t type,
+                   const char *value = nullptr, eol_code_t eol = ALLOWED) {
+    token_ptr tok(token_create(), token_free);
+    ASSERT_NE(tok.get(), nullptr);
+    ASSERT_EQ(lexer_peek_token(tok.get(), eol, offset), NO_ERR);
+    check_token(tok.get(), type, value);
+  }
+
+  void expect_peek_err(size_t offset, err_code_t err,
+                       eol_code_t eol = ALLOWED) {
+    token_ptr tok(token_create(), token_free);
+    ASSERT_NE(tok.get(), nullptr);
+    EXPECT_EQ(lexer_peek_token(tok.get(), eol, offset), err);
+  }
+
+  // Input ended with "\n": EOL was already returned, only EOF remains.
+  void expect_eof() { expect_get(TOK_EOF); }
+};
+
+/**************************************************\
+ * Integration Test - Full Code - basic examples  *
+\**************************************************/
+
+TEST_F(LexerFixture, BasicFactorial) {
+  // Read the source code from the external file
+  std::ifstream file("examples/basic/factorial.scala");
+  ASSERT_TRUE(file.is_open())
+      << "Failed to open file: examples/basic/factorial.scala";
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  feed(buffer.str());
+
+  // Line 1: Comment is ignored, import follows
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  // Line 2: Empty line is ignored
+
+  // def factorialIterative(n: Int): Int =
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "factorialIterative");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   var result = 1  // promenne
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_VAR);
+  expect_get(TOK_IDENTIFIER, "result");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EOL);
+
+  //   var i: Int = 2
+  expect_get(TOK_KW_VAR);
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_EOL);
+
+  //   while i <= n do
+  expect_get(TOK_KW_WHILE);
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_LOWER_EQ);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_KW_DO);
+  expect_get(TOK_EOL);
+
+  //     result = result * i
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_IDENTIFIER, "result");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "result");
+  expect_get(TOK_MUL);
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_EOL);
+
+  //     i = i + 1
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EOL);
+
+  //   result
+  expect_get(TOK_DEDENT); // Dedent back to 2 spaces
+  expect_get(TOK_IDENTIFIER, "result");
+  expect_get(TOK_EOL);
+
+  // def factorialRecursive(n: Int): Int =
+  expect_get(
+      TOK_DEDENT); // Dedent back to 0 spaces (end of the previous function)
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "factorialRecursive");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   if n <= 1 then
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_LOWER_EQ);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_KW_THEN);
+  expect_get(TOK_EOL);
+
+  //     return 1
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_KW_RETURN);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EOL);
+
+  //   else
+  expect_get(TOK_DEDENT); // Dedent back to 2 spaces (for the else block)
+  expect_get(TOK_KW_ELSE);
+  expect_get(TOK_EOL);
+
+  //     val previous = n - 1
+  expect_get(TOK_INDENT); // 4 spaces again (inside the else block)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "previous");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_BINARY_MINUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EOL);
+
+  //     val smaller = factorialRecursive(previous)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "smaller");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "factorialRecursive");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "previous");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //     return n * smaller
+  expect_get(TOK_KW_RETURN);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_MUL);
+  expect_get(TOK_IDENTIFIER, "smaller");
+  expect_get(TOK_EOL);
+
+  // @main def factorialExample(): Unit =
+  expect_get(TOK_DEDENT); // Leaving the 4-space level
+  expect_get(TOK_DEDENT); // Leaving the 2-space level (back to the left margin)
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "factorialExample");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   val n = readInt()
+  expect_get(TOK_INDENT); // 2 spaces inside main
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "readInt");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // 3 consecutive full-line comments must be correctly consumed here
+
+  //   if n < 0 then
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_LOWER_T);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_KW_THEN);
+  expect_get(TOK_EOL);
+
+  //     print("Use an integer from 0 to 12.\n")
+  // NOTE: The lexer translates \n into an actual newline character, so the C++
+  // string contains a real \n
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "Use an integer from 0 to 12.\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   else
+  expect_get(TOK_DEDENT); // Back to 2 spaces
+  expect_get(TOK_KW_ELSE);
+  expect_get(TOK_EOL);
+
+  //     if n > 12 then
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_GREATER_T);
+  expect_get(TOK_LIT_INT, "12");
+  expect_get(TOK_KW_THEN);
+  expect_get(TOK_EOL);
+
+  //       print("Use an integer from 0 to 12.\n")
+  expect_get(TOK_INDENT); // 6 spaces!
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "Use an integer from 0 to 12.\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //     else
+  expect_get(TOK_DEDENT); // Back to 4 spaces
+  expect_get(TOK_KW_ELSE);
+  expect_get(TOK_EOL);
+
+  //       val iterative = factorialIterative(n)
+  expect_get(TOK_INDENT); // 6 spaces again
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "iterative");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "factorialIterative");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //       val recursive = factorialRecursive(n)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "recursive");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "factorialRecursive");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //       print("iterative: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "iterative: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //       print(iterative)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "iterative");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //       print("\nrecursive: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\nrecursive: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //       print(recursive)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "recursive");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //       print("\n")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+
+  // The program ends with a newline, so an EOL is generated
+  expect_get(TOK_EOL);
+
+  // Final cleanup before EOF (The stack is currently at 6 spaces, it must
+  // dedent 6, 4, 2)
+  expect_get(TOK_DEDENT);
+  expect_get(TOK_DEDENT);
+  expect_get(TOK_DEDENT);
+
+  expect_eof();
+}
+
+TEST_F(LexerFixture, BasicStrings) {
+  // Read the source code from the external file
+  std::ifstream file("examples/basic/strings.scala");
+  ASSERT_TRUE(file.is_open())
+      << "Failed to open file: examples/basic/strings.scala";
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  feed(buffer.str());
+
+  // Line 1: Comment is ignored
+
+  // import ifj26.*
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  // def withoutLineFeed(text: String): String =
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "withoutLineFeed");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_STRING);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_STRING);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   val length = strLength(text)
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "strLength");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   if length == 0 then
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_EQUAL);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_KW_THEN);
+  expect_get(TOK_EOL);
+
+  //     return text
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_KW_RETURN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_EOL);
+
+  //   else
+  expect_get(TOK_DEDENT); // Back to 2 spaces for else block
+  expect_get(TOK_KW_ELSE);
+  expect_get(TOK_EOL);
+
+  //     val last = length - 1
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "last");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_BINARY_MINUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EOL);
+
+  //     val code = ord(text, last)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "code");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "ord");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_IDENTIFIER, "last");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //     if code == 10 then
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "code");
+  expect_get(TOK_EQUAL);
+  expect_get(TOK_LIT_INT, "10");
+  expect_get(TOK_KW_THEN);
+  expect_get(TOK_EOL);
+
+  //       return subStr(text, 0, last)
+  expect_get(TOK_INDENT); // 6 spaces
+  expect_get(TOK_KW_RETURN);
+  expect_get(TOK_IDENTIFIER, "subStr");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_IDENTIFIER, "last");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //     else
+  expect_get(TOK_DEDENT); // Back to 4 spaces for inner else
+  expect_get(TOK_KW_ELSE);
+  expect_get(TOK_EOL);
+
+  //       return text
+  expect_get(TOK_INDENT); // 6 spaces again
+  expect_get(TOK_KW_RETURN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_EOL);
+
+  // def reverse(text: String): String =
+  expect_get(TOK_DEDENT); // Leaving 6 spaces
+  expect_get(TOK_DEDENT); // Leaving 4 spaces
+  expect_get(TOK_DEDENT); // Leaving 2 spaces (back to margin)
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "reverse");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_STRING);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_STRING);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   val length = strLength(text)
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "strLength");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   var index = length - 1
+  expect_get(TOK_KW_VAR);
+  expect_get(TOK_IDENTIFIER, "index");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_BINARY_MINUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EOL);
+
+  //   var result = ""
+  expect_get(TOK_KW_VAR);
+  expect_get(TOK_IDENTIFIER, "result");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_STRING, "");
+  expect_get(TOK_EOL);
+
+  //   while index >= 0 do
+  expect_get(TOK_KW_WHILE);
+  expect_get(TOK_IDENTIFIER, "index");
+  expect_get(TOK_GREATER_EQ);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_KW_DO);
+  expect_get(TOK_EOL);
+
+  //     val code = ord(text, index)
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "code");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "ord");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_IDENTIFIER, "index");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //     val character = chr(code)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "character");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "chr");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "code");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //     result = result + character // konkatenace
+  expect_get(TOK_IDENTIFIER, "result");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "result");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_IDENTIFIER, "character");
+  expect_get(TOK_EOL);
+
+  //     index = index - 1
+  expect_get(TOK_IDENTIFIER, "index");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "index");
+  expect_get(TOK_BINARY_MINUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EOL);
+
+  //   result
+  expect_get(TOK_DEDENT); // Back to 2 spaces (leaving while loop)
+  expect_get(TOK_IDENTIFIER, "result");
+  expect_get(TOK_EOL);
+
+  // def prefix(text: String): String =
+  expect_get(TOK_DEDENT); // Back to 0
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "prefix");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_STRING);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_STRING);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   val length = strLength(text)
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "strLength");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   var end = length
+  expect_get(TOK_KW_VAR);
+  expect_get(TOK_IDENTIFIER, "end");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_EOL);
+
+  //   if length > 3 then
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_GREATER_T);
+  expect_get(TOK_LIT_INT, "3");
+  expect_get(TOK_KW_THEN);
+  expect_get(TOK_EOL);
+
+  //     end = 3
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_IDENTIFIER, "end");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "3");
+  expect_get(TOK_EOL);
+
+  //   else  // podminka ma v zakladnim zadani vzdy obe vetve
+  expect_get(TOK_DEDENT); // Back to 2
+  expect_get(TOK_KW_ELSE);
+  expect_get(TOK_EOL);
+
+  //     ()
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   if length == 0 then
+  expect_get(TOK_DEDENT); // Back to 2
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_EQUAL);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_KW_THEN);
+  expect_get(TOK_EOL);
+
+  //     return ""
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_KW_RETURN);
+  expect_get(TOK_LIT_STRING, "");
+  expect_get(TOK_EOL);
+
+  //   else
+  expect_get(TOK_DEDENT); // Back to 2
+  expect_get(TOK_KW_ELSE);
+  expect_get(TOK_EOL);
+
+  //     return subStr(text, 0, end)
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_KW_RETURN);
+  expect_get(TOK_IDENTIFIER, "subStr");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_IDENTIFIER, "end");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // def halfLength(length: Int): Double = length / 2.0
+  expect_get(TOK_DEDENT); // Leave 4 spaces
+  expect_get(TOK_DEDENT); // Leave 2 spaces (back to margin)
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "halfLength");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_DOUBLE);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_DIV);
+  expect_get(TOK_LIT_DOUBLE, "2.0");
+  expect_get(TOK_EOL);
+
+  // def showLine(text: String): Unit =
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "showLine");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_STRING);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   print(text)
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\n")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // @main def stringsExample(): Unit =
+  expect_get(TOK_DEDENT); // Back to margin
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "stringsExample");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   val raw = readLine()
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "raw");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "readLine");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val text = withoutLineFeed(raw)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "withoutLineFeed");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "raw");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val backwards = reverse(text)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "backwards");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "reverse");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val first = prefix(text)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "first");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "prefix");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val length = strLength(text)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "strLength");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val half = halfLength(length)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "half");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "halfLength");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val halfText = toStr(half)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "halfText");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "toStr");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "half");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   showLine(backwards)
+  expect_get(TOK_IDENTIFIER, "showLine");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "backwards");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   showLine(first)
+  expect_get(TOK_IDENTIFIER, "showLine");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "first");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("length: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "length: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(length)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\nhalf: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\nhalf: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   showLine(halfText)
+  expect_get(TOK_IDENTIFIER, "showLine");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "halfText");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // End of file cleanup: leaving the 2-space block inside @main
+  expect_get(TOK_DEDENT);
+
+  expect_eof();
+}
+
+/**************************************************\
+ * Integration Test - Full Code - extensions examples  *
+\**************************************************/
+
+TEST_F(LexerFixture, ExtentionALGEBDT) {
+  // Read the source code from the external file
+  std::ifstream file("examples/extensions/algebdt.scala");
+  ASSERT_TRUE(file.is_open())
+      << "Failed to open file: examples/extensions/algebdt.scala";
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  feed(buffer.str());
+
+  // Line 1: Comment is ignored
+
+  // import ifj26.*
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  // case class Point(x: Int, y: Int)
+  expect_get(TOK_KW_CASE);
+  expect_get(TOK_KW_CLASS);
+  expect_get(TOK_IDENTIFIER, "Point");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_COMMA);
+  expect_get(TOK_IDENTIFIER, "y");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // type Input = Int | Unit | Point
+  expect_get(TOK_KW_TYPE);
+  expect_get(TOK_IDENTIFIER, "Input");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_PIPE);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_PIPE);
+  expect_get(TOK_IDENTIFIER, "Point");
+  expect_get(TOK_EOL);
+
+  // type Amount = Double | Unit
+  expect_get(TOK_KW_TYPE);
+  expect_get(TOK_IDENTIFIER, "Amount");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_KW_DOUBLE);
+  expect_get(TOK_PIPE);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_EOL);
+
+  // def describe(value: Input): String =
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "describe");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_COLON);
+  expect_get(TOK_IDENTIFIER,
+             "Input"); // Custom types evaluate to TOK_IDENTIFIER
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_STRING);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   value match
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_KW_MATCH);
+  expect_get(TOK_EOL);
+
+  //     case n: Int if n > 0 => "positive integer"
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_KW_CASE);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_GREATER_T);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_LIT_STRING, "positive integer");
+  expect_get(TOK_EOL);
+
+  //     case 0 => "zero"
+  expect_get(TOK_KW_CASE);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_LIT_STRING, "zero");
+  expect_get(TOK_EOL);
+
+  //     case Point(x, y) =>
+  expect_get(TOK_KW_CASE);
+  expect_get(TOK_IDENTIFIER, "Point");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_IDENTIFIER, "y");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_EOL);
+
+  //       val sum = x + y
+  expect_get(TOK_INDENT); // 6 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "sum");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_IDENTIFIER, "y");
+  expect_get(TOK_EOL);
+
+  //       val text = toStr(sum)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "toStr");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "sum");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //       "point sum: " + text
+  expect_get(TOK_LIT_STRING, "point sum: ");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_EOL);
+
+  //     case unit: Unit => "invalid input"
+  expect_get(TOK_DEDENT); // Back to 4 spaces
+  expect_get(TOK_KW_CASE);
+  expect_get(TOK_IDENTIFIER, "unit");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_LIT_STRING, "invalid input");
+  expect_get(TOK_EOL);
+
+  //     case _ => "negative integer"
+  expect_get(TOK_KW_CASE);
+  expect_get(TOK_UNDERSCORE);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_LIT_STRING, "negative integer");
+  expect_get(TOK_EOL);
+
+  // def describeAmount(value: Amount): String =
+  expect_get(TOK_DEDENT); // Leaving 4 spaces
+  expect_get(TOK_DEDENT); // Leaving 2 spaces (back to margin)
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "describeAmount");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_COLON);
+  expect_get(TOK_IDENTIFIER, "Amount");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_STRING);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   value match
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_KW_MATCH);
+  expect_get(TOK_EOL);
+
+  //     case n: Double =>
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_KW_CASE);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_DOUBLE);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_EOL);
+
+  //       val text = toStr(n)
+  expect_get(TOK_INDENT); // 6 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "toStr");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //       "amount: " + text
+  expect_get(TOK_LIT_STRING, "amount: ");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_EOL);
+
+  //     case _ => "invalid amount"
+  expect_get(TOK_DEDENT); // Back to 4 spaces
+  expect_get(TOK_KW_CASE);
+  expect_get(TOK_UNDERSCORE);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_LIT_STRING, "invalid amount");
+  expect_get(TOK_EOL);
+
+  // @main def algebdtExample(): Unit =
+  expect_get(TOK_DEDENT); // Leaving 4 spaces
+  expect_get(TOK_DEDENT); // Leaving 2 spaces (back to margin)
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "algebdtExample");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   val input: Input = readIntMaybe()
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "input");
+  expect_get(TOK_COLON);
+  expect_get(TOK_IDENTIFIER, "Input");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "readIntMaybe");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val first = describe(input)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "first");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "describe");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "input");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val point = Point(2, 3)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "point");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "Point");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_LIT_INT, "3");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val second = describe(point)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "second");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "describe");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "point");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val amount: Amount = readDoubleMaybe()
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "amount");
+  expect_get(TOK_COLON);
+  expect_get(TOK_IDENTIFIER, "Amount");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "readDoubleMaybe");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val third = describeAmount(amount)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "third");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "describeAmount");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "amount");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(first)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "first");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\n")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(second)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "second");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\n")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(third)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "third");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\n")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // Final cleanup before EOF
+  expect_get(TOK_DEDENT);
+
+  expect_eof();
+}
+
+TEST_F(LexerFixture, ExtensionBOOLTHEN) {
+  // Read the source code from the external file
+  std::ifstream file("examples/extensions/boolthen.scala");
+  ASSERT_TRUE(file.is_open())
+      << "Failed to open file: examples/extensions/boolthen.scala";
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  feed(buffer.str());
+
+  // Line 1: Comment is ignored
+
+  // import ifj26.*
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  // def negate(value: Boolean): Boolean = !value
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "negate");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_BOOLEAN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_BOOLEAN);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_NOT);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_EOL);
+
+  // @main def boolthenExample(): Unit =
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "boolthenExample");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   val enabled = readBoolean()
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "enabled");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "readBoolean");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   var divisor = 0
+  expect_get(TOK_KW_VAR);
+  expect_get(TOK_IDENTIFIER, "divisor");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_EOL);
+
+  //   if enabled then
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "enabled");
+  expect_get(TOK_KW_THEN);
+  expect_get(TOK_EOL);
+
+  //     divisor = 2
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_IDENTIFIER, "divisor");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_EOL);
+
+  //   else
+  expect_get(TOK_DEDENT); // Back to 2 spaces
+  expect_get(TOK_KW_ELSE);
+  expect_get(TOK_EOL);
+
+  //     ()
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val safe = divisor != 0 && (10 / divisor > 1)
+  expect_get(TOK_DEDENT); // Back to 2 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "safe");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "divisor");
+  expect_get(TOK_NOT_EQ);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_AND);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "10");
+  expect_get(TOK_DIV);
+  expect_get(TOK_IDENTIFIER, "divisor");
+  expect_get(TOK_GREATER_T);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val inverted = negate(enabled)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "inverted");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "negate");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "enabled");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val either = enabled || inverted
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "either");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "enabled");
+  expect_get(TOK_OR);
+  expect_get(TOK_IDENTIFIER, "inverted");
+  expect_get(TOK_EOL);
+
+  //   print("safe: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "safe: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(safe)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "safe");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\neither: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\neither: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(either)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "either");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\n")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   if safe then
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "safe");
+  expect_get(TOK_KW_THEN);
+  expect_get(TOK_EOL);
+
+  //     print("ready\n")
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "ready\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   else if enabled then
+  expect_get(TOK_DEDENT); // Back to 2 spaces for "else"
+  expect_get(TOK_KW_ELSE);
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "enabled");
+  expect_get(TOK_KW_THEN);
+  expect_get(TOK_EOL);
+
+  //     print("blocked\n")
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "blocked\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   else
+  expect_get(TOK_DEDENT); // Back to 2 spaces
+  expect_get(TOK_KW_ELSE);
+  expect_get(TOK_EOL);
+
+  //     print("disabled\n")
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "disabled\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   if !enabled then  // podpora podminek bez vetve else
+  expect_get(TOK_DEDENT); // Back to 2 spaces
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_NOT);
+  expect_get(TOK_IDENTIFIER, "enabled");
+  expect_get(TOK_KW_THEN);
+  expect_get(TOK_EOL);
+
+  //     print("input was false\n")
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "input was false\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // Final cleanup before EOF
+  // Program ends while indented at 4 spaces, so two dedents are required (4->2,
+  // 2->0).
+  expect_get(TOK_DEDENT);
+  expect_get(TOK_DEDENT);
+
+  expect_eof();
+}
+
+TEST_F(LexerFixture, ExtensionCONTROL) {
+  // Read the source code from the external file
+  std::ifstream file("examples/extensions/control.scala");
+  ASSERT_TRUE(file.is_open())
+      << "Failed to open file: examples/extensions/control.scala";
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  feed(buffer.str());
+
+  // Line 1: Comment is ignored
+
+  // import ifj26.*
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  // @main def controlExample(): Unit =
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "controlExample");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   val limit = 9
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "limit");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "9");
+  expect_get(TOK_EOL);
+
+  //   val step = 2
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "step");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_EOL);
+
+  //   val sign = if limit < 0 then -1 else if limit == 0 then 0 else 1
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "sign");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "limit");
+  expect_get(TOK_LOWER_T);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_KW_THEN);
+  // 'then' is not in is_binary_operator, so '-' is unary.
+  expect_get(TOK_UNARY_MINUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_KW_ELSE);
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "limit");
+  expect_get(TOK_EQUAL);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_KW_THEN);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_KW_ELSE);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EOL);
+
+  //   var sum = 0
+  expect_get(TOK_KW_VAR);
+  expect_get(TOK_IDENTIFIER, "sum");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_EOL);
+
+  //   for
+  expect_get(TOK_KW_FOR);
+  expect_get(TOK_EOL);
+
+  //     i <- 1 to limit by step
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_ARROW_LEFT);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_IDENTIFIER, "to");
+  expect_get(TOK_IDENTIFIER, "limit");
+  expect_get(TOK_IDENTIFIER, "by");
+  expect_get(TOK_IDENTIFIER, "step");
+  expect_get(TOK_EOL);
+
+  //     if i != 5
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_NOT_EQ);
+  expect_get(TOK_LIT_INT, "5");
+  expect_get(TOK_EOL);
+
+  //     if i < 9
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_LOWER_T);
+  expect_get(TOK_LIT_INT, "9");
+  expect_get(TOK_EOL);
+
+  //   do
+  expect_get(TOK_DEDENT); // Back to 2 spaces
+  expect_get(TOK_KW_DO);
+  expect_get(TOK_EOL);
+
+  //     sum = sum + i
+  expect_get(TOK_INDENT); // 4 spaces inside the 'for' loop body
+  expect_get(TOK_IDENTIFIER, "sum");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "sum");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_EOL);
+
+  //   print("sign: ")
+  expect_get(TOK_DEDENT); // Back to 2 spaces
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "sign: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(sign)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "sign");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\nsum: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\nsum: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(sum)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "sum");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\ndescending:")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\ndescending:");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   for i <- 6 to 2 by -2 do
+  expect_get(TOK_KW_FOR);
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_ARROW_LEFT);
+  expect_get(TOK_LIT_INT, "6");
+  expect_get(TOK_IDENTIFIER, "to");
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_IDENTIFIER, "by");
+  expect_get(TOK_UNARY_MINUS);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_KW_DO);
+  expect_get(TOK_EOL);
+
+  //     print(" ")
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, " ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //     print(i)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\n")
+  expect_get(TOK_DEDENT); // Back to 2 spaces
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("exclusive:")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "exclusive:");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   for i <- 0 until 3 do
+  expect_get(TOK_KW_FOR);
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_ARROW_LEFT);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_IDENTIFIER, "until");
+  expect_get(TOK_LIT_INT, "3");
+  expect_get(TOK_KW_DO);
+  expect_get(TOK_EOL);
+
+  //     print(" ")
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, " ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //     print(i)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\n")
+  expect_get(TOK_DEDENT); // Back to 2 spaces
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // Final cleanup before EOF
+  // Program ends while indented at 2 spaces, so one dedent is required (2->0).
+  expect_get(TOK_DEDENT);
+
+  expect_eof();
+}
+
+TEST_F(LexerFixture, ExtensionEXTKW) {
+  // Read the source code from the external file
+  std::ifstream file("examples/extensions/extkw.scala");
+  ASSERT_TRUE(file.is_open())
+      << "Failed to open file: examples/extensions/extkw.scala";
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  feed(buffer.str());
+
+  // Line 1: Comment is ignored
+
+  // import ifj26.*
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  // extension (value: Int)  // klicove slovo extension definuje metody na typu
+  // Int
+  expect_get(TOK_KW_EXTENSION);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   def twice: Int = value * 2  // bezparametricka metoda (volana bez ())
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "twice");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_MUL);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_EOL);
+
+  //   def label(): String =  // metoda s prazdnym seznamem parametru (volana s
+  //   ())
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "label");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_STRING);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //     val text = toStr(value)
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "toStr");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //     "value=" + text
+  expect_get(TOK_LIT_STRING, "value=");
+  expect_get(TOK_BINARY_PLUS); // Correctly evaluated as binary because prev is
+                               // LIT_STRING
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_EOL);
+
+  //   def plus(other: Int): Int = value + other
+  expect_get(TOK_DEDENT); // Back to 2 spaces
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "plus");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "other");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_IDENTIFIER, "other");
+  expect_get(TOK_EOL);
+
+  // @main def extkwExample(): Unit =
+  expect_get(TOK_DEDENT); // Leaving 2 spaces (back to margin)
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "extkwExample");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   val n = 6
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "6");
+  expect_get(TOK_EOL);
+
+  //   val doubled = n.twice
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "doubled");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "twice");
+  expect_get(TOK_EOL);
+
+  //   val increased = n.plus(3)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "increased");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "plus");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "3");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val text = n.label()
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "n");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "label");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(text)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "text");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\ntwice: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\ntwice: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(doubled)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "doubled");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\nplus: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\nplus: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(increased)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "increased");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\n")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // Final cleanup before EOF
+  // Program ends while indented at 2 spaces inside @main, so one dedent is
+  // required (2->0).
+  expect_get(TOK_DEDENT);
+
+  expect_eof();
+}
+
+TEST_F(LexerFixture, ExtensionFUNEXP) {
+  // Read the source code from the external file
+  std::ifstream file("examples/extensions/funexp.scala");
+  ASSERT_TRUE(file.is_open())
+      << "Failed to open file: examples/extensions/funexp.scala";
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  feed(buffer.str());
+
+  // Line 1: Comment is ignored
+
+  // import ifj26.*
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  // def traced(value: Int): Int =
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "traced");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   print("[")
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "[");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(value)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("]")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "]");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   value
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_EOL);
+
+  // @main def funexpExample(): Unit =
+  expect_get(TOK_DEDENT); // Back to margin (0 spaces)
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "funexpExample");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   val result = traced(2) + 3 * traced(traced(4) + 1)
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "result");
+  expect_get(TOK_ASSIGN);
+
+  // traced(2)
+  expect_get(TOK_IDENTIFIER, "traced");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_R_PAREN);
+
+  // + 3 *
+  // '+' is evaluated as binary because the previous token was ')'
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_LIT_INT, "3");
+  expect_get(TOK_MUL);
+
+  // traced(
+  expect_get(TOK_IDENTIFIER, "traced");
+  expect_get(TOK_L_PAREN);
+
+  // traced(4)
+  expect_get(TOK_IDENTIFIER, "traced");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "4");
+  expect_get(TOK_R_PAREN);
+
+  // + 1)
+  // '+' is evaluated as binary because the previous token was ')'
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\nresult: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\nresult: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(toStr(result))
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "toStr");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "result");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\n")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // Final cleanup before EOF
+  // Program ends while indented at 2 spaces inside @main, so one dedent is
+  // required (2->0).
+  expect_get(TOK_DEDENT);
+
+  expect_eof();
+}
+
+TEST_F(LexerFixture, ExtensionINTERPOLATEDS) {
+  // Read the source code from the external file
+  std::ifstream file("examples/extensions/interpolateds.scala");
+  ASSERT_TRUE(file.is_open())
+      << "Failed to open file: examples/extensions/interpolateds.scala";
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  feed(buffer.str());
+
+  // Line 1: Comment is ignored
+
+  // import ifj26.*
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  // @main def interpolatedsExample(): Unit =
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "interpolatedsExample");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   val course = "IFJ"
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "course");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_STRING, "IFJ");
+  expect_get(TOK_EOL);
+
+  //   val year = 26
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "year");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "26");
+  expect_get(TOK_EOL);
+
+  //   val count = 2
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "count");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_EOL);
+
+  //   val message = s"$course$year: ${count + 1} examples cost $$0."
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "message");
+  expect_get(TOK_ASSIGN);
+
+  // Interpolated string starts here.
+  // 1. Lexer sees s"$" immediately, so the first part is empty.
+  expect_get(TOK_LIT_INTERP_STRING_PART, "");
+  expect_get(TOK_IDENTIFIER, "course");
+
+  // 2. Immediate next is "$", another empty part is yielded.
+  expect_get(TOK_LIT_INTERP_STRING_PART, "");
+  expect_get(TOK_IDENTIFIER, "year");
+
+  // 3. ": ${"
+  expect_get(TOK_LIT_INTERP_STRING_PART, ": ");
+  expect_get(TOK_EXPRESSION_START);
+  expect_get(TOK_IDENTIFIER, "count");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EXPRESSION_END);
+
+  // 4. " examples cost $$0." (the '$$' is converted to '$')
+  expect_get(TOK_LIT_INTERP_STRING_END, " examples cost $0.");
+  expect_get(TOK_EOL);
+
+  //   val multiline = s"""He said "hello", $course.\nNext year: ${year + 1}."""
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "multiline");
+  expect_get(TOK_ASSIGN);
+
+  // 1. Multiline interpolated string up to $course
+  expect_get(TOK_LIT_INTERP_M_STRING_PART, "He said \"hello\", ");
+  expect_get(TOK_IDENTIFIER, "course");
+
+  // 2. After $course up to ${
+  // NOTE: Lexer evaluates '\n' directly into string literal
+  expect_get(TOK_LIT_INTERP_M_STRING_PART, ".\nNext year: ");
+
+  // 3. Expression block
+  expect_get(TOK_EXPRESSION_START);
+  expect_get(TOK_IDENTIFIER, "year");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EXPRESSION_END);
+
+  // 4. End of string "."
+  expect_get(TOK_LIT_INTERP_M_STRING_END, ".");
+  expect_get(TOK_EOL);
+
+  //   print(message)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "message");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\n")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(multiline)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "multiline");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\n")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // Final cleanup before EOF
+  // Program ends while indented at 2 spaces inside @main, so one dedent is
+  // required (2->0).
+  expect_get(TOK_DEDENT);
+
+  expect_eof();
+}
+
+TEST_F(LexerFixture, ExtensionLAMBDAS) {
+  // Read the source code from the external file
+  std::ifstream file("examples/extensions/lambdas.scala");
+  ASSERT_TRUE(file.is_open())
+      << "Failed to open file: examples/extensions/lambdas.scala";
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  feed(buffer.str());
+
+  // Line 1: Comment is ignored
+
+  // import ifj26.*
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  // def increment(value: Int): Int = value + 1
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "increment");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EOL);
+
+  // def applyTwice(value: Int, function: (Int) => Int): Int =
+  // function(function(value))
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "applyTwice");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_COMMA);
+  expect_get(TOK_IDENTIFIER, "function");
+  expect_get(TOK_COLON);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "function");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "function");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // def multiplier(): (Int) => Int = (value: Int) => value * 2
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "multiplier");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_MUL);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_EOL);
+
+  // @main def lambdasExample(): Unit =
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "lambdasExample");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   val addOne: (Int) => Int = increment
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "addOne");
+  expect_get(TOK_COLON);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "increment");
+  expect_get(TOK_EOL);
+
+  //   val double: (Int) => Int = multiplier()
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "double");
+  expect_get(TOK_COLON);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "multiplier");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val first = applyTwice(3, addOne)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "first");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "applyTwice");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "3");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_IDENTIFIER, "addOne");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val second = applyTwice(3, double)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "second");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "applyTwice");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "3");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_IDENTIFIER, "double");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val sum: (Int, Int) => Int = (left: Int, right: Int) => left + right
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "sum");
+  expect_get(TOK_COLON);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_COMMA);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "left");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_COMMA);
+  expect_get(TOK_IDENTIFIER, "right");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_IDENTIFIER, "left");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_IDENTIFIER, "right");
+  expect_get(TOK_EOL);
+
+  //   print(sum(first, second))
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "sum");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "first");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_IDENTIFIER, "second");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\n")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // Final cleanup before EOF (Program ends while indented at 2 spaces, requires
+  // 1 dedent).
+  expect_get(TOK_DEDENT);
+
+  expect_eof();
+}
+
+TEST_F(LexerFixture, ExtensionLISTS) {
+  // Read the source code from the external file
+  std::ifstream file("examples/extensions/lists.scala");
+  ASSERT_TRUE(file.is_open())
+      << "Failed to open file: examples/extensions/lists.scala";
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  feed(buffer.str());
+
+  // Line 1: Comment is ignored
+
+  // import ifj26.*
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  // @main def listsExample(): Unit =
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "listsExample");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   val values: List[Int] = (1 to 6).toList
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "values");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_LIST);
+  expect_get(TOK_L_BRACKET);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_BRACKET);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_IDENTIFIER, "to");
+  expect_get(TOK_LIT_INT, "6");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "toList");
+  expect_get(TOK_EOL);
+
+  //   val joined = values ++ List(7, 8)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "joined");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "values");
+  expect_get(TOK_CONCAT_LIST);
+  expect_get(TOK_KW_LIST);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "7");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_LIT_INT, "8");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val middle = joined.drop(1).take(5).slice(1, 4)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "middle");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "joined");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "drop");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "take");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "5");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "slice");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_LIT_INT, "4");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val first = middle.head
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "first");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "middle");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "head");
+  expect_get(TOK_EOL);
+
+  //   val rest = middle.tail
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "rest");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "middle");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "tail");
+  expect_get(TOK_EOL);
+
+  //   val indexed = middle(1)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "indexed");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "middle");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val selected = joined.filter((value: Int) => value >= 3 && value <= 6)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "selected");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "joined");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "filter");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_GREATER_EQ);
+  expect_get(TOK_LIT_INT, "3");
+  expect_get(TOK_AND);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_LOWER_EQ);
+  expect_get(TOK_LIT_INT, "6");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val prefix = joined.takeWhile((value: Int) => value < 4)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "prefix");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "joined");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "takeWhile");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_LOWER_T);
+  expect_get(TOK_LIT_INT, "4");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val suffix = joined.dropWhile((value: Int) => value < 6)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "suffix");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "joined");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "dropWhile");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_ARROW_RIGHT);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_LOWER_T);
+  expect_get(TOK_LIT_INT, "6");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val empty: List[Int] = List()
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "empty");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_LIST);
+  expect_get(TOK_L_BRACKET);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_BRACKET);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_KW_LIST);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val descending = List.range(5, 0, -2)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "descending");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_KW_LIST);
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "range");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "5");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_UNARY_MINUS); // Unary minus after comma
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   var sum = 0
+  expect_get(TOK_KW_VAR);
+  expect_get(TOK_IDENTIFIER, "sum");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_EOL);
+
+  //   for
+  expect_get(TOK_KW_FOR);
+  expect_get(TOK_EOL);
+
+  //     value <- selected
+  expect_get(TOK_INDENT); // 4 spaces
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_ARROW_LEFT);
+  expect_get(TOK_IDENTIFIER, "selected");
+  expect_get(TOK_EOL);
+
+  //     if value != 4
+  expect_get(TOK_KW_IF);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_NOT_EQ);
+  expect_get(TOK_LIT_INT, "4");
+  expect_get(TOK_EOL);
+
+  //   do
+  expect_get(TOK_DEDENT); // Back to 2 spaces
+  expect_get(TOK_KW_DO);
+  expect_get(TOK_EOL);
+
+  //     sum = sum + value
+  expect_get(TOK_INDENT); // 4 spaces inside for body
+  expect_get(TOK_IDENTIFIER, "sum");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "sum");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_EOL);
+
+  //   print(middle.toString)
+  expect_get(TOK_DEDENT); // Back to 2 spaces
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "middle");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "toString");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\nhead: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\nhead: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(first)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "first");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\nindex 1: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\nindex 1: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(indexed)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "indexed");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\ntail: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\ntail: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(rest)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "rest");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\nfilter: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\nfilter: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(selected)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "selected");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\ntakeWhile: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\ntakeWhile: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(prefix)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "prefix");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\ndropWhile: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\ndropWhile: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(suffix)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "suffix");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\nempty: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\nempty: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(empty)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "empty");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\nrange: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\nrange: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(descending)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "descending");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\nsum: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\nsum: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(sum)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "sum");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\n")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // Final cleanup before EOF
+  // Program ends while indented at 2 spaces inside @main, so one dedent is
+  // required (2->0).
+  expect_get(TOK_DEDENT);
+
+  expect_eof();
+}
+
+TEST_F(LexerFixture, ExtensionPARAMLISTS) {
+  // Read the source code from the external file
+  std::ifstream file("examples/extensions/paramlists.scala");
+  ASSERT_TRUE(file.is_open())
+      << "Failed to open file: examples/extensions/paramlists.scala";
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  feed(buffer.str());
+
+  // Line 1: Comment is ignored
+
+  // import ifj26.*
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  // def answer: Int =
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "answer");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   print("answer\n")
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "answer\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   40
+  expect_get(TOK_LIT_INT, "40");
+  expect_get(TOK_EOL);
+
+  // def add(left: Int)(middle: Int)(right: Int): Int = left + middle + right
+  expect_get(TOK_DEDENT); // Back to margin (0 spaces)
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "add");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "left");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "middle");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "right");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "left");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_IDENTIFIER, "middle");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_IDENTIFIER, "right");
+  expect_get(TOK_EOL);
+
+  // def offset()(value: Int): Int = value + 1
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "offset");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_INT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "value");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EOL);
+
+  // @main def paramlistsExample(): Unit =
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "paramlistsExample");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   val first = answer
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "first");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "answer");
+  expect_get(TOK_EOL);
+
+  //   val second = answer
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "second");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "answer");
+  expect_get(TOK_EOL);
+
+  //   val total = add(first)(second)(2)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "total");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "add");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "first");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "second");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val result = offset()(total)
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "result");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "offset");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "total");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(result)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "result");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\n")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // Final cleanup before EOF (Program ends while indented at 2 spaces, requires
+  // 1 dedent).
+  expect_get(TOK_DEDENT);
+
+  expect_eof();
+}
+
+TEST_F(LexerFixture, ExtensionVALMEM) {
+  // Read the source code from the external file
+  std::ifstream file("examples/extensions/valmem.scala");
+  ASSERT_TRUE(file.is_open())
+      << "Failed to open file: examples/extensions/valmem.scala";
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  feed(buffer.str());
+
+  // Line 1: Comment is ignored
+
+  // import ifj26.*
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  // @main def valmemExample(): Unit =
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "valmemExample");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  //   val number = -3.75
+  expect_get(TOK_INDENT); // 2 spaces
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "number");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_UNARY_MINUS); // Unary minus after assign operator
+  expect_get(TOK_LIT_DOUBLE, "3.75");
+  expect_get(TOK_EOL);
+
+  //   val truncated = number.toInt
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "truncated");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "number");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "toInt");
+  expect_get(TOK_EOL);
+
+  //   val floored = number.floor
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "floored");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "number");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "floor");
+  expect_get(TOK_EOL);
+
+  //   val floorInt = number.floor.toInt
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "floorInt");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "number");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "floor");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "toInt");
+  expect_get(TOK_EOL);
+
+  //   val digits = truncated.toString
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "digits");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "truncated");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "toString");
+  expect_get(TOK_EOL);
+
+  //   val length = "IFJ26".length
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_STRING, "IFJ26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_EOL);
+
+  //   val done: Unit = ()
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "done");
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   val unitText = done.toString
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "unitText");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_IDENTIFIER, "done");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "toString");
+  expect_get(TOK_EOL);
+
+  //   print("truncated: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "truncated: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(digits)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "digits");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\nfloor: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\nfloor: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(floored)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "floored");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\nfloor Int: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\nfloor Int: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(floorInt)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "floorInt");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\nlength: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\nlength: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(length)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\nUnit: ")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\nUnit: ");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print(unitText)
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_IDENTIFIER, "unitText");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  //   print("\n")
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "\n");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+
+  // Final cleanup before EOF (Program ends while indented at 2 spaces, requires
+  // 1 dedent).
+  expect_get(TOK_DEDENT);
+
+  expect_eof();
+}
