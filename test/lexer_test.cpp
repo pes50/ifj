@@ -909,7 +909,7 @@ TEST_F(LexerFixture, NestedForLoopWithSoftKeywordsAsIdentifiers) {
   expect_get(TOK_IDENTIFIER, "by");
   expect_get(TOK_IDENTIFIER, "until");
   expect_get(TOK_IDENTIFIER, "step");
-  expect_get(TOK_UNARY_MINUS);
+  expect_get(TOK_BINARY_MINUS);
   expect_get(TOK_LIT_INT, "1");
   expect_get(TOK_KW_DO);
   expect_get(TOK_EOL);
@@ -926,4 +926,21 @@ TEST_F(LexerFixture, NestedForLoopWithSoftKeywordsAsIdentifiers) {
   expect_get(TOK_DEDENT);
   expect_get(TOK_DEDENT);
   expect_eof();
+}
+
+TEST_F(LexerFixture, ForLoopNegativeBoundsAndStep) {
+  feed("for i <- -5 to -1 by -2 do\n");
+  expect_get(TOK_KW_FOR);
+  expect_get(TOK_IDENTIFIER, "i");
+  expect_get(TOK_ARROW_LEFT);
+  expect_get(TOK_UNARY_MINUS);
+  expect_get(TOK_LIT_INT, "5");
+  expect_get(TOK_IDENTIFIER, "to");
+  expect_get(TOK_UNARY_MINUS);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_IDENTIFIER, "by");
+  expect_get(TOK_UNARY_MINUS);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_KW_DO);
+  expect_get(TOK_EOL);
 }
