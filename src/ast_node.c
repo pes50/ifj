@@ -71,6 +71,7 @@ void destroy_node(ast_node_t *node) {
     free(node->data.variable_declaration.name);
     destroy_node(node->data.variable_declaration.expression);
     destroy_type_node(node->data.variable_declaration.data_type);
+    free(node->data.variable_declaration.unique_id);
     break;
   case AST_ASSIGNMENT:
     free(node->data.assignment.name);

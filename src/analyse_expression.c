@@ -1031,32 +1031,35 @@ err_code_t analyse_expression(ast_node_t *node, hashtable_t *symtable,
     }
     break;
   case AST_IDENTIFIER: {
-    err =
-        ht_get_item(symtable, node->data.identifier.name, (void **)&table_node);
-    if (err == NO_ERR) {
-      if (table_node->type == AST_LIST_CONSTRUCTOR) {
-        err = duplicate_type_node(&generic_list_node, &node->data_type);
-        break;
-      }
-      if (table_node->type != AST_VARIABLE_DECLARATION &&
-          table_node->type != AST_PARAMETER) {
-        if (table_node->type == AST_FUNCTION_DECLARATION) {
-          char *identifier = node->data.identifier.name;
-          node->type = AST_FUNCTION_CALL;
-          node->data.function_call.argument_lists = NULL;
-          node->data.function_call.name = identifier;
-          node->data.function_call.calling = table_node;
-          RETURN_ERR(analyse_function_call(identifier, node, symtable, NULL));
-        }
-        RETURN_ERR(OTHER_SEMANTIC_ERR);
-      }
-      if (table_node->data_type == NULL) {
-        err = OTHER_SEMANTIC_ERR;
-      } else {
-        err = duplicate_type_node(table_node->data_type, &node->data_type);
-      }
+    char *identifier = node->data.identifier.name;
+    err = ht_get_item(symtable, identifier, (void **)&table_node);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
     }
-    break;
+
+    if (table_node->data_type == NULL) {
+      RETURN_ERR(OTHER_SEMANTIC_ERR);
+    }
+
+    if (table_node->type == AST_LIST_CONSTRUCTOR) {
+      err = duplicate_type_node(&generic_list_node, &node->data_type);
+      break;
+    }
+
+    if (table_node->type == AST_FUNCTION_DECLARATION) {
+      node->type = AST_FUNCTION_CALL;
+      node->data.function_call.argument_lists = NULL;
+      node->data.function_call.name = identifier;
+      node->data.function_call.calling = table_node;
+      RETURN_ERR(analyse_function_call(identifier, node, symtable, NULL));
+    }
+
+    if (table_node->type == AST_VARIABLE_DECLARATION ||
+        table_node->type == AST_PARAMETER) {
+      node->data.identifier.calling = table_node;
+      RETURN_ERR(duplicate_type_node(table_node->data_type, &node->data_type));
+    }
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
   case AST_LITERAL:
     err = duplicate_type_node(node->data.literal.data_type, &node->data_type);
