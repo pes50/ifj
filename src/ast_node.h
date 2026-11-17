@@ -122,6 +122,7 @@ typedef struct ast_node_t {
       bool is_const;
       struct ast_node_t *expression;
       data_type_node_t *data_type;
+      char *id;
     } variable_declaration;
 
     struct {
@@ -176,6 +177,7 @@ typedef struct ast_node_t {
 
     struct {
       char *name;
+      struct ast_node_t *calling;
     } identifier;
 
     struct {
