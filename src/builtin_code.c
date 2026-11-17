@@ -157,12 +157,14 @@ inner_statement_t to_int_code = {
 static inner_statement_t print_s15 = {
     .operation = INNER_RETURN,
     .next_statement = NULL,
+    .is_static = true,
 };
 
 // POPFRAME
 static inner_statement_t print_s14 = {
     .operation = INNER_POPFRAME,
     .next_statement = &print_s15,
+    .is_static = true,
 };
 
 // PUSHS nil@nil
@@ -171,9 +173,10 @@ static inner_statement_t print_s13 = {
     .destination =
         {
             .type = INNER_SYM_CONST,
-            .data.identificator = "nil@nil",
+            .data.constant.datatype = INNER_NIL,
         },
     .next_statement = &print_s14,
+    .is_static = true,
 };
 
 // LABEL print_end
@@ -185,17 +188,23 @@ static inner_statement_t print_s12 = {
             .data.identificator = "print_end",
         },
     .next_statement = &print_s13,
+    .is_static = true,
 };
 
-// WRITE string@\032()\032   Print " () " in case Unit type was given.
+// WRITE " () "   Print " () " in case Unit type was given.
 static inner_statement_t print_s11 = {
     .operation = INNER_WRITE,
     .destination =
         {
             .type = INNER_SYM_CONST,
-            .data.identificator = "string@\032()\032",
+            .data.constant =
+                {
+                    .datatype = INNER_STRING,
+                    .value.inner_string = " () ",
+                },
         },
     .next_statement = &print_s12,
+    .is_static = true,
 };
 
 // LABEL print_unit
@@ -207,6 +216,7 @@ static inner_statement_t print_s10 = {
             .data.identificator = "print_unit",
         },
     .next_statement = &print_s11,
+    .is_static = true,
 };
 
 // JUMP print_end
@@ -218,6 +228,7 @@ static inner_statement_t print_s9 = {
             .data.identificator = "print_end",
         },
     .next_statement = &print_s10,
+    .is_static = true,
 };
 
 // WRITE LF@value
@@ -229,6 +240,7 @@ static inner_statement_t print_s8 = {
             .data.identificator = "LF@value",
         },
     .next_statement = &print_s9,
+    .is_static = true,
 };
 
 // JUMPIFEQ print_unit LF@type string@nil
@@ -247,9 +259,14 @@ static inner_statement_t print_s7 = {
     .second_op =
         {
             .type = INNER_SYM_CONST,
-            .data.identificator = "string@nil",
+            .data.constant =
+                {
+                    .datatype = INNER_STRING,
+                    .value.inner_string = "nil",
+                },
         },
     .next_statement = &print_s8,
+    .is_static = true,
 };
 
 // TYPE LF@type LF@value
@@ -266,6 +283,7 @@ static inner_statement_t print_s6 = {
             .data.identificator = "LF@value",
         },
     .next_statement = &print_s7,
+    .is_static = true,
 };
 
 // POPS LF@value
@@ -277,6 +295,7 @@ static inner_statement_t print_s5 = {
             .data.identificator = "LF@value",
         },
     .next_statement = &print_s6,
+    .is_static = true,
 };
 
 // DEFVAR LF@type
@@ -288,6 +307,7 @@ static inner_statement_t print_s4 = {
             .data.identificator = "LF@type",
         },
     .next_statement = &print_s5,
+    .is_static = true,
 };
 
 // DEFVAR LF@value
@@ -299,18 +319,21 @@ static inner_statement_t print_s3 = {
             .data.identificator = "LF@value",
         },
     .next_statement = &print_s4,
+    .is_static = true,
 };
 
 // PUSHFRAME
 static inner_statement_t print_s2 = {
     .operation = INNER_PUSHFRAME,
     .next_statement = &print_s3,
+    .is_static = true,
 };
 
 // CREATEFRAME
 static inner_statement_t print_s1 = {
     .operation = INNER_CREATEFRAME,
     .next_statement = &print_s2,
+    .is_static = true,
 };
 
 // LABEL print
@@ -322,6 +345,7 @@ inner_statement_t print_code = {
             .data.identificator = "print",
         },
     .next_statement = &print_s1,
+    .is_static = true,
 };
 
 /**
@@ -332,12 +356,14 @@ inner_statement_t print_code = {
 static inner_statement_t readline_s12 = {
     .operation = INNER_RETURN,
     .next_statement = NULL,
+    .is_static = true,
 };
 
 // POPFRAME
 static inner_statement_t readline_s11 = {
     .operation = INNER_POPFRAME,
     .next_statement = &readline_s12,
+    .is_static = true,
 };
 
 // PUSHS LF@readed_value
@@ -346,9 +372,10 @@ static inner_statement_t readline_s10 = {
     .destination =
         {
             .type = INNER_SYM_VAR,
-            .data.identificator = "LF@retval",
+            .data.identificator = "LF@readed_value",
         },
     .next_statement = &readline_s11,
+    .is_static = true,
 };
 
 // LABEL read_line_end
@@ -360,6 +387,7 @@ static inner_statement_t readline_s9 = {
             .data.identificator = "read_line_end",
         },
     .next_statement = &readline_s10,
+    .is_static = true,
 };
 
 // MOVE LF@readed_vale string@
@@ -373,9 +401,14 @@ static inner_statement_t readline_s8 = {
     .first_op =
         {
             .type = INNER_SYM_CONST,
-            .data.identificator = "string@",
+            .data.constant =
+                {
+                    .datatype = INNER_STRING,
+                    .value.inner_string = "",
+                },
         },
     .next_statement = &readline_s9,
+    .is_static = true,
 };
 
 // LABEL read_line_eof
@@ -387,9 +420,10 @@ static inner_statement_t readline_s7 = {
             .data.identificator = "read_line_eof",
         },
     .next_statement = &readline_s8,
+    .is_static = true,
 };
 
-// JUMP readline_end
+// JUMP read_line_end
 static inner_statement_t readline_s6 = {
     .operation = INNER_JUMP,
     .destination =
@@ -398,6 +432,7 @@ static inner_statement_t readline_s6 = {
             .data.identificator = "read_line_end",
         },
     .next_statement = &readline_s7,
+    .is_static = true,
 };
 
 // JUMPIFEQ readline_eof LF@readed_value nil@nil
@@ -416,9 +451,10 @@ static inner_statement_t readline_s5 = {
     .second_op =
         {
             .type = INNER_SYM_CONST,
-            .data.identificator = "nil@nil",
+            .data.constant.datatype = INNER_NIL,
         },
     .next_statement = &readline_s6,
+    .is_static = true,
 };
 
 // READ LF@readed_value string
@@ -435,6 +471,7 @@ static inner_statement_t readline_s4 = {
             .data.identificator = "string",
         },
     .next_statement = &readline_s5,
+    .is_static = true,
 };
 
 // DEFVAR LF@readed_value
@@ -446,18 +483,21 @@ static inner_statement_t readline_s3 = {
             .data.identificator = "LF@readed_value",
         },
     .next_statement = &readline_s4,
+    .is_static = true,
 };
 
 // PUSHFRAME
 static inner_statement_t readline_s2 = {
     .operation = INNER_PUSHFRAME,
     .next_statement = &readline_s3,
+    .is_static = true,
 };
 
 // CREATEFRAME
 static inner_statement_t readline_s1 = {
     .operation = INNER_CREATEFRAME,
     .next_statement = &readline_s2,
+    .is_static = true,
 };
 
 // LABEL readLine
@@ -469,6 +509,7 @@ inner_statement_t readline_code = {
             .data.identificator = "readLine",
         },
     .next_statement = &readline_s1,
+    .is_static = true,
 };
 
 /**
@@ -479,12 +520,14 @@ inner_statement_t readline_code = {
 static inner_statement_t readint_s12 = {
     .operation = INNER_RETURN,
     .next_statement = NULL,
+    .is_static = true,
 };
 
 // POPFRAME
 static inner_statement_t readint_s11 = {
     .operation = INNER_POPFRAME,
     .next_statement = &readint_s12,
+    .is_static = true,
 };
 
 // PUSHS LF@readed_value
@@ -496,6 +539,7 @@ static inner_statement_t readint_s10 = {
             .data.identificator = "LF@readed_value",
         },
     .next_statement = &readint_s11,
+    .is_static = true,
 };
 
 // LABEL read_int_end
@@ -507,6 +551,7 @@ static inner_statement_t readint_s9 = {
             .data.identificator = "read_int_end",
         },
     .next_statement = &readint_s10,
+    .is_static = true,
 };
 
 // MOVE LF@readed_value int@0
@@ -520,9 +565,14 @@ static inner_statement_t readint_s8 = {
     .first_op =
         {
             .type = INNER_SYM_CONST,
-            .data.identificator = "int@0",
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
         },
     .next_statement = &readint_s9,
+    .is_static = true,
 };
 
 // LABEL read_int_nil
@@ -534,6 +584,7 @@ static inner_statement_t readint_s7 = {
             .data.identificator = "read_int_nil",
         },
     .next_statement = &readint_s8,
+    .is_static = true,
 };
 
 // JUMP read_int_end
@@ -545,6 +596,7 @@ static inner_statement_t readint_s6 = {
             .data.identificator = "read_int_end",
         },
     .next_statement = &readint_s7,
+    .is_static = true,
 };
 
 // JUMPIFEQ read_int_nil LF@readed_value nil@nil
@@ -563,9 +615,10 @@ static inner_statement_t readint_s5 = {
     .second_op =
         {
             .type = INNER_SYM_CONST,
-            .data.identificator = "nil@nil",
+            .data.constant.datatype = INNER_NIL,
         },
     .next_statement = &readint_s6,
+    .is_static = true,
 };
 
 // READ LF@readed_value int
@@ -582,6 +635,7 @@ static inner_statement_t readint_s4 = {
             .data.identificator = "int",
         },
     .next_statement = &readint_s5,
+    .is_static = true,
 };
 
 // DEFVAR LF@readed_value
@@ -593,18 +647,21 @@ static inner_statement_t readint_s3 = {
             .data.identificator = "LF@readed_value",
         },
     .next_statement = &readint_s4,
+    .is_static = true,
 };
 
 // PUSHFRAME
 static inner_statement_t readint_s2 = {
     .operation = INNER_PUSHFRAME,
     .next_statement = &readint_s3,
+    .is_static = true,
 };
 
 // CREATEFRAME
 static inner_statement_t readint_s1 = {
     .operation = INNER_CREATEFRAME,
     .next_statement = &readint_s2,
+    .is_static = true,
 };
 
 // LABEL readInt
@@ -616,6 +673,7 @@ inner_statement_t readint_code = {
             .data.identificator = "readInt",
         },
     .next_statement = &readint_s1,
+    .is_static = true,
 };
 
 /**
@@ -626,12 +684,14 @@ inner_statement_t readint_code = {
 static inner_statement_t readdouble_s12 = {
     .operation = INNER_RETURN,
     .next_statement = NULL,
+    .is_static = true,
 };
 
 // POPFRAME
 static inner_statement_t readdouble_s11 = {
     .operation = INNER_POPFRAME,
     .next_statement = &readdouble_s12,
+    .is_static = true,
 };
 
 // PUSHS LF@readed_value
@@ -643,6 +703,7 @@ static inner_statement_t readdouble_s10 = {
             .data.identificator = "LF@readed_value",
         },
     .next_statement = &readdouble_s11,
+    .is_static = true,
 };
 
 // LABEL read_double_end
@@ -654,6 +715,7 @@ static inner_statement_t readdouble_s9 = {
             .data.identificator = "read_double_end",
         },
     .next_statement = &readdouble_s10,
+    .is_static = true,
 };
 
 // MOVE LF@readed_value float@0
@@ -667,9 +729,14 @@ static inner_statement_t readdouble_s8 = {
     .first_op =
         {
             .type = INNER_SYM_CONST,
-            .data.identificator = "float@0",
+            .data.constant =
+                {
+                    .datatype = INNER_FLOAT,
+                    .value.inner_float = 0.0,
+                },
         },
     .next_statement = &readdouble_s9,
+    .is_static = true,
 };
 
 // LABEL read_double_nil
@@ -681,6 +748,7 @@ static inner_statement_t readdouble_s7 = {
             .data.identificator = "read_double_nil",
         },
     .next_statement = &readdouble_s8,
+    .is_static = true,
 };
 
 // JUMP read_double_end
@@ -692,6 +760,7 @@ static inner_statement_t readdouble_s6 = {
             .data.identificator = "read_double_end",
         },
     .next_statement = &readdouble_s7,
+    .is_static = true,
 };
 
 // JUMPIFEQ read_double_nil LF@readed_value nil@nil
@@ -710,9 +779,10 @@ static inner_statement_t readdouble_s5 = {
     .second_op =
         {
             .type = INNER_SYM_CONST,
-            .data.identificator = "nil@nil",
+            .data.constant.datatype = INNER_NIL,
         },
     .next_statement = &readdouble_s6,
+    .is_static = true,
 };
 
 // READ LF@readed_value float
@@ -729,6 +799,7 @@ static inner_statement_t readdouble_s4 = {
             .data.identificator = "float",
         },
     .next_statement = &readdouble_s5,
+    .is_static = true,
 };
 
 // DEFVAR LF@readed_value
@@ -740,18 +811,21 @@ static inner_statement_t readdouble_s3 = {
             .data.identificator = "LF@readed_value",
         },
     .next_statement = &readdouble_s4,
+    .is_static = true,
 };
 
 // PUSHFRAME
 static inner_statement_t readdouble_s2 = {
     .operation = INNER_PUSHFRAME,
     .next_statement = &readdouble_s3,
+    .is_static = true,
 };
 
 // CREATEFRAME
 static inner_statement_t readdouble_s1 = {
     .operation = INNER_CREATEFRAME,
     .next_statement = &readdouble_s2,
+    .is_static = true,
 };
 
 // LABEL readDouble
@@ -763,4 +837,5 @@ inner_statement_t readdouble_code = {
             .data.identificator = "readDouble",
         },
     .next_statement = &readdouble_s1,
+    .is_static = true,
 };
