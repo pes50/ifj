@@ -16,7 +16,7 @@ DEBUG_CXXFLAGS = $(BASE_CXXFLAGS) -g -O0 -DDEBUG
 GTEST_LIBS = -lgtest -lgtest_main -pthread
 
 SRC_DIR = src
-TEST_DIR = test
+TEST_DIR = tests
 
 BUILD_DIR = build/release
 DEBUG_BUILD_DIR = build/debug
@@ -34,7 +34,11 @@ DEBUG_OBJS = $(patsubst $(SRC_DIR)/%.c, $(DEBUG_BUILD_DIR)/%.o, $(wildcard $(SRC
 DEBUG_OBJS_NO_MAIN = $(filter-out $(DEBUG_BUILD_DIR)/main.o, $(DEBUG_OBJS))
 DEBUG_TEST_OBJS = $(patsubst $(TEST_DIR)/%.cpp, $(DEBUG_BUILD_DIR)/test_%.o, $(TEST_SRCS))
 
-.PHONY: all debug clean test test-debug
+# Pack
+ARCHIVE = archive.zip
+EXTRA_FILES = rozdeleni rozsireni Makefile dokumentace.pdf
+
+.PHONY: all debug clean test test-debug pack
 
 # Release Targets
 all: $(EXECUTABLE)
@@ -76,8 +80,14 @@ $(DEBUG_BUILD_DIR)/test_%.o: $(TEST_DIR)/%.cpp | $(DEBUG_BUILD_DIR)
 $(BUILD_DIR) $(DEBUG_BUILD_DIR):
 	mkdir -p $@
 
+# Pack
+pack:
+	@rm -f $(ARCHIVE)
+	zip -r $(ARCHIVE) $(SRC_DIR) $(EXTRA_FILES) $(TEST_DIR)
+	./is_it_ok.sh $(ARCHIVE)
+
 # Cleanup
 clean:
-	rm -rf $(EXECUTABLE) $(TEST_EXECUTABLE) $(DEBUG_EXECUTABLE) $(DEBUG_TEST_EXECUTABLE) build
+	rm -rf $(EXECUTABLE) $(TEST_EXECUTABLE) $(DEBUG_EXECUTABLE) $(DEBUG_TEST_EXECUTABLE) build $(ARCHIVE)
 
 -include $(DEPS)
