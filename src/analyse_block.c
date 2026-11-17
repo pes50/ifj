@@ -331,6 +331,7 @@ err_code_t analyse_block(ast_node_t *node, hashtable_t *symtable,
     case AST_EXTENSION_DECLARATION:
     case AST_MATCH_CASE:
     case AST_LIST_CONSTRUCTOR:
+    case AST_BUILTIN_BODY:
       err = OTHER_SEMANTIC_ERR;
       break;
     case AST_FUNCTION_CALL:
