@@ -51,6 +51,8 @@ err_code_t else_stmt(token_t *token, ast_node_t **node);
 err_code_t else_stmt_tail(token_t *token, ast_node_t **node);
 err_code_t for_loop(token_t *token, ast_node_t **node);
 err_code_t gen(token_t *token, ast_node_t **iterator, ast_node_t **generator);
+err_code_t gen_tail(token_t *token, ast_node_t *expression,
+                    ast_node_t **generator);
 err_code_t guard_list(token_t *token, ast_node_t **node);
 err_code_t for_tail(token_t *token, ast_node_t **node);
 err_code_t while_loop(token_t *token, ast_node_t **node);
@@ -1129,7 +1131,148 @@ err_code_t for_loop(token_t *token, ast_node_t **node) {
   return ret;
 }
 
-err_code_t gen(token_t *token, ast_node_t **iterator, ast_node_t **generator) {}
+err_code_t gen(token_t *token, ast_node_t **iterator, ast_node_t **generator) {
+  if (token->type != TOK_IDENTIFIER) {
+    return SYNTAX_ERR;
+  }
+
+  char *name = string_duplicate(token->value);
+  if (name == NULL) {
+    return INTERNAL_ERR;
+  }
+
+  *iterator = create_parameter_node(name, NULL);
+  free(name);
+  if (*iterator == NULL) {
+    return INTERNAL_ERR;
+  }
+
+  token_clear(token);
+  err_code_t ret = lexer_get_token(token, FORBIDDEN);
+  if (ret != NO_ERR) {
+    destroy_node(*iterator);
+    return ret;
+  }
+
+  if (token->type != TOK_ARROW_LEFT) {
+    destroy_node(*iterator);
+    return SYNTAX_ERR;
+  }
+
+  token_clear(token);
+  ret = lexer_get_token(token, FORBIDDEN);
+  if (ret != NO_ERR) {
+    destroy_node(*iterator);
+    return ret;
+  }
+
+  ast_node_t *expression = NULL;
+  ret = expr(token, &expression);
+  if (ret != NO_ERR) {
+    destroy_node(*iterator);
+    return ret;
+  }
+
+  ret = gen_tail(token, expression, generator);
+  if (ret != NO_ERR) {
+    destroy_node(*iterator);
+    return ret;
+  }
+
+  return NO_ERR;
+}
+
+err_code_t gen_tail(token_t *token, ast_node_t *expression,
+                    ast_node_t **generator) {
+
+  if (token->type == TOK_KW_DO) {
+    *generator = expression;
+    return NO_ERR;
+  }
+
+  if (token->type == TOK_IDENTIFIER && strcmp(token->value, "to") == 0) {
+
+    token_clear(token);
+    err_code_t ret = lexer_get_token(token, FORBIDDEN);
+    if (ret != NO_ERR) {
+      destroy_node(expression);
+      return ret;
+    }
+
+    ast_node_t *to = NULL;
+    ret = expr(token, &to);
+    if (ret != NO_ERR) {
+      destroy_node(expression);
+      return ret;
+    }
+
+    node_append(expression, to);
+
+    if (token->type == TOK_IDENTIFIER && strcmp(token->value, "by") == 0) {
+      token_clear(token);
+      ret = lexer_get_token(token, FORBIDDEN);
+      if (ret != NO_ERR) {
+        destroy_node(expression);
+        return ret;
+      }
+
+      ast_node_t *step = NULL;
+      ret = expr(token, &step);
+      if (ret != NO_ERR) {
+        destroy_node(expression);
+        return ret;
+      }
+      node_append(expression, step);
+    }
+
+    ast_node_t *arguments = create_argument_list_node(expression);
+    if (arguments == NULL) {
+      destroy_node(expression);
+      return INTERNAL_ERR;
+    }
+
+    *generator = create_function_call_node("to", arguments);
+    if (*generator == NULL) {
+      destroy_node(arguments);
+      return INTERNAL_ERR;
+    }
+    return NO_ERR;
+  }
+
+  if (token->type == TOK_IDENTIFIER && strcmp(token->value, "until") == 0) {
+    token_clear(token);
+    err_code_t ret = lexer_get_token(token, FORBIDDEN);
+    if (ret != NO_ERR) {
+      destroy_node(expression);
+      return ret;
+    }
+
+    ast_node_t *until = NULL;
+    ret = expr(token, &until);
+    if (ret != NO_ERR) {
+      destroy_node(expression);
+      return ret;
+    }
+    node_append(expression, until);
+
+    ast_node_t *arguments = create_argument_list_node(expression);
+    if (arguments == NULL) {
+      destroy_node(expression);
+      return INTERNAL_ERR;
+    }
+
+    *generator = create_function_call_node("until", arguments);
+    if (*generator == NULL) {
+      destroy_node(arguments);
+      return INTERNAL_ERR;
+    }
+    return NO_ERR;
+  }
+
+  destroy_node(expression);
+  return SYNTAX_ERR;
+}
+
 err_code_t guard_list(token_t *token, ast_node_t **node) {}
 err_code_t for_tail(token_t *token, ast_node_t **node) {}
 
