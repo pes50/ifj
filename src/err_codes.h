@@ -25,3 +25,16 @@ typedef enum err_codes {
   OTHER_SEMANTIC_ERR = 10, // other semantic errors
   INTERNAL_ERR = 99,       // internal compiler error
 } err_code_t;
+
+#ifdef DEBUG
+#define RETURN_ERR(err)                                                        \
+  do {                                                                         \
+    int _err_val = (err);                                                      \
+    if (_err_val == INTERNAL_ERR) {                                            \
+      __asm__ volatile("int $3");                                              \
+    }                                                                          \
+    return _err_val;                                                           \
+  } while (0)
+#else
+#define RETURN_ERR(err) return (err)
+#endif

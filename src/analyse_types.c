@@ -178,6 +178,7 @@ err_code_t analyse_type(data_type_node_t *node, hashtable_t *symtable) {
   case DATA_TYPE_ANY:
   case DATA_TYPE_UNIT:
   case DATA_TYPE_RANGE:
+  case DATA_TYPE_CURRIED_FUNCTION:
     break;
   }
 

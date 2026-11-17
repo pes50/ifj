@@ -61,6 +61,7 @@ typedef struct ast_node_t {
       struct ast_node_t *body;
       data_type_node_t *return_type;
       bool is_main;
+      bool is_static;
     } function_declaration;
 
     struct {

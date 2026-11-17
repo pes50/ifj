@@ -68,7 +68,9 @@ err_code_t analyse_variable_declaration(ast_node_t *node,
     return OTHER_SEMANTIC_ERR;
   }
 
-  err_code_t err = analyse_expression(expression, symtable, NULL, true, false);
+  err_code_t err = analyse_expression(expression, symtable,
+                                      node->data.variable_declaration.data_type,
+                                      true, false);
   if (err != NO_ERR) {
     return err;
   }
@@ -257,20 +259,6 @@ err_code_t analyse_for_do(ast_node_t *node, hashtable_t *symtable,
     }
   }
 
-  ast_node_t *current = node->data.for_do.guards;
-  while (current != NULL) {
-    err = analyse_expression(current, symtable, NULL, true, false);
-    if (err != NO_ERR) {
-      return err;
-    }
-
-    if (!are_data_types_identical(&node_boolean, current->data_type)) {
-      return TYPE_COMPAT_ERR;
-    }
-
-    current = current->next;
-  }
-
   // Create new scope
   hashtable_t *current_scope;
   err = ht_init(&current_scope, local_scope_table_size);
@@ -291,6 +279,20 @@ err_code_t analyse_for_do(ast_node_t *node, hashtable_t *symtable,
   if (err != NO_ERR) {
     ht_destruct(&current_scope);
     return err;
+  }
+
+  ast_node_t *current = node->data.for_do.guards;
+  while (current != NULL) {
+    err = analyse_expression(current, current_scope, NULL, true, false);
+    if (err != NO_ERR) {
+      return err;
+    }
+
+    if (!are_data_types_identical(&node_boolean, current->data_type)) {
+      return TYPE_COMPAT_ERR;
+    }
+
+    current = current->next;
   }
 
   err = analyse_block(body, current_scope, explicit_data_type, allow_return);
@@ -353,7 +355,11 @@ err_code_t analyse_block(ast_node_t *node, hashtable_t *symtable,
       }
       break;
     case AST_LAMBDA_DECLARATION:
-      err = analyse_lambda_declaration(current, ht_get_root(symtable));
+      err = analyse_expression(current, ht_get_root(symtable),
+                               explicit_data_type, true, false);
+      if (err == NO_ERR) {
+        last_type = current->data_type;
+      }
       break;
     case AST_BLOCK:
       // Create new scope

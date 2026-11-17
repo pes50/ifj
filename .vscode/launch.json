@@ -2,12 +2,12 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug All Tests",
+      "name": "Debug Tests",
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/run_tests_debug",
       "args": [
-        "--gtest_break_on_failure"
+        "--gtest_filter=*",
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",

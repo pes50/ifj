@@ -890,6 +890,1180 @@ ast_node_t *build_algebdt_program_ast() {
 
 #pragma endregion
 
+#pragma region Build BOOLTHEN Program AST
+
+ast_node_t *build_boolthen_program_ast() {
+  // 1. def negate(value: Boolean): Boolean = !value
+  ast_node_t *negate_params = create_parameter_list_node(
+      create_parameter_node(const_cast<char *>("value"), &node_boolean));
+
+  ast_node_t *negate_body = create_block_node(
+      create_unary_operation_node(TOK_NOT, make_leaf(TOK_IDENTIFIER, "value")));
+
+  ast_node_t *fn_negate = create_function_declaration_node(
+      const_cast<char *>("negate"), negate_params, negate_body, &node_boolean,
+      false);
+
+  // 2. @main def boolthenExample(): Unit = ...
+  ast_node_t *main_params = create_parameter_list_node(nullptr);
+
+  // val enabled = readBoolean()
+  ast_node_t *stmt_val_enabled = create_variable_declaration_node(
+      const_cast<char *>("enabled"), nullptr, true,
+      create_function_call_node(const_cast<char *>("readBoolean"),
+                                create_argument_list_node(nullptr)));
+
+  // var divisor = 0
+  ast_node_t *stmt_var_divisor =
+      create_variable_declaration_node(const_cast<char *>("divisor"), nullptr,
+                                       false, make_leaf(TOK_LIT_INT, "0"));
+
+  // if enabled then divisor = 2 else ()
+  ast_node_t *if1_cond = make_leaf(TOK_IDENTIFIER, "enabled");
+  ast_node_t *if1_true = create_block_node(create_assignment_node(
+      const_cast<char *>("divisor"), make_leaf(TOK_LIT_INT, "2")));
+  ast_node_t *if1_false = create_block_node(create_unit_literal_node());
+  ast_node_t *stmt_if1 = create_if_node(if1_cond, if1_true, if1_false);
+
+  // val safe = divisor != 0 && (10 / divisor > 1)
+  ast_node_t *safe_lhs = create_binary_operation_node(
+      TOK_NOT_EQ, make_leaf(TOK_IDENTIFIER, "divisor"),
+      make_leaf(TOK_LIT_INT, "0"));
+
+  ast_node_t *safe_rhs = create_binary_operation_node(
+      TOK_GREATER_T,
+      create_binary_operation_node(TOK_DIV, make_leaf(TOK_LIT_INT, "10"),
+                                   make_leaf(TOK_IDENTIFIER, "divisor")),
+      make_leaf(TOK_LIT_INT, "1"));
+
+  ast_node_t *stmt_val_safe = create_variable_declaration_node(
+      const_cast<char *>("safe"), nullptr, true,
+      create_binary_operation_node(TOK_AND, safe_lhs, safe_rhs));
+
+  // val inverted = negate(enabled)
+  ast_node_t *stmt_val_inverted = create_variable_declaration_node(
+      const_cast<char *>("inverted"), nullptr, true,
+      create_function_call_node(
+          const_cast<char *>("negate"),
+          create_argument_list_node(make_leaf(TOK_IDENTIFIER, "enabled"))));
+
+  // val either = enabled || inverted
+  ast_node_t *stmt_val_either = create_variable_declaration_node(
+      const_cast<char *>("either"), nullptr, true,
+      create_binary_operation_node(TOK_OR, make_leaf(TOK_IDENTIFIER, "enabled"),
+                                   make_leaf(TOK_IDENTIFIER, "inverted")));
+
+  ast_node_t *print_1 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "safe: ")));
+  ast_node_t *print_2 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "safe")));
+  ast_node_t *print_3 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\neither: ")));
+  ast_node_t *print_4 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "either")));
+  ast_node_t *print_5 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\n")));
+
+  // if safe then print("ready\n") else if enabled then print("blocked\n") else
+  // print("disabled\n")
+  ast_node_t *if2_inner = create_if_node(
+      make_leaf(TOK_IDENTIFIER, "enabled"),
+      create_block_node(create_function_call_node(
+          const_cast<char *>("print"),
+          create_argument_list_node(make_leaf(TOK_LIT_STRING, "blocked\n")))),
+      create_block_node(create_function_call_node(
+          const_cast<char *>("print"),
+          create_argument_list_node(make_leaf(TOK_LIT_STRING, "disabled\n")))));
+
+  ast_node_t *stmt_if2 = create_if_node(
+      make_leaf(TOK_IDENTIFIER, "safe"),
+      create_block_node(create_function_call_node(
+          const_cast<char *>("print"),
+          create_argument_list_node(make_leaf(TOK_LIT_STRING, "ready\n")))),
+      create_block_node(if2_inner));
+
+  // if !enabled then print("input was false\n")
+  ast_node_t *stmt_if3 =
+      create_if_node(create_unary_operation_node(
+                         TOK_NOT, make_leaf(TOK_IDENTIFIER, "enabled")),
+                     create_block_node(create_function_call_node(
+                         const_cast<char *>("print"),
+                         create_argument_list_node(
+                             make_leaf(TOK_LIT_STRING, "input was false\n")))),
+                     nullptr);
+
+  ast_node_t *main_body = create_block_node(chain_nodes({
+      stmt_val_enabled,
+      stmt_var_divisor,
+      stmt_if1,
+      stmt_val_safe,
+      stmt_val_inverted,
+      stmt_val_either,
+      print_1,
+      print_2,
+      print_3,
+      print_4,
+      print_5,
+      stmt_if2,
+      stmt_if3,
+  }));
+
+  ast_node_t *fn_boolthen_example = create_function_declaration_node(
+      const_cast<char *>("boolthenExample"), main_params, main_body, &node_unit,
+      true);
+
+  return create_block_node(chain_nodes({
+      fn_negate,
+      fn_boolthen_example,
+  }));
+}
+
+#pragma endregion
+
+#pragma region Build FUNEXP Program AST
+
+ast_node_t *build_funexp_program_ast() {
+  // 1. def traced(value: Int): Int = ...
+  ast_node_t *traced_params = create_parameter_list_node(
+      create_parameter_node(const_cast<char *>("value"), &node_int));
+
+  ast_node_t *traced_print1 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "[")));
+  ast_node_t *traced_print2 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "value")));
+  ast_node_t *traced_print3 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "]")));
+  ast_node_t *traced_ret = make_leaf(TOK_IDENTIFIER, "value");
+
+  ast_node_t *traced_body = create_block_node(chain_nodes({
+      traced_print1,
+      traced_print2,
+      traced_print3,
+      traced_ret,
+  }));
+
+  ast_node_t *fn_traced = create_function_declaration_node(
+      const_cast<char *>("traced"), traced_params, traced_body, &node_int,
+      false);
+
+  // 2. @main def funexpExample(): Unit = ...
+  ast_node_t *main_params = create_parameter_list_node(nullptr);
+
+  // val result = traced(2) + 3 * traced(traced(4) + 1)
+  ast_node_t *call_traced_2 = create_function_call_node(
+      const_cast<char *>("traced"),
+      create_argument_list_node(make_leaf(TOK_LIT_INT, "2")));
+
+  ast_node_t *call_traced_4 = create_function_call_node(
+      const_cast<char *>("traced"),
+      create_argument_list_node(make_leaf(TOK_LIT_INT, "4")));
+
+  ast_node_t *inner_plus = create_binary_operation_node(
+      TOK_BINARY_PLUS, call_traced_4, make_leaf(TOK_LIT_INT, "1"));
+
+  ast_node_t *call_traced_outer = create_function_call_node(
+      const_cast<char *>("traced"), create_argument_list_node(inner_plus));
+
+  ast_node_t *mul_expr = create_binary_operation_node(
+      TOK_MUL, make_leaf(TOK_LIT_INT, "3"), call_traced_outer);
+
+  ast_node_t *stmt_val_result = create_variable_declaration_node(
+      const_cast<char *>("result"), nullptr, true,
+      create_binary_operation_node(TOK_BINARY_PLUS, call_traced_2, mul_expr));
+
+  ast_node_t *print_1 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\nresult: ")));
+  ast_node_t *print_2 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(create_function_call_node(
+          const_cast<char *>("toStr"),
+          create_argument_list_node(make_leaf(TOK_IDENTIFIER, "result")))));
+  ast_node_t *print_3 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\n")));
+
+  ast_node_t *main_body = create_block_node(chain_nodes({
+      stmt_val_result,
+      print_1,
+      print_2,
+      print_3,
+  }));
+
+  ast_node_t *fn_funexp_example = create_function_declaration_node(
+      const_cast<char *>("funexpExample"), main_params, main_body, &node_unit,
+      true);
+
+  return create_block_node(chain_nodes({
+      fn_traced,
+      fn_funexp_example,
+  }));
+}
+
+#pragma endregion
+
+#pragma region Build CONTROL Program AST
+
+ast_node_t *build_control_program_ast() {
+  ast_node_t *main_params = create_parameter_list_node(nullptr);
+
+  // val limit = 9; val step = 2
+  ast_node_t *stmt_val_limit = create_variable_declaration_node(
+      const_cast<char *>("limit"), nullptr, true, make_leaf(TOK_LIT_INT, "9"));
+
+  ast_node_t *stmt_val_step = create_variable_declaration_node(
+      const_cast<char *>("step"), nullptr, true, make_leaf(TOK_LIT_INT, "2"));
+
+  // val sign = if limit < 0 then -1 else if limit == 0 then 0 else 1
+  ast_node_t *sign_inner_if =
+      create_if_node(create_binary_operation_node(
+                         TOK_EQUAL, make_leaf(TOK_IDENTIFIER, "limit"),
+                         make_leaf(TOK_LIT_INT, "0")),
+                     create_block_node(make_leaf(TOK_LIT_INT, "0")),
+                     create_block_node(make_leaf(TOK_LIT_INT, "1")));
+
+  ast_node_t *sign_outer_if =
+      create_if_node(create_binary_operation_node(
+                         TOK_LOWER_T, make_leaf(TOK_IDENTIFIER, "limit"),
+                         make_leaf(TOK_LIT_INT, "0")),
+                     create_block_node(create_unary_operation_node(
+                         TOK_UNARY_MINUS, make_leaf(TOK_LIT_INT, "1"))),
+                     create_block_node(sign_inner_if));
+
+  ast_node_t *stmt_val_sign = create_variable_declaration_node(
+      const_cast<char *>("sign"), nullptr, true, sign_outer_if);
+
+  // var sum = 0
+  ast_node_t *stmt_var_sum = create_variable_declaration_node(
+      const_cast<char *>("sum"), nullptr, false, make_leaf(TOK_LIT_INT, "0"));
+
+  // for i <- 1 to limit by step; if i != 5; if i < 9 do sum = sum + i
+  ast_node_t *for1_iter =
+      create_parameter_node(const_cast<char *>("i"), nullptr);
+  ast_node_t *for1_gen = create_dot_function_call_node(
+      const_cast<char *>("by"),
+      create_dot_function_call_node(
+          const_cast<char *>("to"), make_leaf(TOK_LIT_INT, "1"),
+          create_argument_list_node(make_leaf(TOK_IDENTIFIER, "limit"))),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "step")));
+  ast_node_t *for1_guards = chain_nodes({
+      create_binary_operation_node(TOK_NOT_EQ, make_leaf(TOK_IDENTIFIER, "i"),
+                                   make_leaf(TOK_LIT_INT, "5")),
+      create_binary_operation_node(TOK_LOWER_T, make_leaf(TOK_IDENTIFIER, "i"),
+                                   make_leaf(TOK_LIT_INT, "9")),
+  });
+  ast_node_t *for1_body = create_block_node(create_assignment_node(
+      const_cast<char *>("sum"),
+      create_binary_operation_node(TOK_BINARY_PLUS,
+                                   make_leaf(TOK_IDENTIFIER, "sum"),
+                                   make_leaf(TOK_IDENTIFIER, "i"))));
+
+  ast_node_t *stmt_for1 =
+      create_for_do_node(for1_iter, for1_gen, for1_guards, for1_body);
+
+  ast_node_t *print_1 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "sign: ")));
+  ast_node_t *print_2 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "sign")));
+  ast_node_t *print_3 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\nsum: ")));
+  ast_node_t *print_4 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "sum")));
+  ast_node_t *print_5 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\ndescending:")));
+
+  // for i <- 6 to 2 by -2 do print(" "); print(i)
+  ast_node_t *for2_iter =
+      create_parameter_node(const_cast<char *>("i"), nullptr);
+  ast_node_t *for2_gen = create_dot_function_call_node(
+      const_cast<char *>("by"),
+      create_dot_function_call_node(
+          const_cast<char *>("to"), make_leaf(TOK_LIT_INT, "6"),
+          create_argument_list_node(make_leaf(TOK_LIT_INT, "2"))),
+      create_argument_list_node(make_leaf(TOK_LIT_INT, "-2")));
+  ast_node_t *for2_body = create_block_node(chain_nodes({
+      create_function_call_node(
+          const_cast<char *>("print"),
+          create_argument_list_node(make_leaf(TOK_LIT_STRING, " "))),
+      create_function_call_node(
+          const_cast<char *>("print"),
+          create_argument_list_node(make_leaf(TOK_IDENTIFIER, "i"))),
+  }));
+  ast_node_t *stmt_for2 =
+      create_for_do_node(for2_iter, for2_gen, nullptr, for2_body);
+
+  ast_node_t *print_6 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\n")));
+  ast_node_t *print_7 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "exclusive:")));
+
+  // for i <- 0 until 3 do print(" "); print(i)
+  ast_node_t *for3_iter =
+      create_parameter_node(const_cast<char *>("i"), nullptr);
+  ast_node_t *for3_gen = create_dot_function_call_node(
+      const_cast<char *>("until"), make_leaf(TOK_LIT_INT, "0"),
+      create_argument_list_node(make_leaf(TOK_LIT_INT, "3")));
+  ast_node_t *for3_body = create_block_node(chain_nodes({
+      create_function_call_node(
+          const_cast<char *>("print"),
+          create_argument_list_node(make_leaf(TOK_LIT_STRING, " "))),
+      create_function_call_node(
+          const_cast<char *>("print"),
+          create_argument_list_node(make_leaf(TOK_IDENTIFIER, "i"))),
+  }));
+  ast_node_t *stmt_for3 =
+      create_for_do_node(for3_iter, for3_gen, nullptr, for3_body);
+
+  ast_node_t *print_8 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\n")));
+
+  ast_node_t *main_body = create_block_node(chain_nodes({
+      stmt_val_limit,
+      stmt_val_step,
+      stmt_val_sign,
+      stmt_var_sum,
+      stmt_for1,
+      print_1,
+      print_2,
+      print_3,
+      print_4,
+      print_5,
+      stmt_for2,
+      print_6,
+      print_7,
+      stmt_for3,
+      print_8,
+  }));
+
+  ast_node_t *fn_control_example = create_function_declaration_node(
+      const_cast<char *>("controlExample"), main_params, main_body, &node_unit,
+      true);
+
+  return create_block_node(fn_control_example);
+}
+
+#pragma endregion
+
+#pragma region Build EXTKW Program AST
+
+ast_node_t *build_extkw_program_ast() {
+  // 1. extension (value: Int)
+  ast_node_t *ext_receiver =
+      create_parameter_node(const_cast<char *>("value"), &node_int);
+
+  // def twice: Int = value * 2 (no parameter list -> nullptr)
+  ast_node_t *twice_body = create_block_node(
+      create_binary_operation_node(TOK_MUL, make_leaf(TOK_IDENTIFIER, "value"),
+                                   make_leaf(TOK_LIT_INT, "2")));
+  ast_node_t *fn_twice = create_function_declaration_node(
+      const_cast<char *>("twice"), nullptr, twice_body, &node_int, false);
+
+  // def label(): String = val text = toStr(value); "value=" + text
+  ast_node_t *label_val_text = create_variable_declaration_node(
+      const_cast<char *>("text"), nullptr, true,
+      create_function_call_node(
+          const_cast<char *>("toStr"),
+          create_argument_list_node(make_leaf(TOK_IDENTIFIER, "value"))));
+  ast_node_t *label_ret = create_binary_operation_node(
+      TOK_BINARY_PLUS, make_leaf(TOK_LIT_STRING, "value="),
+      make_leaf(TOK_IDENTIFIER, "text"));
+  ast_node_t *fn_label = create_function_declaration_node(
+      const_cast<char *>("label"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({label_val_text, label_ret})), &node_string,
+      false);
+
+  // def plus(other: Int): Int = value + other
+  ast_node_t *plus_params = create_parameter_list_node(
+      create_parameter_node(const_cast<char *>("other"), &node_int));
+  ast_node_t *plus_body = create_block_node(create_binary_operation_node(
+      TOK_BINARY_PLUS, make_leaf(TOK_IDENTIFIER, "value"),
+      make_leaf(TOK_IDENTIFIER, "other")));
+  ast_node_t *fn_plus = create_function_declaration_node(
+      const_cast<char *>("plus"), plus_params, plus_body, &node_int, false);
+
+  ast_node_t *decl_extension = create_extension_declaration_node(
+      ext_receiver, chain_nodes({fn_twice, fn_label, fn_plus}));
+
+  // 2. @main def extkwExample(): Unit = ...
+  ast_node_t *main_params = create_parameter_list_node(nullptr);
+
+  ast_node_t *stmt_val_n = create_variable_declaration_node(
+      const_cast<char *>("n"), nullptr, true, make_leaf(TOK_LIT_INT, "6"));
+
+  // val doubled = n.twice (no argument list -> nullptr)
+  ast_node_t *stmt_val_doubled = create_variable_declaration_node(
+      const_cast<char *>("doubled"), nullptr, true,
+      create_dot_function_call_node(const_cast<char *>("twice"),
+                                    make_leaf(TOK_IDENTIFIER, "n"), nullptr));
+
+  // val increased = n.plus(3)
+  ast_node_t *stmt_val_increased = create_variable_declaration_node(
+      const_cast<char *>("increased"), nullptr, true,
+      create_dot_function_call_node(
+          const_cast<char *>("plus"), make_leaf(TOK_IDENTIFIER, "n"),
+          create_argument_list_node(make_leaf(TOK_LIT_INT, "3"))));
+
+  // val text = n.label()
+  ast_node_t *stmt_val_text = create_variable_declaration_node(
+      const_cast<char *>("text"), nullptr, true,
+      create_dot_function_call_node(const_cast<char *>("label"),
+                                    make_leaf(TOK_IDENTIFIER, "n"),
+                                    create_argument_list_node(nullptr)));
+
+  ast_node_t *print_1 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "text")));
+  ast_node_t *print_2 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\ntwice: ")));
+  ast_node_t *print_3 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "doubled")));
+  ast_node_t *print_4 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\nplus: ")));
+  ast_node_t *print_5 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "increased")));
+  ast_node_t *print_6 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\n")));
+
+  ast_node_t *main_body = create_block_node(chain_nodes({
+      stmt_val_n,
+      stmt_val_doubled,
+      stmt_val_increased,
+      stmt_val_text,
+      print_1,
+      print_2,
+      print_3,
+      print_4,
+      print_5,
+      print_6,
+  }));
+
+  ast_node_t *fn_extkw_example = create_function_declaration_node(
+      const_cast<char *>("extkwExample"), main_params, main_body, &node_unit,
+      true);
+
+  return create_block_node(chain_nodes({
+      decl_extension,
+      fn_extkw_example,
+  }));
+}
+
+#pragma endregion
+
+#pragma region Build INTERPOLATEDS Program AST
+
+ast_node_t *build_interpolateds_program_ast() {
+  ast_node_t *main_params = create_parameter_list_node(nullptr);
+
+  ast_node_t *stmt_val_course =
+      create_variable_declaration_node(const_cast<char *>("course"), nullptr,
+                                       true, make_leaf(TOK_LIT_STRING, "IFJ"));
+
+  ast_node_t *stmt_val_year = create_variable_declaration_node(
+      const_cast<char *>("year"), nullptr, true, make_leaf(TOK_LIT_INT, "26"));
+
+  ast_node_t *stmt_val_count = create_variable_declaration_node(
+      const_cast<char *>("count"), nullptr, true, make_leaf(TOK_LIT_INT, "2"));
+
+  // s"$course$year: ${count + 1} examples cost $$0."
+  ast_node_t *msg_interp = create_interpolated_string_node(chain_nodes({
+      make_leaf(TOK_IDENTIFIER, "course"),
+      make_leaf(TOK_IDENTIFIER, "year"),
+      make_leaf(TOK_LIT_STRING, ": "),
+      create_binary_operation_node(TOK_BINARY_PLUS,
+                                   make_leaf(TOK_IDENTIFIER, "count"),
+                                   make_leaf(TOK_LIT_INT, "1")),
+      make_leaf(TOK_LIT_STRING, " examples cost $0."),
+  }));
+
+  ast_node_t *stmt_val_message = create_variable_declaration_node(
+      const_cast<char *>("message"), nullptr, true, msg_interp);
+
+  // s"""He said "hello", $course.\nNext year: ${year + 1}."""
+  ast_node_t *multi_interp = create_interpolated_string_node(chain_nodes({
+      make_leaf(TOK_LIT_STRING, "He said \"hello\", "),
+      make_leaf(TOK_IDENTIFIER, "course"),
+      make_leaf(TOK_LIT_STRING, ".\nNext year: "),
+      create_binary_operation_node(TOK_BINARY_PLUS,
+                                   make_leaf(TOK_IDENTIFIER, "year"),
+                                   make_leaf(TOK_LIT_INT, "1")),
+      make_leaf(TOK_LIT_STRING, "."),
+  }));
+
+  ast_node_t *stmt_val_multiline = create_variable_declaration_node(
+      const_cast<char *>("multiline"), nullptr, true, multi_interp);
+
+  ast_node_t *print_1 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "message")));
+  ast_node_t *print_2 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\n")));
+  ast_node_t *print_3 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "multiline")));
+  ast_node_t *print_4 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\n")));
+
+  ast_node_t *main_body = create_block_node(chain_nodes({
+      stmt_val_course,
+      stmt_val_year,
+      stmt_val_count,
+      stmt_val_message,
+      stmt_val_multiline,
+      print_1,
+      print_2,
+      print_3,
+      print_4,
+  }));
+
+  ast_node_t *fn_interpolateds_example = create_function_declaration_node(
+      const_cast<char *>("interpolatedsExample"), main_params, main_body,
+      &node_unit, true);
+
+  return create_block_node(fn_interpolateds_example);
+}
+
+#pragma endregion
+
+#pragma region Build LAMBDAS Program AST
+
+ast_node_t *build_lambdas_program_ast() {
+  // 1. def increment(value: Int): Int = value + 1
+  ast_node_t *inc_params = create_parameter_list_node(
+      create_parameter_node(const_cast<char *>("value"), &node_int));
+  ast_node_t *inc_body = create_block_node(create_binary_operation_node(
+      TOK_BINARY_PLUS, make_leaf(TOK_IDENTIFIER, "value"),
+      make_leaf(TOK_LIT_INT, "1")));
+  ast_node_t *fn_increment = create_function_declaration_node(
+      const_cast<char *>("increment"), inc_params, inc_body, &node_int, false);
+
+  // 2. def applyTwice(value: Int, function: (Int) => Int): Int =
+  // function(function(value))
+  data_type_node_t *int_to_int_type_1 = create_lambda_type_node(
+      chain_types({create_primitive_type_node(PRIMITIVE_INT)}),
+      create_primitive_type_node(PRIMITIVE_INT));
+
+  ast_node_t *apply_params = create_parameter_list_node(chain_nodes({
+      create_parameter_node(const_cast<char *>("value"), &node_int),
+      create_parameter_node(const_cast<char *>("function"), int_to_int_type_1),
+  }));
+
+  ast_node_t *inner_fn_call = create_function_call_node(
+      const_cast<char *>("function"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "value")));
+  ast_node_t *outer_fn_call = create_function_call_node(
+      const_cast<char *>("function"), create_argument_list_node(inner_fn_call));
+
+  ast_node_t *fn_apply_twice = create_function_declaration_node(
+      const_cast<char *>("applyTwice"), apply_params,
+      create_block_node(outer_fn_call), &node_int, false);
+
+  // 3. def multiplier(): (Int) => Int = (value: Int) => value * 2
+  data_type_node_t *int_to_int_type_2 = create_lambda_type_node(
+      chain_types({create_primitive_type_node(PRIMITIVE_INT)}),
+      create_primitive_type_node(PRIMITIVE_INT));
+
+  ast_node_t *mult_lambda = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("value"), &node_int),
+      create_block_node(create_binary_operation_node(
+          TOK_MUL, make_leaf(TOK_IDENTIFIER, "value"),
+          make_leaf(TOK_LIT_INT, "2"))),
+      nullptr);
+
+  ast_node_t *fn_multiplier = create_function_declaration_node(
+      const_cast<char *>("multiplier"), create_parameter_list_node(nullptr),
+      create_block_node(mult_lambda), int_to_int_type_2, false);
+
+  // 4. @main def lambdasExample(): Unit = ...
+  ast_node_t *main_params = create_parameter_list_node(nullptr);
+
+  // val addOne: (Int) => Int = increment
+  data_type_node_t *int_to_int_type_3 = create_lambda_type_node(
+      chain_types({create_primitive_type_node(PRIMITIVE_INT)}),
+      create_primitive_type_node(PRIMITIVE_INT));
+  ast_node_t *stmt_val_add_one = create_variable_declaration_node(
+      const_cast<char *>("addOne"), int_to_int_type_3, true,
+      make_leaf(TOK_IDENTIFIER, "increment"));
+
+  // val double: (Int) => Int = multiplier()
+  data_type_node_t *int_to_int_type_4 = create_lambda_type_node(
+      chain_types({create_primitive_type_node(PRIMITIVE_INT)}),
+      create_primitive_type_node(PRIMITIVE_INT));
+  ast_node_t *stmt_val_double = create_variable_declaration_node(
+      const_cast<char *>("double"), int_to_int_type_4, true,
+      create_function_call_node(const_cast<char *>("multiplier"),
+                                create_argument_list_node(nullptr)));
+
+  // val first = applyTwice(3, addOne)
+  ast_node_t *stmt_val_first = create_variable_declaration_node(
+      const_cast<char *>("first"), nullptr, true,
+      create_function_call_node(const_cast<char *>("applyTwice"),
+                                create_argument_list_node(chain_nodes({
+                                    make_leaf(TOK_LIT_INT, "3"),
+                                    make_leaf(TOK_IDENTIFIER, "addOne"),
+                                }))));
+
+  // val second = applyTwice(3, double)
+  ast_node_t *stmt_val_second = create_variable_declaration_node(
+      const_cast<char *>("second"), nullptr, true,
+      create_function_call_node(const_cast<char *>("applyTwice"),
+                                create_argument_list_node(chain_nodes({
+                                    make_leaf(TOK_LIT_INT, "3"),
+                                    make_leaf(TOK_IDENTIFIER, "double"),
+                                }))));
+
+  // val sum: (Int, Int) => Int = (left: Int, right: Int) => left + right
+  data_type_node_t *int_int_to_int_type =
+      create_lambda_type_node(chain_types({
+                                  create_primitive_type_node(PRIMITIVE_INT),
+                                  create_primitive_type_node(PRIMITIVE_INT),
+                              }),
+                              create_primitive_type_node(PRIMITIVE_INT));
+
+  ast_node_t *sum_lambda = create_lambda_declaration_node(
+      chain_nodes({
+          create_parameter_node(const_cast<char *>("left"), &node_int),
+          create_parameter_node(const_cast<char *>("right"), &node_int),
+      }),
+      create_block_node(create_binary_operation_node(
+          TOK_BINARY_PLUS, make_leaf(TOK_IDENTIFIER, "left"),
+          make_leaf(TOK_IDENTIFIER, "right"))),
+      nullptr);
+
+  ast_node_t *stmt_val_sum = create_variable_declaration_node(
+      const_cast<char *>("sum"), int_int_to_int_type, true, sum_lambda);
+
+  // print(sum(first, second)); print("\n")
+  ast_node_t *print_1 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(create_function_call_node(
+          const_cast<char *>("sum"), create_argument_list_node(chain_nodes({
+                                         make_leaf(TOK_IDENTIFIER, "first"),
+                                         make_leaf(TOK_IDENTIFIER, "second"),
+                                     })))));
+  ast_node_t *print_2 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\n")));
+
+  ast_node_t *main_body = create_block_node(chain_nodes({
+      stmt_val_add_one,
+      stmt_val_double,
+      stmt_val_first,
+      stmt_val_second,
+      stmt_val_sum,
+      print_1,
+      print_2,
+  }));
+
+  ast_node_t *fn_lambdas_example = create_function_declaration_node(
+      const_cast<char *>("lambdasExample"), main_params, main_body, &node_unit,
+      true);
+
+  return create_block_node(chain_nodes({
+      fn_increment,
+      fn_apply_twice,
+      fn_multiplier,
+      fn_lambdas_example,
+  }));
+}
+
+#pragma endregion
+
+#pragma region Build LISTS Program AST
+
+ast_node_t *build_lists_program_ast() {
+  ast_node_t *main_params = create_parameter_list_node(nullptr);
+
+  // val values: List[Int] = (1 to 6).toList
+  data_type_node_t *list_int_type_1 =
+      create_list_type_node(create_primitive_type_node(PRIMITIVE_INT));
+  ast_node_t *range_1_to_6 = create_dot_function_call_node(
+      const_cast<char *>("to"), make_leaf(TOK_LIT_INT, "1"),
+      create_argument_list_node(make_leaf(TOK_LIT_INT, "6")));
+  ast_node_t *stmt_val_values = create_variable_declaration_node(
+      const_cast<char *>("values"), list_int_type_1, true,
+      create_dot_function_call_node(const_cast<char *>("toList"), range_1_to_6,
+                                    nullptr));
+
+  // val joined = values ++ List(7, 8)
+  ast_node_t *list_7_8 = create_function_call_node(
+      const_cast<char *>("List"), create_argument_list_node(chain_nodes({
+                                      make_leaf(TOK_LIT_INT, "7"),
+                                      make_leaf(TOK_LIT_INT, "8"),
+                                  })));
+  ast_node_t *stmt_val_joined = create_variable_declaration_node(
+      const_cast<char *>("joined"), nullptr, true,
+      create_binary_operation_node(
+          TOK_CONCAT_LIST, make_leaf(TOK_IDENTIFIER, "values"), list_7_8));
+
+  // val middle = joined.drop(1).take(5).slice(1, 4)
+  ast_node_t *call_drop = create_dot_function_call_node(
+      const_cast<char *>("drop"), make_leaf(TOK_IDENTIFIER, "joined"),
+      create_argument_list_node(make_leaf(TOK_LIT_INT, "1")));
+  ast_node_t *call_take = create_dot_function_call_node(
+      const_cast<char *>("take"), call_drop,
+      create_argument_list_node(make_leaf(TOK_LIT_INT, "5")));
+  ast_node_t *call_slice =
+      create_dot_function_call_node(const_cast<char *>("slice"), call_take,
+                                    create_argument_list_node(chain_nodes({
+                                        make_leaf(TOK_LIT_INT, "1"),
+                                        make_leaf(TOK_LIT_INT, "4"),
+                                    })));
+  ast_node_t *stmt_val_middle = create_variable_declaration_node(
+      const_cast<char *>("middle"), nullptr, true, call_slice);
+
+  // val first = middle.head; val rest = middle.tail; val indexed = middle(1)
+  ast_node_t *stmt_val_first = create_variable_declaration_node(
+      const_cast<char *>("first"), nullptr, true,
+      create_dot_function_call_node(const_cast<char *>("head"),
+                                    make_leaf(TOK_IDENTIFIER, "middle"),
+                                    nullptr));
+
+  ast_node_t *stmt_val_rest = create_variable_declaration_node(
+      const_cast<char *>("rest"), nullptr, true,
+      create_dot_function_call_node(const_cast<char *>("tail"),
+                                    make_leaf(TOK_IDENTIFIER, "middle"),
+                                    nullptr));
+
+  ast_node_t *stmt_val_indexed = create_variable_declaration_node(
+      const_cast<char *>("indexed"), nullptr, true,
+      create_function_call_node(
+          const_cast<char *>("middle"),
+          create_argument_list_node(make_leaf(TOK_LIT_INT, "1"))));
+
+  // val selected = joined.filter((value: Int) => value >= 3 && value <= 6)
+  ast_node_t *filter_lambda = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("value"), &node_int),
+      create_block_node(create_binary_operation_node(
+          TOK_AND,
+          create_binary_operation_node(TOK_GREATER_EQ,
+                                       make_leaf(TOK_IDENTIFIER, "value"),
+                                       make_leaf(TOK_LIT_INT, "3")),
+          create_binary_operation_node(TOK_LOWER_EQ,
+                                       make_leaf(TOK_IDENTIFIER, "value"),
+                                       make_leaf(TOK_LIT_INT, "6")))),
+      nullptr);
+  ast_node_t *stmt_val_selected = create_variable_declaration_node(
+      const_cast<char *>("selected"), nullptr, true,
+      create_dot_function_call_node(const_cast<char *>("filter"),
+                                    make_leaf(TOK_IDENTIFIER, "joined"),
+                                    create_argument_list_node(filter_lambda)));
+
+  // val prefix = joined.takeWhile((value: Int) => value < 4)
+  ast_node_t *take_while_lambda = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("value"), &node_int),
+      create_block_node(create_binary_operation_node(
+          TOK_LOWER_T, make_leaf(TOK_IDENTIFIER, "value"),
+          make_leaf(TOK_LIT_INT, "4"))),
+      nullptr);
+  ast_node_t *stmt_val_prefix = create_variable_declaration_node(
+      const_cast<char *>("prefix"), nullptr, true,
+      create_dot_function_call_node(
+          const_cast<char *>("takeWhile"), make_leaf(TOK_IDENTIFIER, "joined"),
+          create_argument_list_node(take_while_lambda)));
+
+  // val suffix = joined.dropWhile((value: Int) => value < 6)
+  ast_node_t *drop_while_lambda = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("value"), &node_int),
+      create_block_node(create_binary_operation_node(
+          TOK_LOWER_T, make_leaf(TOK_IDENTIFIER, "value"),
+          make_leaf(TOK_LIT_INT, "6"))),
+      nullptr);
+  ast_node_t *stmt_val_suffix = create_variable_declaration_node(
+      const_cast<char *>("suffix"), nullptr, true,
+      create_dot_function_call_node(
+          const_cast<char *>("dropWhile"), make_leaf(TOK_IDENTIFIER, "joined"),
+          create_argument_list_node(drop_while_lambda)));
+
+  // val empty: List[Int] = List()
+  data_type_node_t *list_int_type_2 =
+      create_list_type_node(create_primitive_type_node(PRIMITIVE_INT));
+  ast_node_t *stmt_val_empty = create_variable_declaration_node(
+      const_cast<char *>("empty"), list_int_type_2, true,
+      create_function_call_node(const_cast<char *>("List"),
+                                create_argument_list_node(nullptr)));
+
+  // val descending = List.range(5, 0, -2)
+  ast_node_t *stmt_val_descending = create_variable_declaration_node(
+      const_cast<char *>("descending"), nullptr, true,
+      create_dot_function_call_node(
+          const_cast<char *>("range"), make_leaf(TOK_IDENTIFIER, "List"),
+          create_argument_list_node(chain_nodes({
+              make_leaf(TOK_LIT_INT, "5"),
+              make_leaf(TOK_LIT_INT, "0"),
+              create_unary_operation_node(TOK_UNARY_MINUS,
+                                          make_leaf(TOK_LIT_INT, "2")),
+          }))));
+
+  // var sum = 0; for value <- selected; if value != 4 do sum = sum + value
+  ast_node_t *stmt_var_sum = create_variable_declaration_node(
+      const_cast<char *>("sum"), nullptr, false, make_leaf(TOK_LIT_INT, "0"));
+
+  ast_node_t *for_iter =
+      create_parameter_node(const_cast<char *>("value"), nullptr);
+  ast_node_t *for_guard = create_binary_operation_node(
+      TOK_NOT_EQ, make_leaf(TOK_IDENTIFIER, "value"),
+      make_leaf(TOK_LIT_INT, "4"));
+  ast_node_t *for_body = create_block_node(create_assignment_node(
+      const_cast<char *>("sum"),
+      create_binary_operation_node(TOK_BINARY_PLUS,
+                                   make_leaf(TOK_IDENTIFIER, "sum"),
+                                   make_leaf(TOK_IDENTIFIER, "value"))));
+  ast_node_t *stmt_for = create_for_do_node(
+      for_iter, make_leaf(TOK_IDENTIFIER, "selected"), for_guard, for_body);
+
+  // print(...) sequence
+  ast_node_t *print_1 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(create_dot_function_call_node(
+          const_cast<char *>("toString"), make_leaf(TOK_IDENTIFIER, "middle"),
+          nullptr)));
+  ast_node_t *print_2 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\nhead: ")));
+  ast_node_t *print_3 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "first")));
+  ast_node_t *print_4 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\nindex 1: ")));
+  ast_node_t *print_5 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "indexed")));
+  ast_node_t *print_6 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\ntail: ")));
+  ast_node_t *print_7 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "rest")));
+  ast_node_t *print_8 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\nfilter: ")));
+  ast_node_t *print_9 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "selected")));
+  ast_node_t *print_10 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\ntakeWhile: ")));
+  ast_node_t *print_11 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "prefix")));
+  ast_node_t *print_12 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\ndropWhile: ")));
+  ast_node_t *print_13 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "suffix")));
+  ast_node_t *print_14 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\nempty: ")));
+  ast_node_t *print_15 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "empty")));
+  ast_node_t *print_16 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\nrange: ")));
+  ast_node_t *print_17 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "descending")));
+  ast_node_t *print_18 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\nsum: ")));
+  ast_node_t *print_19 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "sum")));
+  ast_node_t *print_20 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\n")));
+
+  ast_node_t *main_body = create_block_node(chain_nodes({
+      stmt_val_values,
+      stmt_val_joined,
+      stmt_val_middle,
+      stmt_val_first,
+      stmt_val_rest,
+      stmt_val_indexed,
+      stmt_val_selected,
+      stmt_val_prefix,
+      stmt_val_suffix,
+      stmt_val_empty,
+      stmt_val_descending,
+      stmt_var_sum,
+      stmt_for,
+      print_1,
+      print_2,
+      print_3,
+      print_4,
+      print_5,
+      print_6,
+      print_7,
+      print_8,
+      print_9,
+      print_10,
+      print_11,
+      print_12,
+      print_13,
+      print_14,
+      print_15,
+      print_16,
+      print_17,
+      print_18,
+      print_19,
+      print_20,
+  }));
+
+  ast_node_t *fn_lists_example = create_function_declaration_node(
+      const_cast<char *>("listsExample"), main_params, main_body, &node_unit,
+      true);
+
+  return create_block_node(fn_lists_example);
+}
+
+#pragma endregion
+
+#pragma region Build PARAMLISTS Program AST
+
+ast_node_t *build_paramlists_program_ast() {
+  // 1. def answer: Int = print("answer\n"); 40 (no parameter list -> nullptr)
+  ast_node_t *answer_print = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "answer\n")));
+  ast_node_t *answer_body = create_block_node(
+      chain_nodes({answer_print, make_leaf(TOK_LIT_INT, "40")}));
+  ast_node_t *fn_answer = create_function_declaration_node(
+      const_cast<char *>("answer"), nullptr, answer_body, &node_int, false);
+
+  // 2. def add(left: Int)(middle: Int)(right: Int): Int = left + middle + right
+  ast_node_t *add_params = chain_nodes({
+      create_parameter_list_node(
+          create_parameter_node(const_cast<char *>("left"), &node_int)),
+      create_parameter_list_node(
+          create_parameter_node(const_cast<char *>("middle"), &node_int)),
+      create_parameter_list_node(
+          create_parameter_node(const_cast<char *>("right"), &node_int)),
+  });
+  ast_node_t *add_body = create_block_node(create_binary_operation_node(
+      TOK_BINARY_PLUS,
+      create_binary_operation_node(TOK_BINARY_PLUS,
+                                   make_leaf(TOK_IDENTIFIER, "left"),
+                                   make_leaf(TOK_IDENTIFIER, "middle")),
+      make_leaf(TOK_IDENTIFIER, "right")));
+  ast_node_t *fn_add = create_function_declaration_node(
+      const_cast<char *>("add"), add_params, add_body, &node_int, false);
+
+  // 3. def offset()(value: Int): Int = value + 1
+  ast_node_t *offset_params = chain_nodes({
+      create_parameter_list_node(nullptr),
+      create_parameter_list_node(
+          create_parameter_node(const_cast<char *>("value"), &node_int)),
+  });
+  ast_node_t *offset_body = create_block_node(create_binary_operation_node(
+      TOK_BINARY_PLUS, make_leaf(TOK_IDENTIFIER, "value"),
+      make_leaf(TOK_LIT_INT, "1")));
+  ast_node_t *fn_offset = create_function_declaration_node(
+      const_cast<char *>("offset"), offset_params, offset_body, &node_int,
+      false);
+
+  // 4. @main def paramlistsExample(): Unit = ...
+  ast_node_t *main_params = create_parameter_list_node(nullptr);
+
+  // val first = answer; val second = answer
+  ast_node_t *stmt_val_first = create_variable_declaration_node(
+      const_cast<char *>("first"), nullptr, true,
+      make_leaf(TOK_IDENTIFIER, "answer"));
+  ast_node_t *stmt_val_second = create_variable_declaration_node(
+      const_cast<char *>("second"), nullptr, true,
+      make_leaf(TOK_IDENTIFIER, "answer"));
+
+  // val total = add(first)(second)(2)
+  ast_node_t *add_call = create_function_call_node(
+      const_cast<char *>("add"),
+      chain_nodes({
+          create_argument_list_node(make_leaf(TOK_IDENTIFIER, "first")),
+          create_argument_list_node(make_leaf(TOK_IDENTIFIER, "second")),
+          create_argument_list_node(make_leaf(TOK_LIT_INT, "2")),
+      }));
+  ast_node_t *stmt_val_total = create_variable_declaration_node(
+      const_cast<char *>("total"), nullptr, true, add_call);
+
+  // val result = offset()(total)
+  ast_node_t *offset_call = create_function_call_node(
+      const_cast<char *>("offset"),
+      chain_nodes({
+          create_argument_list_node(nullptr),
+          create_argument_list_node(make_leaf(TOK_IDENTIFIER, "total")),
+      }));
+  ast_node_t *stmt_val_result = create_variable_declaration_node(
+      const_cast<char *>("result"), nullptr, true, offset_call);
+
+  ast_node_t *print_1 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "result")));
+  ast_node_t *print_2 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\n")));
+
+  ast_node_t *main_body = create_block_node(chain_nodes({
+      stmt_val_first,
+      stmt_val_second,
+      stmt_val_total,
+      stmt_val_result,
+      print_1,
+      print_2,
+  }));
+
+  ast_node_t *fn_paramlists_example = create_function_declaration_node(
+      const_cast<char *>("paramlistsExample"), main_params, main_body,
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({
+      fn_answer,
+      fn_add,
+      fn_offset,
+      fn_paramlists_example,
+  }));
+}
+
+#pragma endregion
+
+#pragma region Build VALMEM Program AST
+
+ast_node_t *build_valmem_program_ast() {
+  ast_node_t *main_params = create_parameter_list_node(nullptr);
+
+  // val number = -3.75
+  ast_node_t *stmt_val_number = create_variable_declaration_node(
+      const_cast<char *>("number"), nullptr, true,
+      create_unary_operation_node(TOK_UNARY_MINUS,
+                                  make_leaf(TOK_LIT_DOUBLE, "3.75")));
+
+  // val truncated = number.toInt
+  ast_node_t *stmt_val_truncated = create_variable_declaration_node(
+      const_cast<char *>("truncated"), nullptr, true,
+      create_dot_function_call_node(const_cast<char *>("toInt"),
+                                    make_leaf(TOK_IDENTIFIER, "number"),
+                                    nullptr));
+
+  // val floored = number.floor
+  ast_node_t *stmt_val_floored = create_variable_declaration_node(
+      const_cast<char *>("floored"), nullptr, true,
+      create_dot_function_call_node(const_cast<char *>("floor"),
+                                    make_leaf(TOK_IDENTIFIER, "number"),
+                                    nullptr));
+
+  // val floorInt = number.floor.toInt
+  ast_node_t *stmt_val_floor_int = create_variable_declaration_node(
+      const_cast<char *>("floorInt"), nullptr, true,
+      create_dot_function_call_node(
+          const_cast<char *>("toInt"),
+          create_dot_function_call_node(const_cast<char *>("floor"),
+                                        make_leaf(TOK_IDENTIFIER, "number"),
+                                        nullptr),
+          nullptr));
+
+  // val digits = truncated.toString
+  ast_node_t *stmt_val_digits = create_variable_declaration_node(
+      const_cast<char *>("digits"), nullptr, true,
+      create_dot_function_call_node(const_cast<char *>("toString"),
+                                    make_leaf(TOK_IDENTIFIER, "truncated"),
+                                    nullptr));
+
+  // val length = "IFJ26".length
+  ast_node_t *stmt_val_length = create_variable_declaration_node(
+      const_cast<char *>("length"), nullptr, true,
+      create_dot_function_call_node(const_cast<char *>("length"),
+                                    make_leaf(TOK_LIT_STRING, "IFJ26"),
+                                    nullptr));
+
+  // val done: Unit = ()
+  ast_node_t *stmt_val_done = create_variable_declaration_node(
+      const_cast<char *>("done"), &node_unit, true, create_unit_literal_node());
+
+  // val unitText = done.toString
+  ast_node_t *stmt_val_unit_text = create_variable_declaration_node(
+      const_cast<char *>("unitText"), nullptr, true,
+      create_dot_function_call_node(const_cast<char *>("toString"),
+                                    make_leaf(TOK_IDENTIFIER, "done"),
+                                    nullptr));
+
+  ast_node_t *print_1 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "truncated: ")));
+  ast_node_t *print_2 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "digits")));
+  ast_node_t *print_3 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\nfloor: ")));
+  ast_node_t *print_4 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "floored")));
+  ast_node_t *print_5 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\nfloor Int: ")));
+  ast_node_t *print_6 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "floorInt")));
+  ast_node_t *print_7 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\nlength: ")));
+  ast_node_t *print_8 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "length")));
+  ast_node_t *print_9 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\nUnit: ")));
+  ast_node_t *print_10 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "unitText")));
+  ast_node_t *print_11 = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_LIT_STRING, "\n")));
+
+  ast_node_t *main_body = create_block_node(chain_nodes({
+      stmt_val_number,  stmt_val_truncated,
+      stmt_val_floored, stmt_val_floor_int,
+      stmt_val_digits,  stmt_val_length,
+      stmt_val_done,    stmt_val_unit_text,
+      print_1,          print_2,
+      print_3,          print_4,
+      print_5,          print_6,
+      print_7,          print_8,
+      print_9,          print_10,
+      print_11,
+  }));
+
+  ast_node_t *fn_valmem_example = create_function_declaration_node(
+      const_cast<char *>("valmemExample"), main_params, main_body, &node_unit,
+      true);
+
+  return create_block_node(fn_valmem_example);
+}
+
+#pragma endregion
+
 #pragma region Generalized Test Runner & Registration
 
 TEST_P(SemanticAnalyserParamTest, DiffBeforeAndAfterAnalysis) {
@@ -921,8 +2095,20 @@ INSTANTIATE_TEST_SUITE_P(
         SemanticTestCase{"Factorial", build_factorial_program_ast, NO_ERR,
                          true},
         SemanticTestCase{"Strings", build_strings_program_ast, NO_ERR, true},
-        SemanticTestCase{"Algebdt", build_algebdt_program_ast, NO_ERR, true}),
+        SemanticTestCase{"Algebdt", build_algebdt_program_ast, NO_ERR, true},
+        SemanticTestCase{"Boolthen", build_boolthen_program_ast, NO_ERR, true},
+        SemanticTestCase{"Funexp", build_funexp_program_ast, NO_ERR, true},
+        SemanticTestCase{"Control", build_control_program_ast, NO_ERR, true},
+        SemanticTestCase{"Extkw", build_extkw_program_ast, NO_ERR, true},
+        SemanticTestCase{"Interpolateds", build_interpolateds_program_ast,
+                         NO_ERR, true},
+        SemanticTestCase{"Lambdas", build_lambdas_program_ast, NO_ERR, true},
+        SemanticTestCase{"Lists", build_lists_program_ast, NO_ERR, true},
+        SemanticTestCase{"Paramlists", build_paramlists_program_ast, NO_ERR,
+                         true},
+        SemanticTestCase{"Valmem", build_valmem_program_ast, NO_ERR, true}),
     [](const ::testing::TestParamInfo<SemanticTestCase> &info) {
       return info.param.name;
     });
+
 #pragma endregion

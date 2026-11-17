@@ -1009,9 +1009,10 @@ static ast_node_t range_function_declaration = {
         {
             .body = NULL,
             .is_main = false,
-            .name = "List.range",
+            .name = "List[T].range",
             .return_type = &list_int_node,
             .parameter_lists = &start_end_step_parameter_list_node,
+            .is_static = true,
         },
     .data_type = &list_int_node,
     .next = NULL,

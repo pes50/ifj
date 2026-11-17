@@ -28,7 +28,7 @@
  */
 static err_code_t ht_init_data(hashtable_t *hashtable, size_t item_cnt) {
   // allocates memory for items of the hash table
-  hashtable->data = (ht_item_t *)malloc(item_cnt * sizeof(ht_item_t));
+  hashtable->data = (ht_item_t *)calloc(item_cnt, sizeof(ht_item_t));
   // checks whether allocation have failed
   if (hashtable->data == NULL) {
     return INTERNAL_ERR;
