@@ -383,8 +383,7 @@ bool are_data_types_identical(data_type_node_t *data_type_a,
     }
     break;
   case DATA_TYPE_UNION:
-    if (!are_unions_equivalent(data_type_a->data.union_type.types,
-                               data_type_b->data.union_type.types)) {
+    if (!are_unions_equivalent(data_type_a, data_type_b)) {
       return false;
     }
     break;

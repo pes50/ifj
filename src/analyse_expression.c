@@ -371,8 +371,8 @@ err_code_t analyse_function_call(char *identifier, ast_node_t *node,
         } else if (!new_to_old && !old_to_new) {
           RETURN_ERR(TYPE_COMPAT_ERR);
         }
-        current = current->next;
       }
+      current = current->next;
     }
 
     err = duplicate_type_node(&node_unit, &argument_list->data_type);
@@ -940,6 +940,11 @@ err_code_t analyse_expression(ast_node_t *node, hashtable_t *symtable,
                               bool is_last, bool allow_return) {
   if (node == NULL || symtable == NULL) {
     RETURN_ERR(INTERNAL_ERR);
+  }
+
+  if (node->data_type != NULL) {
+    destroy_type_node(node->data_type);
+    node->data_type = NULL;
   }
 
   err_code_t err = NO_ERR;
