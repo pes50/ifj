@@ -99,6 +99,12 @@ static ast_node_t parameter_list_empty = {
 
 #pragma region print(value: Any): Unit
 
+static ast_node_t print_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &print_code},
+    .next = NULL,
+};
+
 static ast_node_t value_any_parameter = {
     .type = AST_PARAMETER,
     .data.parameter =
@@ -124,7 +130,7 @@ static ast_node_t print_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &print_body,
             .is_main = false,
             .name = "print",
             .return_type = &node_unit,
@@ -138,11 +144,17 @@ static ast_node_t print_function_declaration = {
 
 #pragma region readLine(): String
 
+static ast_node_t readline_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &readline_code},
+    .next = NULL,
+};
+
 static ast_node_t read_line_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &readline_body,
             .is_main = false,
             .name = "readLine",
             .return_type = &node_string,
@@ -156,11 +168,17 @@ static ast_node_t read_line_function_declaration = {
 
 #pragma region readInt(): Int
 
+static ast_node_t readint_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &readint_code},
+    .next = NULL,
+};
+
 static ast_node_t read_int_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &readint_body,
             .is_main = false,
             .name = "readInt",
             .return_type = &node_int,
@@ -174,11 +192,17 @@ static ast_node_t read_int_function_declaration = {
 
 #pragma region readDouble(): Double
 
+static ast_node_t readdouble_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &readdouble_code},
+    .next = NULL,
+};
+
 static ast_node_t read_double_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &readdouble_body,
             .is_main = false,
             .name = "readDouble",
             .return_type = &node_double,
@@ -210,6 +234,12 @@ static ast_node_t to_str_function_declaration = {
 
 #pragma region toInt(value: Double): Int
 
+static ast_node_t to_int_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &to_int_code},
+    .next = NULL,
+};
+
 static ast_node_t double_value_parameter = {
     .type = AST_PARAMETER,
     .data.parameter =
@@ -235,7 +265,7 @@ static ast_node_t to_int_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &to_int_body,
             .is_main = false,
             .name = "toInt",
             .return_type = &node_int,

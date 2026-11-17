@@ -14,5 +14,10 @@
 #include "inner_code.h"
 
 extern inner_statement_t str_length_code;
+extern inner_statement_t to_int_code;
+extern inner_statement_t print_code;
+extern inner_statement_t readline_code;
+extern inner_statement_t readint_code;
+extern inner_statement_t readdouble_code;
 
 #endif
