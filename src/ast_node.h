@@ -122,7 +122,7 @@ typedef struct ast_node_t {
       bool is_const;
       struct ast_node_t *expression;
       data_type_node_t *data_type;
-      char *id;
+      char *unique_id;
     } variable_declaration;
 
     struct {
