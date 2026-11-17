@@ -337,7 +337,7 @@ void codegen_print_symbol(inner_symbol_t symbol, FILE *stream) {
 }
 
 /**
- * @brief Prints one line of ifjcode26 (one statement) and frees its memory
+ * @brief Prints one line of ifjcode26 (one statement)
  *
  * @param statement The statement to print
  * @param stream Where to print the data (stdout,stderr,file,...)
@@ -356,18 +356,24 @@ inner_statement_t *codegen_print_statement(inner_statement_t *statement,
   codegen_print_symbol(statement->second_op, stream);
   fprintf(stream, "\n");
 
-  return destroy_statement(statement);
+  return statement->next_statement;
 }
 
 /*******************************************\
  * Code generator interface implementation *
 \*******************************************/
 
-void codegen_print_program(inner_statement_t *statement, FILE *stream) {
+void codegen_print_program(inner_statement_t *statement, FILE *stream,
+                           bool should_deallocate) {
   fprintf(stream, ".IFJcode26\n");
 
+  inner_statement_t *first_statement = statement;
   inner_statement_t *next_statement = statement;
   do {
     next_statement = codegen_print_statement(next_statement, stream);
   } while (next_statement != NULL);
+
+  if (should_deallocate) {
+    destroy_statement_list(first_statement);
+  }
 }

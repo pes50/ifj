@@ -38,9 +38,25 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
       INNER_LABEL, empty_sym,
       create_label_symbol(node->data.function_declaration.name), empty_sym);
 
-  if (context->head == NULL || context->tail == NULL) {
+  if (node->data.function_declaration.is_main) {
     // head and tail must be initialized before adding other statements behind
     context->head = context->tail = function_statement;
+
+    // frames are uninitialized -> LF needs initialization
+    context->tail->next_statement =
+        create_statement(INNER_CREATEFRAME, empty_sym, empty_sym, empty_sym);
+    if (context->tail->next_statement == NULL) {
+      return INTERNAL_ERR;
+    }
+    context->tail = context->tail->next_statement;
+
+    context->tail->next_statement =
+        create_statement(INNER_PUSHFRAME, empty_sym, empty_sym, empty_sym);
+    if (context->tail->next_statement == NULL) {
+      return INTERNAL_ERR;
+    }
+    context->tail = context->tail->next_statement;
+
   } else {
     // adds label statement to the code (to "define" the function)
     context->tail->next_statement = function_statement;
@@ -49,7 +65,7 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
 
   // saves pointer to first node from function body
   ast_node_t *curr_node = node->data.function_declaration.body;
-  err_code_t err;
+  err_code_t err = NO_ERR;
 
   // goes through all body nodes and converts them to statements
   while (curr_node != NULL && context->tail != NULL &&
@@ -64,7 +80,7 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
     curr_node = curr_node->next;
   }
 
-  return NO_ERR;
+  return err;
 }
 
 /****************************\
@@ -117,6 +133,8 @@ err_code_t ast_convert(ast_node_t *main_node, inner_statement_t **code) {
   }
 
   context_t context = {
+      .unique_label_counter = 0,
+      .unique_var_counter = 0,
       .head = NULL,
       .stack = NULL,
       .table = NULL,
@@ -159,15 +177,18 @@ err_code_t ast_convert(ast_node_t *main_node, inner_statement_t **code) {
       stack_pop(context.stack);
       free(current_element);
     }
-    free(context.stack);
-
-    // destroy hashtable
-    ht_destruct(&context.table);
-
-    // TODO should code be also deallocated or returned in case of failure?
   } else {
     *code = context.head;
   }
+
+  // deallocate stack struct
+  free(context.stack);
+
+  // destroy code list
+  destroy_statement_list(context.head);
+
+  // destroy hashtable
+  ht_destruct(&context.table);
 
   return err;
 }

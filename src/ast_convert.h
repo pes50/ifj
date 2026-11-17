@@ -22,6 +22,8 @@
  * @brief Structure to contain all relevant data about function context
  */
 typedef struct {
+  size_t unique_label_counter;
+  size_t unique_var_counter;
   t_stack *stack;
   hashtable_t *table;
   inner_statement_t *head;
