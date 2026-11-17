@@ -265,4 +265,12 @@ inner_statement_t *create_statement(inner_statement_operation_t operation,
  */
 inner_statement_t *destroy_statement(inner_statement_t *statement);
 
+/**
+ * @brief Deallocates whole list of statements
+ *
+ * @param statement Pointer to the first statement
+ *                  ! is not set to NULL
+ */
+void destroy_statement_list(inner_statement_t *statement);
+
 #endif

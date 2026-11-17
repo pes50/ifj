@@ -17,8 +17,8 @@
 /**
  * @brief Converts one AST node to 3AC statement
  *
- * @param node Node to convert
  * @param context Context structure of the funciton in which the node is
+ * @param node Node to convert
  *
  * @return NO_ERR if everything ok
  */

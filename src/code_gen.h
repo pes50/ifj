@@ -16,11 +16,14 @@
 #include <stdio.h>
 
 /**
- * @brief Prints the whole ifjcode26 program
+ * @brief Prints the whole ifjcode26 program and
+ *        deallocates the list of statements if told to
  *
  * @param statement The first statement of the program
  * @param stream Where to print the data (stdout,stderr,file,...)
+ * @param _should_deallocate Decides if statment list will be also deallocated
  */
-void codegen_print_program(inner_statement_t *statement, FILE *stream);
+void codegen_print_program(inner_statement_t *statement, FILE *stream,
+                           bool should_deallocate);
 
 #endif

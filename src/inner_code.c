@@ -100,3 +100,9 @@ inner_statement_t *destroy_statement(inner_statement_t *statement) {
 
   return next_statement;
 }
+
+void destroy_statement_list(inner_statement_t *statement) {
+  while (statement != NULL) {
+    statement = destroy_statement(statement);
+  }
+}
