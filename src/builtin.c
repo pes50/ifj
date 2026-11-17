@@ -216,11 +216,17 @@ static ast_node_t read_double_function_declaration = {
 
 #pragma region toStr(value: Any) String
 
+static ast_node_t to_str_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &to_str_code},
+    .next = NULL,
+};
+
 static ast_node_t to_str_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &to_str_body,
             .is_main = false,
             .name = "toStr",
             .return_type = &node_string,
