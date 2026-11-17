@@ -107,7 +107,7 @@ void destroy_type_node(data_type_node_t *node) {
   free(node);
 }
 
-data_type_node_t *create_class_type_node(char *name) {
+data_type_node_t *create_class_type_node(const char *name) {
   // Create node
   data_type_node_t *node = create_type_node();
   if (node == NULL) {
