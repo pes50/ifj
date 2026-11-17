@@ -2,8 +2,8 @@
  *
  * @file builtin.c
  *
- * @author Roman Skoupý      (xskoupr00)
- *         Simon Šmíd        (xsmidsi00)
+ * @authors     Roman Skoupý      (xskoupr00)
+ * @authors     Simon Šmíd        (xsmidsi00)
  *
  * @brief Implementation of create_builtin_symtable function
  *
@@ -126,6 +126,16 @@ static ast_node_t any_value_parameter_list = {
     .next = NULL,
 };
 
+static data_type_node_t any_unit_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = &node_any,
+            .return_type = &node_unit,
+        },
+    .next = NULL,
+};
+
 static ast_node_t print_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
@@ -136,7 +146,7 @@ static ast_node_t print_function_declaration = {
             .return_type = &node_unit,
             .parameter_lists = &any_value_parameter_list,
         },
-    .data_type = &node_unit,
+    .data_type = &any_unit_signature,
     .next = NULL,
 };
 
@@ -150,6 +160,16 @@ static ast_node_t readline_body = {
     .next = NULL,
 };
 
+static data_type_node_t empty_string_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = NULL,
+            .return_type = &node_string,
+        },
+    .next = NULL,
+};
+
 static ast_node_t read_line_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
@@ -160,7 +180,7 @@ static ast_node_t read_line_function_declaration = {
             .return_type = &node_string,
             .parameter_lists = &parameter_list_empty,
         },
-    .data_type = &node_string,
+    .data_type = &empty_string_signature,
     .next = NULL,
 };
 
@@ -174,6 +194,16 @@ static ast_node_t readint_body = {
     .next = NULL,
 };
 
+static data_type_node_t empty_int_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = NULL,
+            .return_type = &node_int,
+        },
+    .next = NULL,
+};
+
 static ast_node_t read_int_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
@@ -184,7 +214,7 @@ static ast_node_t read_int_function_declaration = {
             .return_type = &node_int,
             .parameter_lists = &parameter_list_empty,
         },
-    .data_type = &node_int,
+    .data_type = &empty_int_signature,
     .next = NULL,
 };
 
@@ -192,9 +222,19 @@ static ast_node_t read_int_function_declaration = {
 
 #pragma region readDouble(): Double
 
-static ast_node_t readdouble_body = {
+static ast_node_t read_double_body = {
     .type = AST_BUILTIN_BODY,
     .data.builtin_body = {.first_instruction = &readdouble_code},
+    .next = NULL,
+};
+
+static data_type_node_t empty_double_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = NULL,
+            .return_type = &node_double,
+        },
     .next = NULL,
 };
 
@@ -202,19 +242,29 @@ static ast_node_t read_double_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = &readdouble_body,
+            .body = &read_double_body,
             .is_main = false,
             .name = "readDouble",
             .return_type = &node_double,
             .parameter_lists = &parameter_list_empty,
         },
-    .data_type = &node_double,
+    .data_type = &empty_double_signature,
     .next = NULL,
 };
 
 #pragma endregion
 
 #pragma region toStr(value: Any) String
+
+static data_type_node_t any_string_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = &node_any,
+            .return_type = &node_string,
+        },
+    .next = NULL,
+};
 
 static ast_node_t to_str_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
@@ -226,7 +276,7 @@ static ast_node_t to_str_function_declaration = {
             .return_type = &node_string,
             .parameter_lists = &any_value_parameter_list,
         },
-    .data_type = &node_string,
+    .data_type = &any_string_signature,
     .next = NULL,
 };
 
@@ -261,6 +311,16 @@ static ast_node_t double_value_parameter_list = {
     .next = NULL,
 };
 
+static data_type_node_t double_int_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = &node_double,
+            .return_type = &node_int,
+        },
+    .next = NULL,
+};
+
 static ast_node_t to_int_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
@@ -271,7 +331,7 @@ static ast_node_t to_int_function_declaration = {
             .return_type = &node_int,
             .parameter_lists = &double_value_parameter_list,
         },
-    .data_type = &node_int,
+    .data_type = &double_int_signature,
     .next = NULL,
 };
 
@@ -306,6 +366,16 @@ static ast_node_t str_length_parameter_list = {
     .next = NULL,
 };
 
+static data_type_node_t string_int_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = &node_string,
+            .return_type = &node_int,
+        },
+    .next = NULL,
+};
+
 static ast_node_t str_length_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
@@ -316,7 +386,7 @@ static ast_node_t str_length_function_declaration = {
             .return_type = &node_int,
             .parameter_lists = &str_length_parameter_list,
         },
-    .data_type = &node_int,
+    .data_type = &string_int_signature,
     .next = NULL,
 };
 
@@ -367,6 +437,34 @@ static ast_node_t sub_str_parameter_list = {
     .next = NULL,
 };
 
+static data_type_node_t end_int = {
+    .type = DATA_TYPE_PRIMITIVE,
+    .data.primitive_type = PRIMITIVE_INT,
+    .next = NULL,
+};
+
+static data_type_node_t start_int = {
+    .type = DATA_TYPE_PRIMITIVE,
+    .data.primitive_type = PRIMITIVE_INT,
+    .next = &end_int,
+};
+
+static data_type_node_t value_string = {
+    .type = DATA_TYPE_PRIMITIVE,
+    .data.primitive_type = PRIMITIVE_STRING,
+    .next = &start_int,
+};
+
+static data_type_node_t string_int_int_string_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = &value_string,
+            .return_type = &node_string,
+        },
+    .next = NULL,
+};
+
 static ast_node_t sub_str_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
@@ -377,7 +475,7 @@ static ast_node_t sub_str_function_declaration = {
             .return_type = &node_string,
             .parameter_lists = &sub_str_parameter_list,
         },
-    .data_type = &node_string,
+    .data_type = &string_int_int_string_signature,
     .next = NULL,
 };
 
@@ -417,6 +515,28 @@ static ast_node_t ord_parameter_list = {
     .next = NULL,
 };
 
+static data_type_node_t ord_index_int = {
+    .type = DATA_TYPE_PRIMITIVE,
+    .data.primitive_type = PRIMITIVE_INT,
+    .next = NULL,
+};
+
+static data_type_node_t ord_value_string = {
+    .type = DATA_TYPE_PRIMITIVE,
+    .data.primitive_type = PRIMITIVE_STRING,
+    .next = &ord_index_int,
+};
+
+static data_type_node_t string_int_int_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = &ord_value_string,
+            .return_type = &node_int,
+        },
+    .next = NULL,
+};
+
 static ast_node_t ord_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
@@ -427,7 +547,7 @@ static ast_node_t ord_function_declaration = {
             .return_type = &node_int,
             .parameter_lists = &ord_parameter_list,
         },
-    .data_type = &node_int,
+    .data_type = &string_int_int_signature,
     .next = NULL,
 };
 
@@ -456,6 +576,16 @@ static ast_node_t chr_parameter_list = {
     .next = NULL,
 };
 
+static data_type_node_t int_string_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = &node_int,
+            .return_type = &node_string,
+        },
+    .next = NULL,
+};
+
 static ast_node_t chr_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
@@ -466,13 +596,23 @@ static ast_node_t chr_function_declaration = {
             .return_type = &node_string,
             .parameter_lists = &chr_parameter_list,
         },
-    .data_type = &node_string,
+    .data_type = &int_string_signature,
     .next = NULL,
 };
 
 #pragma endregion
 
 #pragma region readBoolean(): Boolean
+
+static data_type_node_t empty_boolean_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = NULL,
+            .return_type = &node_boolean,
+        },
+    .next = NULL,
+};
 
 static ast_node_t read_boolean_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
@@ -484,7 +624,7 @@ static ast_node_t read_boolean_function_declaration = {
             .return_type = &node_boolean,
             .parameter_lists = &parameter_list_empty,
         },
-    .data_type = &node_boolean,
+    .data_type = &empty_boolean_signature,
     .next = NULL,
 };
 
@@ -523,7 +663,7 @@ static ast_node_t any_to_string_function_declaration = {
             .return_type = &node_string,
             .parameter_lists = &target_any_parameter_list_node,
         },
-    .data_type = &node_string,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
@@ -562,7 +702,7 @@ static ast_node_t double_to_int_function_declaration = {
             .return_type = &node_int,
             .parameter_lists = &target_double_parameter_list_node,
         },
-    .data_type = &node_int,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
@@ -580,7 +720,7 @@ static ast_node_t double_floor_function_declaration = {
             .return_type = &node_double,
             .parameter_lists = &target_double_parameter_list_node,
         },
-    .data_type = &node_double,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
@@ -619,7 +759,7 @@ static ast_node_t string_length_function_declaration = {
             .return_type = &node_int,
             .parameter_lists = &target_string_parameter_list_node,
         },
-    .data_type = &node_int,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
@@ -647,6 +787,16 @@ static data_type_node_t int_unit_node = {
     .next = NULL,
 };
 
+static data_type_node_t empty_int_unit_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = NULL,
+            .return_type = &int_unit_node,
+        },
+    .next = NULL,
+};
+
 static ast_node_t read_int_maybe_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
@@ -657,7 +807,7 @@ static ast_node_t read_int_maybe_function_declaration = {
             .return_type = &int_unit_node,
             .parameter_lists = &parameter_list_empty,
         },
-    .data_type = &int_unit_node,
+    .data_type = &empty_int_unit_signature,
     .next = NULL,
 };
 
@@ -680,6 +830,16 @@ static data_type_node_t double_unit_node = {
     .next = NULL,
 };
 
+static data_type_node_t empty_double_unit_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = NULL,
+            .return_type = &double_unit_node,
+        },
+    .next = NULL,
+};
+
 static ast_node_t read_double_maybe_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
@@ -690,7 +850,7 @@ static ast_node_t read_double_maybe_function_declaration = {
             .return_type = &double_unit_node,
             .parameter_lists = &parameter_list_empty,
         },
-    .data_type = &double_unit_node,
+    .data_type = &empty_double_unit_signature,
     .next = NULL,
 };
 
@@ -750,7 +910,7 @@ static ast_node_t to_function_declaration = {
             .return_type = &node_range,
             .parameter_lists = &target_int_parameter_list_node,
         },
-    .data_type = &node_range,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
@@ -768,7 +928,7 @@ static ast_node_t until_function_declaration = {
             .return_type = &node_range,
             .parameter_lists = &target_int_parameter_list_node,
         },
-    .data_type = &node_range,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
@@ -807,7 +967,7 @@ static ast_node_t by_function_declaration = {
             .return_type = &node_range,
             .parameter_lists = &target_range_parameter_list_node,
         },
-    .data_type = &node_range,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
@@ -856,7 +1016,7 @@ static ast_node_t drop_function_declaration = {
             .return_type = &generic_list_node,
             .parameter_lists = &target_list_n_parameter_list_node,
         },
-    .data_type = &generic_list_node,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
@@ -874,7 +1034,7 @@ static ast_node_t take_function_declaration = {
             .return_type = &generic_list_node,
             .parameter_lists = &target_list_n_parameter_list_node,
         },
-    .data_type = &generic_list_node,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
@@ -934,7 +1094,7 @@ static ast_node_t slice_function_declaration = {
             .return_type = &generic_list_node,
             .parameter_lists = &from_until_target_list_parameter_list_node,
         },
-    .data_type = &generic_list_node,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
@@ -962,7 +1122,7 @@ static ast_node_t head_function_declaration = {
             .return_type = &node_generic_t,
             .parameter_lists = &target_list_parameter_list_node,
         },
-    .data_type = &node_generic_t,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
@@ -980,7 +1140,7 @@ static ast_node_t tail_function_declaration = {
             .return_type = &generic_list_node,
             .parameter_lists = &target_list_parameter_list_node,
         },
-    .data_type = &generic_list_node,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
@@ -1041,6 +1201,34 @@ static data_type_node_t list_int_node = {
     .next = NULL,
 };
 
+static data_type_node_t range_step_int = {
+    .type = DATA_TYPE_PRIMITIVE,
+    .data.primitive_type = PRIMITIVE_INT,
+    .next = NULL,
+};
+
+static data_type_node_t range_end_int = {
+    .type = DATA_TYPE_PRIMITIVE,
+    .data.primitive_type = PRIMITIVE_INT,
+    .next = &range_step_int,
+};
+
+static data_type_node_t range_start_int = {
+    .type = DATA_TYPE_PRIMITIVE,
+    .data.primitive_type = PRIMITIVE_INT,
+    .next = &range_end_int,
+};
+
+static data_type_node_t int_int_int_list_int_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = &range_start_int,
+            .return_type = &list_int_node,
+        },
+    .next = NULL,
+};
+
 static ast_node_t range_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
@@ -1052,7 +1240,7 @@ static ast_node_t range_function_declaration = {
             .parameter_lists = &start_end_step_parameter_list_node,
             .is_static = true,
         },
-    .data_type = &list_int_node,
+    .data_type = &int_int_int_list_int_signature,
     .next = NULL,
 };
 
@@ -1111,7 +1299,7 @@ static ast_node_t filter_function_declaration = {
             .return_type = &generic_list_node,
             .parameter_lists = &target_list_func_parameter_list_node,
         },
-    .data_type = &generic_list_node,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
@@ -1129,7 +1317,7 @@ static ast_node_t take_while_function_declaration = {
             .return_type = &generic_list_node,
             .parameter_lists = &target_list_func_parameter_list_node,
         },
-    .data_type = &generic_list_node,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
@@ -1147,7 +1335,7 @@ static ast_node_t drop_while_function_declaration = {
             .return_type = &generic_list_node,
             .parameter_lists = &target_list_func_parameter_list_node,
         },
-    .data_type = &generic_list_node,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
@@ -1175,7 +1363,7 @@ static ast_node_t to_list_function_declaration = {
             .return_type = &list_int_node,
             .parameter_lists = &target_range_empty_parameter_list_node,
         },
-    .data_type = &list_int_node,
+    .data_type = &node_curried_function,
     .next = NULL,
 };
 
