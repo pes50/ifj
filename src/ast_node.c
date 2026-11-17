@@ -120,6 +120,7 @@ void destroy_node(ast_node_t *node) {
     destroy_node(node->data.interpolated_string.expressions);
     break;
   case AST_LIST_CONSTRUCTOR:
+  case AST_BUILTIN_BODY:
     break;
   }
 

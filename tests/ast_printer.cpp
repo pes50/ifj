@@ -187,6 +187,10 @@ static void print_ast_node(FILE *out, ast_node_t *node,
                    "body");
     break;
 
+  case AST_BUILTIN_BODY:
+    std::fprintf(out, "Builtin_body");
+    break;
+
   case AST_FUNCTION_CALL:
     std::fprintf(
         out, "FunctionCall: %s() (calling=%s)%s\n",
