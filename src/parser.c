@@ -68,6 +68,8 @@ err_code_t fun_call(token_t *token, ast_node_t **node);
 err_code_t dot_call(token_t *token, ast_node_t **node);
 err_code_t dot_call_tail(token_t *token, ast_node_t **node, ast_node_t *target);
 err_code_t arg_lists(token_t *token, ast_node_t **node);
+err_code_t args(token_t *token, ast_node_t **node);
+err_code_t args_tail(token_t *token, ast_node_t **node);
 
 #pragma endregion
 
@@ -918,6 +920,26 @@ err_code_t stmt(token_t *token, ast_node_t **node) {
 
   case TOK_KW_VAR:
     return var_dec(token, node, false);
+
+  case TOK_KW_RETURN:
+    token_clear(token);
+    ret = lexer_get_token(token, FORBIDDEN);
+    if (ret != NO_ERR) {
+      return ret;
+    }
+
+    ast_node_t *expression = NULL;
+    ret = expr(token, &expression);
+    if (ret != NO_ERR) {
+      return ret;
+    }
+
+    *node = create_return_node(expression);
+    if (*node == NULL) {
+      destroy_node(expression);
+      return INTERNAL_ERR;
+    }
+    return NO_ERR;
 
   default:
     return expr(token, node);
@@ -1771,7 +1793,95 @@ err_code_t var_dec(token_t *token, ast_node_t **node, bool is_const) {
   return NO_ERR;
 }
 
-err_code_t arg_lists(token_t *token, ast_node_t **node) {}
+#pragma endregion
+
+#pragma region ARGUMENTS
+
+err_code_t arg_lists(token_t *token, ast_node_t **node) {
+  if (token->type != TOK_L_PAREN) {
+    return NO_ERR;
+  }
+
+  token_clear(token);
+  err_code_t ret = lexer_get_token(token, ALLOWED);
+  if (ret != NO_ERR) {
+    return ret;
+  }
+
+  ast_node_t *arguments = NULL;
+  ret = args(token, &arguments);
+  if (ret != NO_ERR) {
+    return ret;
+  }
+
+  if (token->type != TOK_R_PAREN) {
+    destroy_node(arguments);
+    return SYNTAX_ERR;
+  }
+
+  token_clear(token);
+  ret = lexer_get_token(token, ALLOWED);
+  if (ret != NO_ERR) {
+    destroy_node(arguments);
+    return ret;
+  }
+
+  *node = create_argument_list_node(arguments);
+  if (*node == NULL) {
+    destroy_node(arguments);
+    return INTERNAL_ERR;
+  }
+
+  ret = arg_lists(token, &(*node)->next);
+  if (ret != NO_ERR) {
+    destroy_node(*node);
+  }
+  return ret;
+}
+
+err_code_t args(token_t *token, ast_node_t **node) {
+  if (token->type == TOK_R_PAREN) {
+    return NO_ERR;
+  }
+
+  err_code_t ret = expr(token, node);
+  if (ret != NO_ERR) {
+    return ret;
+  }
+
+  ret = args_tail(token, &(*node)->next);
+  if (ret != NO_ERR) {
+    destroy_node(*node);
+  }
+  return ret;
+}
+
+err_code_t args_tail(token_t *token, ast_node_t **node) {
+  if (token->type == TOK_R_PAREN) {
+    return NO_ERR;
+  }
+
+  if (token->type != TOK_COMMA) {
+    return SYNTAX_ERR;
+  }
+
+  token_clear(token);
+  err_code_t ret = lexer_get_token(token, ALLOWED);
+  if (ret != NO_ERR) {
+    return ret;
+  }
+
+  ret = expr(token, node);
+  if (ret != NO_ERR) {
+    return ret;
+  }
+
+  ret = args_tail(token, &(*node)->next);
+  if (ret != NO_ERR) {
+    destroy_node(*node);
+  }
+  return ret;
+}
 
 #pragma endregion
 
