@@ -19,5 +19,6 @@ extern inner_statement_t print_code;
 extern inner_statement_t readline_code;
 extern inner_statement_t readint_code;
 extern inner_statement_t readdouble_code;
+extern inner_statement_t to_str_code;
 
 #endif
