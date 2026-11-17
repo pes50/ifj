@@ -1305,7 +1305,75 @@ err_code_t guard_list(token_t *token, ast_node_t **node) {
   return ret;
 }
 
-err_code_t for_tail(token_t *token, ast_node_t **node) {}
+err_code_t for_tail(token_t *token, ast_node_t **node) {
+  if (token->type != TOK_KW_DO) {
+    return SYNTAX_ERR;
+  }
+
+  token_clear(token);
+  err_code_t ret = lexer_get_token(token, ALLOWED);
+  if (ret != NO_ERR) {
+    return ret;
+  }
+
+  ast_node_t *statement = NULL;
+
+  if (token->type != TOK_EOL) {
+    ret = stmt(token, &statement);
+    if (ret != NO_ERR) {
+      return ret;
+    }
+
+    *node = create_block_node(statement);
+    if (*node == NULL) {
+      destroy_node(statement);
+      return INTERNAL_ERR;
+    }
+    return NO_ERR;
+  }
+
+  token_clear(token);
+  ret = lexer_get_token(token, FORBIDDEN);
+  if (ret != NO_ERR) {
+    return ret;
+  }
+
+  if (token->type != TOK_INDENT) {
+    return SYNTAX_ERR;
+  }
+
+  token_clear(token);
+  ret = lexer_get_token(token, FORBIDDEN);
+  if (ret != NO_ERR) {
+    return ret;
+  }
+
+  ret = block(token, &statement);
+  if (ret != NO_ERR) {
+    return ret;
+  }
+
+  *node = create_block_node(statement);
+  if (*node == NULL) {
+    destroy_node(statement);
+    return INTERNAL_ERR;
+  }
+
+  if (token->type != TOK_DEDENT) {
+    destroy_node(*node);
+    *node = NULL;
+    return SYNTAX_ERR;
+  }
+
+  token_clear(token);
+  ret = lexer_get_token(token, ALLOWED);
+  if (ret != NO_ERR) {
+    destroy_node(*node);
+    *node = NULL;
+  }
+
+  return ret;
+}
 
 err_code_t while_loop(token_t *token, ast_node_t **node) {
   ast_node_t *condition = NULL;
