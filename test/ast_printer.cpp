@@ -58,10 +58,6 @@ static std::string format_type(data_type_node_t *dt_node) {
   if (dt_node == nullptr) {
     return "null";
   }
-  char *str = nullptr;
-  if (type_to_string(dt_node, &str) == NO_ERR && str != nullptr) {
-    return std::string(str);
-  }
   switch (dt_node->type) {
   case DATA_TYPE_PRIMITIVE:
     switch (dt_node->data.primitive_type) {
@@ -114,7 +110,15 @@ static std::string format_type(data_type_node_t *dt_node) {
     return "(" + params + ") => " +
            format_type(dt_node->data.lambda_type.return_type);
   }
+  case DATA_TYPE_CURRIED_FUNCTION:
+    return "Curried function";
   }
+
+  char *str = nullptr;
+  if (type_to_string(dt_node, &str) == NO_ERR && str != nullptr) {
+    return std::string(str);
+  }
+
   return "UnknownType";
 }
 

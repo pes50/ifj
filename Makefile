@@ -7,12 +7,12 @@ DEBUG_TEST_EXECUTABLE = run_tests_debug
 CC = gcc
 BASE_CFLAGS = -Wall -Wextra --std=c17
 CFLAGS = $(BASE_CFLAGS) -O2
-DEBUG_CFLAGS = $(BASE_CFLAGS) -g -O0
+DEBUG_CFLAGS = $(BASE_CFLAGS) -g -O0 -DDEBUG
 
 CXX = g++
 BASE_CXXFLAGS = -Wall -Wextra -std=c++17 -I$(SRC_DIR) -pthread
 CXXFLAGS = $(BASE_CXXFLAGS) -O2
-DEBUG_CXXFLAGS = $(BASE_CXXFLAGS) -g -O0
+DEBUG_CXXFLAGS = $(BASE_CXXFLAGS) -g -O0 -DDEBUG
 GTEST_LIBS = -lgtest -lgtest_main -pthread
 
 SRC_DIR = src
@@ -79,3 +79,5 @@ $(BUILD_DIR) $(DEBUG_BUILD_DIR):
 # Cleanup
 clean:
 	rm -rf $(EXECUTABLE) $(TEST_EXECUTABLE) $(DEBUG_EXECUTABLE) $(DEBUG_TEST_EXECUTABLE) build
+
+-include $(DEPS)

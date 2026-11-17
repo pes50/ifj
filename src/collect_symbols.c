@@ -153,12 +153,13 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
     }
 
     if (current->data.function_declaration.is_main) {
-      return REDEF_SYMBOL_ERR;
+      return OTHER_SEMANTIC_ERR;
     }
 
     char *symbol =
         string_concatenate_dot(first, current->data.function_declaration.name);
     if (symbol == NULL) {
+      free(first);
       return INTERNAL_ERR;
     }
 
@@ -168,9 +169,11 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
     if (err != UNDEF_SYMBOL_ERR) {
       // Symbol is in table
       if (data != NULL) {
+        free(first);
         free(symbol);
         return REDEF_SYMBOL_ERR;
       }
+      free(first);
       free(symbol);
       return err;
     }
@@ -179,6 +182,7 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
     ast_node_t *parameter_copy =
         create_parameter_node(parameter->data.parameter.name, NULL);
     if (parameter_copy == NULL) {
+      free(first);
       free(symbol);
       return INTERNAL_ERR;
     }
@@ -186,6 +190,7 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
     if (duplicate_type_node(parameter->data.parameter.data_type,
                             &parameter_copy->data.parameter.data_type) !=
         NO_ERR) {
+      free(first);
       free(symbol);
       destroy_node(parameter_copy);
       return INTERNAL_ERR;
@@ -194,6 +199,7 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
     ast_node_t *parameter_list_copy =
         create_parameter_list_node(parameter_copy);
     if (parameter_list_copy == NULL) {
+      free(first);
       free(symbol);
       destroy_node(parameter_copy);
       return INTERNAL_ERR;
@@ -205,6 +211,7 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
       current->data.function_declaration.parameter_lists = parameter_list_copy;
     } else {
       if (!is_parameter_list_chain(parameter_lists)) {
+        free(first);
         free(symbol);
         destroy_node(parameter_list_copy);
         return OTHER_SEMANTIC_ERR;
@@ -215,14 +222,17 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
 
     // Define symbol
     if (ht_insert_item(symtable, symbol, current) != NO_ERR) {
+      free(first);
       free(symbol);
       return INTERNAL_ERR;
     }
 
-    free(symbol);
+    free(current->data.function_declaration.name);
+    current->data.function_declaration.name = symbol;
 
     current = current->next;
   }
+  free(first);
 
   return NO_ERR;
 }

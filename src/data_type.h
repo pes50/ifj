@@ -26,6 +26,7 @@ typedef enum {
   DATA_TYPE_ANY,
   DATA_TYPE_UNIT,
   DATA_TYPE_RANGE,
+  DATA_TYPE_CURRIED_FUNCTION,
 } dt_type_t;
 
 /**
@@ -81,6 +82,8 @@ extern data_type_node_t node_boolean;
 extern data_type_node_t node_any;
 extern data_type_node_t node_generic_t;
 extern data_type_node_t node_range;
+extern data_type_node_t generic_list_node;
+extern data_type_node_t node_curried_function;
 
 /**
  * @brief Allocates a new Data type node

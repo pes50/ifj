@@ -52,6 +52,18 @@ data_type_node_t node_range = {
     .type = DATA_TYPE_RANGE,
     .next = NULL,
 };
+data_type_node_t generic_list_node = {
+    .type = DATA_TYPE_LIST,
+    .data.list_type =
+        {
+            .elements_type = &node_generic_t,
+        },
+    .next = NULL,
+};
+data_type_node_t node_curried_function = {
+    .type = DATA_TYPE_CURRIED_FUNCTION,
+    .next = NULL,
+};
 
 data_type_node_t *create_type_node() {
   return calloc(1, sizeof(data_type_node_t));
@@ -60,7 +72,8 @@ data_type_node_t *create_type_node() {
 void destroy_type_node(data_type_node_t *node) {
   if (node == NULL || node == &node_int || node == &node_double ||
       node == &node_string || node == &node_unit || node == &node_boolean ||
-      node == &node_any || node == &node_generic_t || node == &node_range) {
+      node == &node_any || node == &node_generic_t || node == &node_range ||
+      node == &generic_list_node || node == &node_curried_function) {
     return;
   }
 
@@ -79,6 +92,7 @@ void destroy_type_node(data_type_node_t *node) {
   case DATA_TYPE_ANY:
   case DATA_TYPE_UNIT:
   case DATA_TYPE_RANGE:
+  case DATA_TYPE_CURRIED_FUNCTION:
     break;
   case DATA_TYPE_UNION:
     destroy_type_node(node->data.union_type.types);
@@ -238,6 +252,7 @@ err_code_t duplicate_type_node(data_type_node_t *original,
   case DATA_TYPE_ANY:
   case DATA_TYPE_UNIT:
   case DATA_TYPE_RANGE:
+  case DATA_TYPE_CURRIED_FUNCTION:
     break;
   }
 
@@ -383,6 +398,9 @@ bool are_data_types_identical(data_type_node_t *data_type_a,
   case DATA_TYPE_UNIT:
   case DATA_TYPE_RANGE:
     break;
+  case DATA_TYPE_CURRIED_FUNCTION:
+    // not supported
+    return false;
   }
 
   return are_data_types_identical(data_type_a->next, data_type_b->next);
@@ -419,36 +437,47 @@ bool are_data_types_compatible(data_type_node_t *data_type_a,
 }
 
 err_code_t type_to_string(data_type_node_t *data_type, char **result) {
+  char *src = NULL;
   switch (data_type->type) {
   case DATA_TYPE_PRIMITIVE:
     switch (data_type->data.primitive_type) {
     case PRIMITIVE_INT:
-      *result = "Int";
+      src = "Int";
       break;
     case PRIMITIVE_DOUBLE:
-      *result = "Double";
+      src = "Double";
       break;
     case PRIMITIVE_STRING:
-      *result = "String";
+      src = "String";
       break;
     case PRIMITIVE_BOOLEAN:
-      *result = "Boolean";
+      src = "Boolean";
       break;
     }
     break;
+  case DATA_TYPE_UNIT:
+    src = "Unit";
+    break;
   case DATA_TYPE_CLASS:
-    *result = data_type->data.class_type.name;
+    src = data_type->data.class_type.name;
     break;
   case DATA_TYPE_LIST:
-    *result = "List[T]";
+    src = "List[T]";
     break;
   case DATA_TYPE_RANGE:
-    *result = "$Range";
+    src = "$Range";
     break;
   default:
     // Type is not supported
     return OTHER_SEMANTIC_ERR;
   }
+
+  char *duplicated = string_duplicate(src);
+  if (duplicated == NULL) {
+    return INTERNAL_ERR;
+  }
+  *result = duplicated;
+
   return NO_ERR;
 }
 
