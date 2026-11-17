@@ -1273,7 +1273,38 @@ err_code_t gen_tail(token_t *token, ast_node_t *expression,
   return SYNTAX_ERR;
 }
 
-err_code_t guard_list(token_t *token, ast_node_t **node) {}
+err_code_t guard_list(token_t *token, ast_node_t **node) {
+  if (token->type == TOK_KW_DO) {
+    return NO_ERR;
+  }
+
+  err_code_t ret = if_guard(token, node);
+  if (ret != NO_ERR) {
+    return ret;
+  }
+
+  if (token->type != TOK_EOL) {
+    destroy_node(*node);
+    *node = NULL;
+    return SYNTAX_ERR;
+  }
+
+  token_clear(token);
+  ret = lexer_get_token(token, FORBIDDEN);
+  if (ret != NO_ERR) {
+    destroy_node(*node);
+    *node = NULL;
+    return ret;
+  }
+
+  ret = guard_list(token, &(*node)->next);
+  if (ret != NO_ERR) {
+    destroy_node(*node);
+    *node = NULL;
+  }
+  return ret;
+}
+
 err_code_t for_tail(token_t *token, ast_node_t **node) {}
 
 err_code_t while_loop(token_t *token, ast_node_t **node) {
