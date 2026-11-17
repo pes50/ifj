@@ -526,11 +526,12 @@ err_code_t extension(token_t *token, ast_node_t **node) {
     return ret;
   }
 
-  ast_node_t *function_declarations;
+  ast_node_t *function_declarations = NULL;
   ret = ext_list(token, &function_declarations);
 
   if (ret != NO_ERR) {
     destroy_node(parameter);
+    destroy_node(function_declarations);
     return ret;
   }
 
@@ -555,6 +556,19 @@ err_code_t extension(token_t *token, ast_node_t **node) {
     return INTERNAL_ERR;
   }
   return NO_ERR;
+}
+
+err_code_t ext_list(token_t *token, ast_node_t **node) {
+  if (token->type == TOK_DEDENT) {
+    return NO_ERR;
+  }
+
+  err_code_t ret = fun_def(token, node, false);
+  if (ret != NO_ERR) {
+    return ret;
+  }
+
+  return ext_list(token, &(*node)->next);
 }
 
 #pragma endregion
@@ -1902,9 +1916,6 @@ err_code_t args_tail(token_t *token, ast_node_t **node) {
 #pragma endregion
 
 #pragma region EXPRESSION
-// ---------------- \\
-// Expression parsing
-// ---------------- \\
 
 // helper
 bool is_end(token_t *token) {
