@@ -3,7 +3,7 @@
  * @file builtin.c
  *
  * @author Roman Skoupý      (xskoupr00)
- *         Šmíd Simon        (xsmidsi00)
+ *         Simon Šmíd        (xsmidsi00)
  *
  * @brief Implementation of create_builtin_symtable function
  *
@@ -249,6 +249,12 @@ static ast_node_t to_int_function_declaration = {
 
 #pragma region strLength(value : String) : Int
 
+static ast_node_t str_length_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &str_length_code},
+    .next = NULL,
+};
+
 static ast_node_t str_length_parameter = {
     .type = AST_PARAMETER,
     .data.parameter =
@@ -274,7 +280,7 @@ static ast_node_t str_length_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = (ast_node_t *)&str_length_code,
+            .body = &str_length_body,
             .is_main = false,
             .name = "strLength",
             .return_type = &node_int,

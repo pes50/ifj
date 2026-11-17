@@ -43,6 +43,7 @@ typedef enum {
   AST_LITERAL,
   AST_INTERPOLATED_STRING,
   AST_LIST_CONSTRUCTOR,
+  AST_BUILTIN_BODY,
 } ast_type_t;
 
 /**
@@ -185,6 +186,10 @@ typedef struct ast_node_t {
     struct {
       struct ast_node_t *expressions;
     } interpolated_string;
+
+    struct {
+      struct inner_statement *first_instruction;
+    } builtin_body;
   } data;
 } ast_node_t;
 
