@@ -103,6 +103,11 @@ actions_t get_action(token_type_t input, token_type_t stack) {
     return CONSUME_PAREN;
   }
 
+  // if token stack has no tokens
+  if (stack == TOK_ERR) {
+    return SHIFT;
+  }
+
   priority_t input_p = get_priority(input);
   priority_t stack_p = get_priority(stack);
 
