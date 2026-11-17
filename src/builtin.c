@@ -3,6 +3,7 @@
  * @file builtin.c
  *
  * @author Roman Skoupý      (xskoupr00)
+ *         Šmíd Simon        (xsmidsi00)
  *
  * @brief Implementation of create_builtin_symtable function
  *
@@ -10,6 +11,7 @@
 
 #include "builtin.h"
 #include "ast_node.h"
+#include "builtin_code.h"
 
 #define builtin_table_size 200
 
@@ -272,7 +274,7 @@ static ast_node_t str_length_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = (ast_node_t *)&str_length_code,
             .is_main = false,
             .name = "strLength",
             .return_type = &node_int,
