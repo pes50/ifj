@@ -4,3 +4,4 @@ run_tests
 build_debug
 run_tests_debug
 .ast_diffs
+archive.zip
