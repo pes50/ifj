@@ -618,4 +618,149 @@ inner_statement_t readint_code = {
     .next_statement = &readint_s1,
 };
 
-// Read double
+/**
+ * readDouble(): Double
+ */
+
+// RETURN
+static inner_statement_t readdouble_s12 = {
+    .operation = INNER_RETURN,
+    .next_statement = NULL,
+};
+
+// POPFRAME
+static inner_statement_t readdouble_s11 = {
+    .operation = INNER_POPFRAME,
+    .next_statement = &readdouble_s12,
+};
+
+// PUSHS LF@readed_value
+static inner_statement_t readdouble_s10 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@readed_value",
+        },
+    .next_statement = &readdouble_s11,
+};
+
+// LABEL read_double_end
+static inner_statement_t readdouble_s9 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "read_double_end",
+        },
+    .next_statement = &readdouble_s10,
+};
+
+// MOVE LF@readed_value float@0
+static inner_statement_t readdouble_s8 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@readed_value",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.identificator = "float@0",
+        },
+    .next_statement = &readdouble_s9,
+};
+
+// LABEL read_double_nil
+static inner_statement_t readdouble_s7 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "read_double_nil",
+        },
+    .next_statement = &readdouble_s8,
+};
+
+// JUMP read_double_end
+static inner_statement_t readdouble_s6 = {
+    .operation = INNER_JUMP,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "read_double_end",
+        },
+    .next_statement = &readdouble_s7,
+};
+
+// JUMPIFEQ read_double_nil LF@readed_value nil@nil
+static inner_statement_t readdouble_s5 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "read_double_nil",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@readed_value",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.identificator = "nil@nil",
+        },
+    .next_statement = &readdouble_s6,
+};
+
+// READ LF@readed_value float
+static inner_statement_t readdouble_s4 = {
+    .operation = INNER_READ,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@readed_value",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_ARR,
+            .data.identificator = "float",
+        },
+    .next_statement = &readdouble_s5,
+};
+
+// DEFVAR LF@readed_value
+static inner_statement_t readdouble_s3 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@readed_value",
+        },
+    .next_statement = &readdouble_s4,
+};
+
+// PUSHFRAME
+static inner_statement_t readdouble_s2 = {
+    .operation = INNER_PUSHFRAME,
+    .next_statement = &readdouble_s3,
+};
+
+// CREATEFRAME
+static inner_statement_t readdouble_s1 = {
+    .operation = INNER_CREATEFRAME,
+    .next_statement = &readdouble_s2,
+};
+
+// LABEL readDouble
+inner_statement_t readdouble_code = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "readDouble",
+        },
+    .next_statement = &readdouble_s1,
+};
