@@ -968,7 +968,7 @@ err_code_t analyse_expression(ast_node_t *node, hashtable_t *symtable,
   case AST_BUILTIN_BODY:
     RETURN_ERR(OTHER_SEMANTIC_ERR);
   case AST_LAMBDA_DECLARATION:
-    RETURN_ERR(analyse_lambda_declaration(node, symtable, explicit_data_type));
+    RETURN_ERR(analyse_lambda_declaration(node, symtable));
   case AST_FUNCTION_CALL:
     RETURN_ERR(analyse_function_call(node->data.function_call.name, node,
                                      symtable, explicit_data_type));

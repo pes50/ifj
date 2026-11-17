@@ -231,9 +231,7 @@ static void print_ast_node(FILE *out, ast_node_t *node,
     break;
 
   case AST_LAMBDA_DECLARATION:
-    std::fprintf(out, "LambdaDecl (return_type: %s)%s\n",
-                 format_type(node->data.lambda_declaration.return_type).c_str(),
-                 node_dt.c_str());
+    std::fprintf(out, "LambdaDecl %s\n", node_dt.c_str());
     print_ast_list(out, node->data.lambda_declaration.parameters, child_prefix,
                    "params");
     print_ast_list(out, node->data.lambda_declaration.body, child_prefix,

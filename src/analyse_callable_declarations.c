@@ -210,18 +210,12 @@ fun_err:
   return err;
 }
 
-err_code_t analyse_lambda_declaration(ast_node_t *node, hashtable_t *symtable,
-                                      data_type_node_t *explicit_type) {
+err_code_t analyse_lambda_declaration(ast_node_t *node, hashtable_t *symtable) {
   if (node == NULL || symtable == NULL) {
     return INTERNAL_ERR;
   }
 
   if (node->type != AST_LAMBDA_DECLARATION) {
-    return OTHER_SEMANTIC_ERR;
-  }
-
-  data_type_node_t *return_type = node->data.lambda_declaration.return_type;
-  if (return_type == NULL && explicit_type == NULL) {
     return OTHER_SEMANTIC_ERR;
   }
 
@@ -244,18 +238,12 @@ err_code_t analyse_lambda_declaration(ast_node_t *node, hashtable_t *symtable,
   }
 
   if (body->type == AST_BLOCK) {
-    err = analyse_block(body, current_scope, return_type, false);
+    err = analyse_block(body, current_scope, NULL, false);
   } else {
-    err = analyse_expression(body, current_scope, return_type, true, true);
+    err = analyse_expression(body, current_scope, NULL, true, true);
   }
   if (err != NO_ERR) {
     goto fun_err;
-  }
-
-  if (return_type != NULL) {
-    if (!are_data_types_compatible(body->data_type, return_type)) {
-      RETURN_ERR(TYPE_COMPAT_ERR);
-    }
   }
 
   err = duplicate_function_type(node->data.lambda_declaration.parameters,

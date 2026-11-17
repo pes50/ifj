@@ -1489,8 +1489,7 @@ ast_node_t *build_lambdas_program_ast() {
       create_parameter_node(const_cast<char *>("value"), &node_int),
       create_block_node(create_binary_operation_node(
           TOK_MUL, make_leaf(TOK_IDENTIFIER, "value"),
-          make_leaf(TOK_LIT_INT, "2"))),
-      nullptr);
+          make_leaf(TOK_LIT_INT, "2"))));
 
   ast_node_t *fn_multiplier = create_function_declaration_node(
       const_cast<char *>("multiplier"), create_parameter_list_node(nullptr),
@@ -1549,8 +1548,7 @@ ast_node_t *build_lambdas_program_ast() {
       }),
       create_block_node(create_binary_operation_node(
           TOK_BINARY_PLUS, make_leaf(TOK_IDENTIFIER, "left"),
-          make_leaf(TOK_IDENTIFIER, "right"))),
-      nullptr);
+          make_leaf(TOK_IDENTIFIER, "right"))));
 
   ast_node_t *stmt_val_sum = create_variable_declaration_node(
       const_cast<char *>("sum"), int_int_to_int_type, true, sum_lambda);
@@ -1663,8 +1661,7 @@ ast_node_t *build_lists_program_ast() {
                                        make_leaf(TOK_LIT_INT, "3")),
           create_binary_operation_node(TOK_LOWER_EQ,
                                        make_leaf(TOK_IDENTIFIER, "value"),
-                                       make_leaf(TOK_LIT_INT, "6")))),
-      nullptr);
+                                       make_leaf(TOK_LIT_INT, "6")))));
   ast_node_t *stmt_val_selected = create_variable_declaration_node(
       const_cast<char *>("selected"), nullptr, true,
       create_dot_function_call_node(const_cast<char *>("filter"),
@@ -1676,8 +1673,7 @@ ast_node_t *build_lists_program_ast() {
       create_parameter_node(const_cast<char *>("value"), &node_int),
       create_block_node(create_binary_operation_node(
           TOK_LOWER_T, make_leaf(TOK_IDENTIFIER, "value"),
-          make_leaf(TOK_LIT_INT, "4"))),
-      nullptr);
+          make_leaf(TOK_LIT_INT, "4"))));
   ast_node_t *stmt_val_prefix = create_variable_declaration_node(
       const_cast<char *>("prefix"), nullptr, true,
       create_dot_function_call_node(
@@ -1689,8 +1685,7 @@ ast_node_t *build_lists_program_ast() {
       create_parameter_node(const_cast<char *>("value"), &node_int),
       create_block_node(create_binary_operation_node(
           TOK_LOWER_T, make_leaf(TOK_IDENTIFIER, "value"),
-          make_leaf(TOK_LIT_INT, "6"))),
-      nullptr);
+          make_leaf(TOK_LIT_INT, "6"))));
   ast_node_t *stmt_val_suffix = create_variable_declaration_node(
       const_cast<char *>("suffix"), nullptr, true,
       create_dot_function_call_node(
