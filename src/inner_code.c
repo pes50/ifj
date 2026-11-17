@@ -83,6 +83,7 @@ inner_statement_t *create_statement(inner_statement_operation_t operation,
   statement->destination = destination;
   statement->first_op = source1;
   statement->second_op = source2;
+  statement->is_static = false;
 
   statement->next_statement = NULL;
 

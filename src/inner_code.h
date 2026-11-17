@@ -178,6 +178,7 @@ typedef struct inner_statement {
   inner_symbol_t destination;
   inner_symbol_t first_op;
   inner_symbol_t second_op;
+  bool is_static;
 
   // next statement
   struct inner_statement *next_statement;
