@@ -330,6 +330,12 @@ static ast_node_t str_length_function_declaration = {
 
 #pragma region subStr(value: String, start: Int, end: Int): String
 
+static ast_node_t sub_str_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &sub_str_code},
+    .next = NULL,
+};
+
 static ast_node_t sub_str_end_parameter = {
     .type = AST_PARAMETER,
     .data.parameter =
@@ -377,7 +383,7 @@ static ast_node_t sub_str_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &sub_str_body,
             .is_main = false,
             .name = "subStr",
             .return_type = &node_string,
