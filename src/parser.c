@@ -70,11 +70,8 @@ err_code_t parse(ast_node_t **node, FILE *stream) {
     return INTERNAL_ERR;
   }
 
-  err_code_t ret = lexer_init(stream);
-  if (ret != NO_ERR) {
-    return ret;
-  }
-  ret = start(token, node);
+  lexer_init(stream);
+  err_code_t ret = start(token, node);
   token_free(token);
   lexer_destroy();
   return ret;
