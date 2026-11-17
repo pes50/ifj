@@ -452,7 +452,28 @@ static ast_node_t read_boolean_function_declaration = {
 
 #pragma endregion
 
-#pragma region Any.toString(value: Any): String
+#pragma region Any.toString: String
+
+static ast_node_t target_any_parameter_node = {
+    .type = AST_PARAMETER,
+    .data.parameter =
+        {
+            .name = "$target",
+            .data_type = &node_any,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
+
+static ast_node_t target_any_parameter_list_node = {
+    .type = AST_PARAMETER_LIST,
+    .data.parameter_list =
+        {
+            .parameters = &target_any_parameter_node,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
 
 static ast_node_t any_to_string_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
@@ -462,7 +483,7 @@ static ast_node_t any_to_string_function_declaration = {
             .is_main = false,
             .name = "Any.toString",
             .return_type = &node_string,
-            .parameter_lists = &any_value_parameter_list,
+            .parameter_lists = &target_any_parameter_list_node,
         },
     .data_type = &node_string,
     .next = NULL,
@@ -470,7 +491,28 @@ static ast_node_t any_to_string_function_declaration = {
 
 #pragma endregion
 
-#pragma region Double.toInt(value: Double): Int
+#pragma region Double.toInt: Int
+
+static ast_node_t target_double_parameter_node = {
+    .type = AST_PARAMETER,
+    .data.parameter =
+        {
+            .name = "$target",
+            .data_type = &node_double,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
+
+static ast_node_t target_double_parameter_list_node = {
+    .type = AST_PARAMETER_LIST,
+    .data.parameter_list =
+        {
+            .parameters = &target_double_parameter_node,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
 
 static ast_node_t double_to_int_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
@@ -480,7 +522,7 @@ static ast_node_t double_to_int_function_declaration = {
             .is_main = false,
             .name = "Double.toInt",
             .return_type = &node_int,
-            .parameter_lists = &double_value_parameter_list,
+            .parameter_lists = &target_double_parameter_list_node,
         },
     .data_type = &node_int,
     .next = NULL,
@@ -488,7 +530,7 @@ static ast_node_t double_to_int_function_declaration = {
 
 #pragma endregion
 
-#pragma region Double.floor(value: Double): Double
+#pragma region Double.floor: Double
 
 static ast_node_t double_floor_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
@@ -498,7 +540,7 @@ static ast_node_t double_floor_function_declaration = {
             .is_main = false,
             .name = "Double.floor",
             .return_type = &node_double,
-            .parameter_lists = &double_value_parameter_list,
+            .parameter_lists = &target_double_parameter_list_node,
         },
     .data_type = &node_double,
     .next = NULL,
@@ -506,7 +548,28 @@ static ast_node_t double_floor_function_declaration = {
 
 #pragma endregion
 
-#pragma region String.length(value: String): Int
+#pragma region String.length: Int
+
+static ast_node_t target_string_parameter_node = {
+    .type = AST_PARAMETER,
+    .data.parameter =
+        {
+            .name = "$target",
+            .data_type = &node_string,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
+
+static ast_node_t target_string_parameter_list_node = {
+    .type = AST_PARAMETER_LIST,
+    .data.parameter_list =
+        {
+            .parameters = &target_string_parameter_node,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
 
 static ast_node_t string_length_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
@@ -516,7 +579,7 @@ static ast_node_t string_length_function_declaration = {
             .is_main = false,
             .name = "String.length",
             .return_type = &node_int,
-            .parameter_lists = &str_length_parameter_list,
+            .parameter_lists = &target_string_parameter_list_node,
         },
     .data_type = &node_int,
     .next = NULL,
@@ -616,6 +679,27 @@ static ast_node_t n_int_parameter_list_node = {
     .next = NULL,
 };
 
+static ast_node_t target_int_parameter_node = {
+    .type = AST_PARAMETER,
+    .data.parameter =
+        {
+            .name = "$target",
+            .data_type = &node_int,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
+
+static ast_node_t target_int_parameter_list_node = {
+    .type = AST_PARAMETER_LIST,
+    .data.parameter_list =
+        {
+            .parameters = &target_int_parameter_node,
+        },
+    .data_type = &node_unit,
+    .next = &n_int_parameter_list_node,
+};
+
 #pragma region to(n: Int) : $Range
 
 static ast_node_t to_function_declaration = {
@@ -626,7 +710,7 @@ static ast_node_t to_function_declaration = {
             .is_main = false,
             .name = "Int.to",
             .return_type = &node_range,
-            .parameter_lists = &n_int_parameter_list_node,
+            .parameter_lists = &target_int_parameter_list_node,
         },
     .data_type = &node_range,
     .next = NULL,
@@ -644,13 +728,34 @@ static ast_node_t until_function_declaration = {
             .is_main = false,
             .name = "Int.until",
             .return_type = &node_range,
-            .parameter_lists = &n_int_parameter_list_node,
+            .parameter_lists = &target_int_parameter_list_node,
         },
     .data_type = &node_range,
     .next = NULL,
 };
 
 #pragma endregion
+
+static ast_node_t target_range_parameter_node = {
+    .type = AST_PARAMETER,
+    .data.parameter =
+        {
+            .name = "$target",
+            .data_type = &node_range,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
+
+static ast_node_t target_range_parameter_list_node = {
+    .type = AST_PARAMETER_LIST,
+    .data.parameter_list =
+        {
+            .parameters = &target_range_parameter_node,
+        },
+    .data_type = &node_unit,
+    .next = &n_int_parameter_list_node,
+};
 
 #pragma region by(n: Int) : $Range
 
@@ -662,22 +767,13 @@ static ast_node_t by_function_declaration = {
             .is_main = false,
             .name = "$Range.by",
             .return_type = &node_range,
-            .parameter_lists = &n_int_parameter_list_node,
+            .parameter_lists = &target_range_parameter_list_node,
         },
     .data_type = &node_range,
     .next = NULL,
 };
 
 #pragma endregion
-
-static data_type_node_t generic_list_node = {
-    .type = DATA_TYPE_LIST,
-    .data.list_type =
-        {
-            .elements_type = &node_generic_t,
-        },
-    .next = NULL,
-};
 
 #pragma region List(v1, v2, ...) : List[T]
 
@@ -689,6 +785,27 @@ static ast_node_t list_constructor = {
 
 #pragma endregion
 
+static ast_node_t target_list_parameter_node = {
+    .type = AST_PARAMETER,
+    .data.parameter =
+        {
+            .name = "$target",
+            .data_type = &generic_list_node,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
+
+static ast_node_t target_list_n_parameter_list_node = {
+    .type = AST_PARAMETER_LIST,
+    .data.parameter_list =
+        {
+            .parameters = &target_list_parameter_node,
+        },
+    .data_type = &node_unit,
+    .next = &n_int_parameter_list_node,
+};
+
 #pragma region drop(n): List[T]
 
 static ast_node_t drop_function_declaration = {
@@ -699,7 +816,7 @@ static ast_node_t drop_function_declaration = {
             .is_main = false,
             .name = "List[T].drop",
             .return_type = &generic_list_node,
-            .parameter_lists = &n_int_parameter_list_node,
+            .parameter_lists = &target_list_n_parameter_list_node,
         },
     .data_type = &generic_list_node,
     .next = NULL,
@@ -717,7 +834,7 @@ static ast_node_t take_function_declaration = {
             .is_main = false,
             .name = "List[T].take",
             .return_type = &generic_list_node,
-            .parameter_lists = &n_int_parameter_list_node,
+            .parameter_lists = &target_list_n_parameter_list_node,
         },
     .data_type = &generic_list_node,
     .next = NULL,
@@ -759,6 +876,16 @@ static ast_node_t from_until_parameter_list_node = {
     .next = NULL,
 };
 
+static ast_node_t from_until_target_list_parameter_list_node = {
+    .type = AST_PARAMETER_LIST,
+    .data.parameter_list =
+        {
+            .parameters = &target_list_parameter_node,
+        },
+    .data_type = &node_unit,
+    .next = &from_until_parameter_list_node,
+};
+
 static ast_node_t slice_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
@@ -767,7 +894,7 @@ static ast_node_t slice_function_declaration = {
             .is_main = false,
             .name = "List[T].slice",
             .return_type = &generic_list_node,
-            .parameter_lists = &from_until_parameter_list_node,
+            .parameter_lists = &from_until_target_list_parameter_list_node,
         },
     .data_type = &generic_list_node,
     .next = NULL,
@@ -777,6 +904,16 @@ static ast_node_t slice_function_declaration = {
 
 #pragma region head: T
 
+static ast_node_t target_list_parameter_list_node = {
+    .type = AST_PARAMETER_LIST,
+    .data.parameter_list =
+        {
+            .parameters = &target_list_parameter_node,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
+
 static ast_node_t head_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
@@ -785,7 +922,7 @@ static ast_node_t head_function_declaration = {
             .is_main = false,
             .name = "List[T].head",
             .return_type = &node_generic_t,
-            .parameter_lists = NULL,
+            .parameter_lists = &target_list_parameter_list_node,
         },
     .data_type = &node_generic_t,
     .next = NULL,
@@ -803,7 +940,7 @@ static ast_node_t tail_function_declaration = {
             .is_main = false,
             .name = "List[T].tail",
             .return_type = &generic_list_node,
-            .parameter_lists = NULL,
+            .parameter_lists = &target_list_parameter_list_node,
         },
     .data_type = &generic_list_node,
     .next = NULL,
@@ -913,6 +1050,16 @@ static ast_node_t func_parameter_list_node = {
     .next = NULL,
 };
 
+static ast_node_t target_list_func_parameter_list_node = {
+    .type = AST_PARAMETER_LIST,
+    .data.parameter_list =
+        {
+            .parameters = &target_list_parameter_node,
+        },
+    .data_type = &node_unit,
+    .next = &func_parameter_list_node,
+};
+
 #pragma region filter((T) => Boolean) : List[T]
 
 static ast_node_t filter_function_declaration = {
@@ -923,7 +1070,7 @@ static ast_node_t filter_function_declaration = {
             .is_main = false,
             .name = "List[T].filter",
             .return_type = &generic_list_node,
-            .parameter_lists = &func_parameter_list_node,
+            .parameter_lists = &target_list_func_parameter_list_node,
         },
     .data_type = &generic_list_node,
     .next = NULL,
@@ -941,7 +1088,7 @@ static ast_node_t take_while_function_declaration = {
             .is_main = false,
             .name = "List[T].takeWhile",
             .return_type = &generic_list_node,
-            .parameter_lists = &func_parameter_list_node,
+            .parameter_lists = &target_list_func_parameter_list_node,
         },
     .data_type = &generic_list_node,
     .next = NULL,
@@ -959,7 +1106,7 @@ static ast_node_t drop_while_function_declaration = {
             .is_main = false,
             .name = "List[T].dropWhile",
             .return_type = &generic_list_node,
-            .parameter_lists = &func_parameter_list_node,
+            .parameter_lists = &target_list_func_parameter_list_node,
         },
     .data_type = &generic_list_node,
     .next = NULL,
@@ -967,7 +1114,17 @@ static ast_node_t drop_while_function_declaration = {
 
 #pragma endregion
 
-#pragma region toList() : List[Int]
+#pragma region toList : List[Int]
+
+static ast_node_t target_range_empty_parameter_list_node = {
+    .type = AST_PARAMETER_LIST,
+    .data.parameter_list =
+        {
+            .parameters = &target_range_parameter_node,
+        },
+    .data_type = &node_unit,
+    .next = NULL,
+};
 
 static ast_node_t to_list_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
@@ -977,7 +1134,7 @@ static ast_node_t to_list_function_declaration = {
             .is_main = false,
             .name = "$Range.toList",
             .return_type = &list_int_node,
-            .parameter_lists = &parameter_list_empty,
+            .parameter_lists = &target_range_empty_parameter_list_node,
         },
     .data_type = &list_int_node,
     .next = NULL,
