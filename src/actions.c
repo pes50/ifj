@@ -103,6 +103,11 @@ actions_t get_action(token_type_t input, token_type_t stack) {
     return CONSUME_PAREN;
   }
 
+  // if there is extra closing paren, end the loop
+  if (input == TOK_R_PAREN && stack == TOK_ERR) {
+    return END;
+  }
+
   // if token stack has no tokens
   if (stack == TOK_ERR) {
     return SHIFT;

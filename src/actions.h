@@ -15,7 +15,7 @@
 /**
  * @brief Possible actions for expr parser
  */
-typedef enum { SHIFT, REDUCE, CONSUME_PAREN, ERROR } actions_t;
+typedef enum { SHIFT, REDUCE, CONSUME_PAREN, ERROR, END } actions_t;
 
 /**
  * @brief Returns action based on token types on input and top of stack
