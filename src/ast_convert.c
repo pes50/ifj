@@ -10,6 +10,7 @@
  \*****************************************************************************/
 
 #include "ast_convert.h"
+#include "convert_node.h"
 
 /********************\
  * Helper functions *
@@ -30,8 +31,38 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
     return INTERNAL_ERR;
   }
 
-  // TODO
-  // Use node->data.function_call.calling to get correct pointer
+  // empty symbol to insert in place of no operand
+  inner_symbol_t empty_sym = create_empty_symbol();
+
+  inner_statement_t *function_statement = create_statement(
+      INNER_LABEL, empty_sym,
+      create_label_symbol(node->data.function_declaration.name), empty_sym);
+
+  if (context->head == NULL || context->tail == NULL) {
+    // head and tail must be initialized before adding other statements behind
+    context->head = context->tail = function_statement;
+  } else {
+    // adds label statement to the code (to "define" the function)
+    context->tail->next_statement = function_statement;
+    context->tail = function_statement;
+  }
+
+  // saves pointer to first node from function body
+  ast_node_t *curr_node = node->data.function_declaration.body;
+  err_code_t err;
+
+  // goes through all body nodes and converts them to statements
+  while (curr_node != NULL && context->tail != NULL &&
+         context->tail->operation != INNER_RETURN) {
+
+    // converts current node from function body to statment
+    err = convert_node(context, curr_node);
+    if (err != NO_ERR) {
+      return err;
+    }
+
+    curr_node = curr_node->next;
+  }
 
   return NO_ERR;
 }
