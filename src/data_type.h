@@ -108,7 +108,7 @@ void destroy_type_node(data_type_node_t *node);
  *
  * @return A pointer to created node or NULL if failed
  */
-data_type_node_t *create_class_type_node(char *name);
+data_type_node_t *create_class_type_node(const char *name);
 
 /**
  * @brief Creates a data type node for lambda function
