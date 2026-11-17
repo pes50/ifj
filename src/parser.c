@@ -128,7 +128,7 @@ err_code_t prolog(token_t *token) {
   if (ret != NO_ERR) {
     return ret;
   }
-  if (!strcmp(token->value, "ifj26")) {
+  if (strcmp(token->value, "ifj26")) {
     return SYNTAX_ERR;
   }
   token_clear(token);
@@ -868,9 +868,16 @@ err_code_t param(token_t *token, ast_node_t **node) {
   }
 
   data_type_node_t *data_type = NULL;
-  ret = types(token, &data_type);
+  ret = type(token, &data_type);
   if (ret != NO_ERR) {
     free(name);
+    return ret;
+  }
+
+  ret = types(token, &data_type->next);
+  if (ret != NO_ERR) {
+    free(name);
+    destroy_type_node(data_type);
     return ret;
   }
 
@@ -2064,10 +2071,11 @@ err_code_t expr(token_t *token, ast_node_t **node) {
         return INTERNAL_ERR;
       }
 
-      token = token_create();
-      if (token == NULL) {
+      token_clear(token);
+      ret = lexer_get_token(token, ALLOWED);
+      if (ret != NO_ERR) {
         destroy_token_stack(stack);
-        return INTERNAL_ERR;
+        return ret;
       }
       break;
 
@@ -2096,13 +2104,16 @@ err_code_t expr(token_t *token, ast_node_t **node) {
     default:
       break;
     }
-    ret = lexer_get_token(token, ALLOWED);
-    if (ret != NO_ERR) {
-      destroy_token_stack(stack);
-      return ret;
-    }
     end = is_end(token);
   }
+
+  while (!is_token_empty(stack)) {
+    if (!reduce(stack)) {
+      destroy_token_stack(stack);
+      return SYNTAX_ERR;
+    }
+  }
+
   *node = return_final_node(stack);
   destroy_token_stack(stack);
   if (*node == NULL) {
