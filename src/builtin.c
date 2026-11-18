@@ -1226,6 +1226,12 @@ static ast_node_t tail_function_declaration = {
 
 #pragma region List.range(start, end, [step]) : List[Int]
 
+static ast_node_t range_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &range_code},
+    .next = NULL,
+};
+
 static ast_node_t step_int_parameter_node = {
     .type = AST_PARAMETER,
     .data.parameter =
@@ -1311,7 +1317,7 @@ static ast_node_t range_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &range_body,
             .is_main = false,
             .name = "List[T].range",
             .return_type = &list_int_node,
