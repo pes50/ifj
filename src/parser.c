@@ -25,7 +25,7 @@
 err_code_t start(token_t *token, ast_node_t **node);
 err_code_t prolog(token_t *token);
 err_code_t prog(token_t *token, ast_node_t **node);
-err_code_t expr(token_t *token, ast_node_t **node);
+err_code_t expr(token_t *token, ast_node_t **node, bool in_gen);
 err_code_t expr_pre_parse(token_t *token, ast_node_t **node);
 err_code_t expr_tail(token_t *token, ast_node_t **node,
                      ast_node_t **expression);
@@ -917,7 +917,7 @@ err_code_t param(token_t *token, ast_node_t **node) {
 err_code_t fun_body(token_t *token, ast_node_t **node) {
   // same line definition
   if (token->type != TOK_EOL) {
-    err_code_t ret = expr(token, node);
+    err_code_t ret = expr(token, node, false);
     if (ret != NO_ERR) {
       return ret;
     }
@@ -1081,7 +1081,7 @@ err_code_t stmt(token_t *token, ast_node_t **node) {
     }
 
     ast_node_t *expression = NULL;
-    ret = expr(token, &expression);
+    ret = expr(token, &expression, false);
     if (ret != NO_ERR) {
       return ret;
     }
@@ -1094,13 +1094,13 @@ err_code_t stmt(token_t *token, ast_node_t **node) {
     return NO_ERR;
 
   default:
-    return expr(token, node);
+    return expr(token, node, false);
   }
 }
 
 err_code_t if_stmt(token_t *token, ast_node_t **node) {
   ast_node_t *condition = NULL;
-  err_code_t ret = expr(token, &condition);
+  err_code_t ret = expr(token, &condition, false);
   if (ret != NO_ERR) {
     return ret;
   }
@@ -1291,7 +1291,7 @@ err_code_t id_stmt(token_t *token, ast_node_t **node) {
     }
 
     ast_node_t *expression = NULL;
-    ret = expr(token, &expression);
+    ret = expr(token, &expression, false);
     if (ret != NO_ERR) {
       free(name);
       return ret;
@@ -1307,7 +1307,7 @@ err_code_t id_stmt(token_t *token, ast_node_t **node) {
   }
   token_free(tmp_token);
   ast_node_t *expression = NULL;
-  ret = expr(token, &expression);
+  ret = expr(token, &expression, false);
   if (ret != NO_ERR) {
     return ret;
   }
@@ -1364,7 +1364,7 @@ err_code_t var_dec(token_t *token, ast_node_t **node, bool is_const) {
   }
 
   ast_node_t *expression = NULL;
-  ret = expr(token, &expression);
+  ret = expr(token, &expression, false);
   if (ret != NO_ERR) {
     free(name);
     destroy_type_node(data_type);
@@ -1436,10 +1436,40 @@ err_code_t for_loop(token_t *token, ast_node_t **node) {
     return ret;
   }
 
+  if (token->type != TOK_EOL) {
+    destroy_node(iterator);
+    destroy_node(generator);
+    return SYNTAX_ERR;
+  }
+
+  token_clear(token);
+  ret = lexer_get_token(token, FORBIDDEN);
+  if (ret != NO_ERR) {
+    destroy_node(iterator);
+    destroy_node(generator);
+    return ret;
+  }
+
   ret = guard_list(token, &guards);
   if (ret != NO_ERR) {
     destroy_node(iterator);
     destroy_node(generator);
+    return ret;
+  }
+
+  if (token->type != TOK_DEDENT) {
+    destroy_node(iterator);
+    destroy_node(generator);
+    destroy_node(guards);
+    return SYNTAX_ERR;
+  }
+
+  token_clear(token);
+  ret = lexer_get_token(token, ALLOWED);
+  if (ret != NO_ERR) {
+    destroy_node(iterator);
+    destroy_node(generator);
+    destroy_node(guards);
     return ret;
   }
 
@@ -1460,20 +1490,7 @@ err_code_t for_loop(token_t *token, ast_node_t **node) {
     return INTERNAL_ERR;
   }
 
-  if (token->type != TOK_DEDENT) {
-    destroy_node(*node);
-    *node = NULL;
-    return SYNTAX_ERR;
-  }
-
-  token_clear(token);
-  ret = lexer_get_token(token, ALLOWED);
-  if (ret != NO_ERR) {
-    destroy_node(*node);
-    *node = NULL;
-  }
-
-  return ret;
+  return NO_ERR;
 }
 
 err_code_t gen(token_t *token, ast_node_t **iterator, ast_node_t **generator) {
@@ -1481,13 +1498,7 @@ err_code_t gen(token_t *token, ast_node_t **iterator, ast_node_t **generator) {
     return SYNTAX_ERR;
   }
 
-  char *name = string_duplicate(token->value);
-  if (name == NULL) {
-    return INTERNAL_ERR;
-  }
-
-  *iterator = create_parameter_node(name, NULL);
-  free(name);
+  *iterator = create_leaf_node(token);
   if (*iterator == NULL) {
     return INTERNAL_ERR;
   }
@@ -1512,7 +1523,7 @@ err_code_t gen(token_t *token, ast_node_t **iterator, ast_node_t **generator) {
   }
 
   ast_node_t *expression = NULL;
-  ret = expr(token, &expression);
+  ret = expr(token, &expression, true);
   if (ret != NO_ERR) {
     destroy_node(*iterator);
     return ret;
@@ -1545,41 +1556,54 @@ err_code_t gen_tail(token_t *token, ast_node_t *expression,
     }
 
     ast_node_t *to = NULL;
-    ret = expr(token, &to);
+    ret = expr(token, &to, true);
     if (ret != NO_ERR) {
       destroy_node(expression);
       return ret;
     }
 
-    node_append(expression, to);
+    ast_node_t *arguments = create_argument_list_node(to);
+    if (arguments == NULL) {
+      destroy_node(to);
+      destroy_node(expression);
+      return INTERNAL_ERR;
+    }
+    *generator = create_dot_function_call_node("to", expression, to);
+    if (*generator == NULL) {
+      destroy_node(arguments);
+      destroy_node(expression);
+      return INTERNAL_ERR;
+    }
 
     if (token->type == TOK_IDENTIFIER && strcmp(token->value, "by") == 0) {
       token_clear(token);
       ret = lexer_get_token(token, FORBIDDEN);
       if (ret != NO_ERR) {
-        destroy_node(expression);
+        destroy_node(*generator);
         return ret;
       }
 
       ast_node_t *step = NULL;
-      ret = expr(token, &step);
+      ret = expr(token, &step, true);
       if (ret != NO_ERR) {
-        destroy_node(expression);
+        destroy_node(*generator);
         return ret;
       }
-      node_append(expression, step);
-    }
 
-    ast_node_t *arguments = create_argument_list_node(expression);
-    if (arguments == NULL) {
-      destroy_node(expression);
-      return INTERNAL_ERR;
-    }
+      ast_node_t *arguments = create_argument_list_node(step);
+      if (arguments == NULL) {
+        destroy_node(step);
+        destroy_node(*generator);
+        return INTERNAL_ERR;
+      }
 
-    *generator = create_function_call_node("to", arguments);
-    if (*generator == NULL) {
-      destroy_node(arguments);
-      return INTERNAL_ERR;
+      ast_node_t *tmp = *generator;
+      *generator = create_dot_function_call_node("by", tmp, arguments);
+      if (*generator == NULL) {
+        destroy_node(arguments);
+        destroy_node(tmp);
+        return INTERNAL_ERR;
+      }
     }
     return NO_ERR;
   }
@@ -1593,22 +1617,23 @@ err_code_t gen_tail(token_t *token, ast_node_t *expression,
     }
 
     ast_node_t *until = NULL;
-    ret = expr(token, &until);
+    ret = expr(token, &until, true);
     if (ret != NO_ERR) {
       destroy_node(expression);
       return ret;
     }
-    node_append(expression, until);
 
-    ast_node_t *arguments = create_argument_list_node(expression);
+    ast_node_t *arguments = create_argument_list_node(until);
     if (arguments == NULL) {
+      destroy_node(until);
       destroy_node(expression);
       return INTERNAL_ERR;
     }
 
-    *generator = create_function_call_node("until", arguments);
+    *generator = create_dot_function_call_node("until", expression, arguments);
     if (*generator == NULL) {
       destroy_node(arguments);
+      destroy_node(expression);
       return INTERNAL_ERR;
     }
     return NO_ERR;
@@ -1619,7 +1644,7 @@ err_code_t gen_tail(token_t *token, ast_node_t *expression,
 }
 
 err_code_t guard_list(token_t *token, ast_node_t **node) {
-  if (token->type == TOK_KW_DO) {
+  if (token->type == TOK_DEDENT) {
     return NO_ERR;
   }
 
@@ -1722,7 +1747,7 @@ err_code_t for_tail(token_t *token, ast_node_t **node) {
 
 err_code_t while_loop(token_t *token, ast_node_t **node) {
   ast_node_t *condition = NULL;
-  err_code_t ret = expr(token, &condition);
+  err_code_t ret = expr(token, &condition, false);
   if (ret != NO_ERR) {
     return ret;
   }
@@ -1958,7 +1983,7 @@ err_code_t if_guard(token_t *token, ast_node_t **node) {
     return ret;
   }
 
-  return expr(token, node);
+  return expr(token, node, false);
 }
 
 #pragma endregion
@@ -2013,7 +2038,7 @@ err_code_t args(token_t *token, ast_node_t **node) {
     return NO_ERR;
   }
 
-  err_code_t ret = expr(token, node);
+  err_code_t ret = expr(token, node, false);
   if (ret != NO_ERR) {
     return ret;
   }
@@ -2041,7 +2066,7 @@ err_code_t args_tail(token_t *token, ast_node_t **node) {
     return ret;
   }
 
-  ret = expr(token, node);
+  ret = expr(token, node, false);
   if (ret != NO_ERR) {
     return ret;
   }
@@ -2059,9 +2084,16 @@ err_code_t args_tail(token_t *token, ast_node_t **node) {
 #pragma region EXPRESSION
 
 // helper
-bool is_end(token_t *token) {
+bool is_end(token_t *token, bool in_gen) {
   switch (token->type) {
   case TOK_IDENTIFIER:
+    if (in_gen &&
+        !(strcmp(token->value, "by") && strcmp(token->value, "until") &&
+          strcmp(token->value, "to"))) {
+      return true;
+    }
+    return false;
+
   case TOK_LIT_INT:
   case TOK_LIT_DOUBLE:
   case TOK_LIT_STRING:
@@ -2093,7 +2125,7 @@ bool is_end(token_t *token) {
   }
 }
 
-err_code_t expr(token_t *token, ast_node_t **node) {
+err_code_t expr(token_t *token, ast_node_t **node, bool in_gen) {
   token_stack_t *stack = create_token_stack();
   if (stack == NULL) {
     return INTERNAL_ERR;
@@ -2117,7 +2149,7 @@ err_code_t expr(token_t *token, ast_node_t **node) {
         destroy_token_stack(stack);
         return INTERNAL_ERR;
       }
-      end = is_end(token);
+      end = is_end(token, in_gen);
       continue;
     }
 
@@ -2168,7 +2200,7 @@ err_code_t expr(token_t *token, ast_node_t **node) {
     default:
       break;
     }
-    end = is_end(token);
+    end = is_end(token, in_gen);
   }
 
   while (!is_token_empty(stack)) {
@@ -2622,7 +2654,7 @@ err_code_t interpol_part(token_t *token, ast_node_t **node) {
     return ret;
   }
 
-  ret = expr(token, node);
+  ret = expr(token, node, false);
   if (ret != NO_ERR) {
     return ret;
   }
@@ -2741,7 +2773,7 @@ err_code_t interpol_part_m(token_t *token, ast_node_t **node) {
     return ret;
   }
 
-  ret = expr(token, node);
+  ret = expr(token, node, false);
   if (ret != NO_ERR) {
     return ret;
   }
@@ -2801,7 +2833,7 @@ err_code_t lambda(token_t *token, ast_node_t **node) {
   }
 
   ast_node_t *body = NULL;
-  ret = expr(token, &body);
+  ret = expr(token, &body, false);
   if (ret != NO_ERR) {
     destroy_node(parameters);
     return ret;
