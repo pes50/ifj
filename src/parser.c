@@ -766,9 +766,21 @@ err_code_t lambda_type(token_t *token, data_type_node_t **node) {
     return ret;
   }
 
+  if (token->type != TOK_R_PAREN) {
+    destroy_type_node(parameter_types);
+    return SYNTAX_ERR;
+  }
+
+  token_clear(token);
+  ret = lexer_get_token(token, ALLOWED);
+  if (ret != NO_ERR) {
+    destroy_type_node(parameter_types);
+    return ret;
+  }
+
   if (token->type != TOK_ARROW_RIGHT) {
     destroy_type_node(parameter_types);
-    return NO_ERR;
+    return SYNTAX_ERR;
   }
 
   token_clear(token);
@@ -805,13 +817,12 @@ err_code_t lambda_type_tail(token_t *token, data_type_node_t **node) {
     return ret;
   }
 
-  data_type_node_t *parameter_types = NULL;
-  ret = type(token, &parameter_types);
+  ret = type(token, node);
   if (ret != NO_ERR) {
     return ret;
   }
 
-  return lambda_type_tail(token, &parameter_types->next);
+  return lambda_type_tail(token, &(*node)->next);
 }
 
 err_code_t params(token_t *token, ast_node_t **node) {
@@ -2726,7 +2737,7 @@ err_code_t lambda(token_t *token, ast_node_t **node) {
   }
 
   ast_node_t *body = NULL;
-  ret = fun_body(token, &body);
+  ret = expr(token, &body);
   if (ret != NO_ERR) {
     destroy_node(parameters);
     return ret;
