@@ -1130,6 +1130,12 @@ static ast_node_t slice_function_declaration = {
 
 #pragma region head: T
 
+static ast_node_t head_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &head_code},
+    .next = NULL,
+};
+
 static ast_node_t target_list_parameter_list_node = {
     .type = AST_PARAMETER_LIST,
     .data.parameter_list =
@@ -1144,7 +1150,7 @@ static ast_node_t head_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &head_body,
             .is_main = false,
             .name = "List[T].head",
             .return_type = &node_generic_t,

@@ -2864,3 +2864,121 @@ inner_statement_t floor_code = {
     .next_statement = &floor_s1,
     .is_static = true,
 };
+
+/**
+ * head: T
+ */
+
+// RETURN
+static inner_statement_t head_s8 = {
+    .operation = INNER_RETURN,
+    .next_statement = NULL,
+    .is_static = true,
+};
+
+// POPFRAME
+static inner_statement_t head_s7 = {
+    .operation = INNER_POPFRAME,
+    .next_statement = &head_s8,
+    .is_static = true,
+};
+
+// PUSHS LF@return_val
+static inner_statement_t head_s6 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .next_statement = &head_s7,
+    .is_static = true,
+};
+
+// ARRAYGET LF@return_val LF@list int@1
+static inner_statement_t head_s5 = {
+    .operation = INNER_ARRAYGET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &head_s6,
+    .is_static = true,
+};
+
+// POPS LF@list
+static inner_statement_t head_s4 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &head_s5,
+    .is_static = true,
+};
+
+// DEFVAR LF@return_val
+static inner_statement_t head_s3 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .next_statement = &head_s4,
+    .is_static = true,
+};
+
+// DEFVAR LF@list
+static inner_statement_t head_s2 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &head_s3,
+    .is_static = true,
+};
+
+// PUSHFRAME
+static inner_statement_t head_s1 = {
+    .operation = INNER_PUSHFRAME,
+    .next_statement = &head_s2,
+    .is_static = true,
+};
+
+// CREATEFRAME
+static inner_statement_t head_s0 = {
+    .operation = INNER_CREATEFRAME,
+    .next_statement = &head_s1,
+    .is_static = true,
+};
+
+// LABEL head
+inner_statement_t head_code = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "head",
+        },
+    .next_statement = &head_s0,
+    .is_static = true,
+};
