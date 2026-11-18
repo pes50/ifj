@@ -10,7 +10,9 @@
  \*****************************************************************************/
 
 #include "convert_node.h"
+#include "ast_node.h"
 #include "string.h"
+#include "string_duplicate.h"
 #include "token.h"
 #include <stdio.h>
 
@@ -50,65 +52,279 @@ err_code_t convert_unary_op(context_t *context, ast_node_t *node);
 
 err_code_t list_ctor(context_t *context, ast_node_t *node);
 
+/**
+ * @brief Removes '_', 'd' and 'D' characters from numeric literals
+ *
+ * @param raw String form of the literal
+ * @param strip_d_suffix Bool to inform that the type is double -> 'd' or 'D'
+ *                       should be removed from the end of the literal
+ *
+ * @return A pointer to a sanitized literal or NULL if failed
+ */
+static char *clean_numeric_literal(const char *raw, bool strip_d_suffix) {
+  if (raw == NULL) {
+    return NULL;
+  }
+
+  size_t len = strlen(raw);
+  char *clean = malloc(len + 1);
+  if (clean == NULL) {
+    return NULL;
+  }
+
+  size_t j = 0;
+  for (size_t i = 0; i < len; i++) {
+    // Skip underscores
+    if (raw[i] == '_') {
+      continue;
+    }
+
+    if (strip_d_suffix && i == len - 1 &&   // Is last
+        (raw[i] == 'd' || raw[i] == 'D')) { // Suffix 'd' or 'D'
+      break;
+    }
+
+    clean[j++] = raw[i];
+  }
+
+  // Add terminator
+  clean[j] = '\0';
+
+  return clean;
+}
+
+static err_code_t create_literal_symbol(ast_node_t *node,
+                                        inner_symbol_t *out_symbol) {
+  if (node == NULL || node->type != AST_LITERAL || out_symbol == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  data_type_node_t *dtype = node->data.literal.data_type;
+  if (dtype == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_value_t val = {0};
+
+  // Convert unit to nil
+  if (dtype->type == DATA_TYPE_UNIT) {
+    val.inner_nil = NULL;
+    *out_symbol = create_const_symbol(INNER_NIL, val);
+    RETURN_ERR(NO_ERR);
+  }
+
+  if (dtype->type != DATA_TYPE_PRIMITIVE) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  const char *raw = node->data.literal.raw;
+  if (raw == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  switch (dtype->data.primitive_type) {
+  case PRIMITIVE_INT: {
+    char *clean = clean_numeric_literal(raw, false);
+    if (clean == NULL) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+
+    char *endptr = NULL;
+    val.inner_int = strtoll(clean, &endptr, 10);
+    bool invalid = clean[0] == '\0' // is empty string
+                   || *endptr != '\0';
+    free(clean);
+    if (invalid) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+
+    *out_symbol = create_const_symbol(INNER_INT, val);
+    RETURN_ERR(NO_ERR);
+  }
+
+  case PRIMITIVE_DOUBLE: {
+    char *clean = clean_numeric_literal(raw, true);
+    if (clean == NULL) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+
+    char *endptr = NULL;
+    val.inner_float = strtod(clean, &endptr);
+    bool invalid = clean[0] == '\0' // is empty string
+                   || *endptr != '\0';
+    free(clean);
+    if (invalid) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+
+    *out_symbol = create_const_symbol(INNER_FLOAT, val);
+    RETURN_ERR(NO_ERR);
+  }
+
+  case PRIMITIVE_BOOLEAN:
+    val.inner_bool = strcmp(raw, "true") == 0;
+    *out_symbol = create_const_symbol(INNER_BOOL, val);
+    RETURN_ERR(NO_ERR);
+
+  case PRIMITIVE_STRING: {
+    char *copy = string_duplicate(raw);
+    if (copy == NULL) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+
+    val.inner_string = copy;
+    *out_symbol = create_const_symbol(INNER_STRING, val);
+    RETURN_ERR(NO_ERR);
+  }
+  }
+}
+
 /***********************************\
  * Helper functions implementation *
 \***********************************/
 
-// For frames and unique labels and variables
-char *add_prefix_to_id(char *identifier, const char *prefix) {
-  size_t final_len = strlen(prefix) + strlen(identifier);
-  char *result = malloc((sizeof(char) * final_len) + 1 + 1);
+/**
+ * @brief Converts number to it's string equivalent
+ *
+ * @param number The number to convert
+ *
+ * @return Pointer to the allocated string
+ */
+char *number_to_string(size_t number) {
+  int length = snprintf(NULL, 0, "%llu", (unsigned long long)number);
+  if (length < 0) {
+    return NULL;
+  }
 
+  char *result = malloc((size_t)length + 1);
   if (result == NULL) {
     return NULL;
   }
 
-  snprintf(result, final_len, "%s%s", prefix, identifier);
-  // TODO: if identifer will be overwritten it has to be deallocated here
+  snprintf(result, (size_t)length + 1, "%llu", (unsigned long long)number);
+
   return result;
 }
 
-char *join_strings_with_char(char *prefix, char middle_char, char *identifier) {
+// Adds $unique_number prefix to vraibles or helper labels
+char *prefix_number_with_dollar(size_t unique_number, char *identifier) {
+  if (identifier == NULL) {
+    return NULL;
+  }
 
-  size_t final_len = strlen(prefix) + strlen(identifier);
-  // + 1 for '\0' and + 1 for the character between prefix and identifier
-  char *result = malloc((sizeof(char) * final_len) + 1 + 1);
+  char *prefix = number_to_string(unique_number);
+  if (prefix == NULL) {
+    return NULL;
+  }
 
+  size_t final_len = strlen(prefix) + 1 + strlen(identifier);
+  char *result = malloc(final_len + 1);
   if (result == NULL) {
     free(prefix);
-    // TODO: if identifer will be overwritten it has to be deallocated here
     return NULL;
   }
 
-  snprintf(result, final_len, "%s%c%s", prefix, middle_char, identifier);
+  snprintf(result, final_len + 1, "$%s%s", prefix, identifier);
   free(prefix);
-  // TODO: if identifer will be overwritten it has to be deallocated here
-
-  return result;
-}
-
-char *number_to_string(size_t number) {
-  // should return the number of characters needed to express number as string
-  size_t length = snprintf(NULL, 0, "%llu", (unsigned long long)number);
-  char *result = malloc((sizeof(char) * length) + 1);
-
-  snprintf(result, length, "%llu", (unsigned long long)number);
-
   return result;
 }
 
 char *create_unique_variable(context_t *context, char *identifier) {
   context->unique_var_counter++;
-  return join_strings_with_char(
-      number_to_string(context->unique_var_counter - 1), '$', identifier);
+  return prefix_number_with_dollar(context->unique_var_counter - 1, identifier);
 }
 
 // To traverse all nodes inside block
-void block_body_list_traversal(context_t *context, ast_node_t *node) {
+err_code_t block_body_list_traversal(context_t *context, ast_node_t *node) {
   while (node != NULL) {
-    convert_node(context, node);
+    err_code_t err = convert_node(context, node);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
     node = node->next;
   }
+  RETURN_ERR(NO_ERR);
+}
+
+err_code_t create_operand(context_t *context, ast_node_t *node,
+                          inner_symbol_t *operand) {
+  if (node->type == AST_LITERAL) {
+    err_code_t err = create_literal_symbol(node, operand);
+    RETURN_ERR(err);
+  }
+  if (node->type == AST_IDENTIFIER) {
+    ast_node_t *calling = node->data.identifier.calling;
+    if (calling == NULL) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+
+    char *var_name = NULL;
+    if (calling->type == AST_VARIABLE_DECLARATION) {
+      var_name = calling->data.variable_declaration.unique_id;
+    } else if (calling->type == AST_PARAMETER) {
+      var_name = calling->data.parameter.name;
+    }
+    if (var_name == NULL) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+    var_name = alloc_lf_var_name(var_name);
+    if (var_name == NULL) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+
+    *operand = create_var_symbol(var_name);
+    RETURN_ERR(NO_ERR);
+  }
+
+  RETURN_ERR(INTERNAL_ERR);
+}
+
+err_code_t create_operation(ast_node_t *node,
+                            inner_statement_operation_t *operation) {
+  switch (node->data.binary_operation.op) {
+  case TOK_BINARY_PLUS:
+    *operation = INNER_ADDS;
+    break;
+  case TOK_BINARY_MINUS:
+    *operation = INNER_SUBS;
+    break;
+  case TOK_MUL:
+    *operation = INNER_MULS;
+    break;
+  case TOK_DIV:
+    data_type_node_t *left_type = node->data.binary_operation.left->data_type;
+    data_type_node_t *right_type = node->data.binary_operation.right->data_type;
+    if (left_type == NULL || right_type == NULL) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+
+    if (are_data_types_identical(left_type, &node_double) ||
+        are_data_types_identical(right_type, &node_double)) {
+      *operation = INNER_IDIV;
+    } else {
+      *operation = INNER_DIV;
+    }
+    break;
+
+    // TODO others
+
+  default:
+    RETURN_ERR(INTERNAL_ERR);
+  }
+  RETURN_ERR(NO_ERR);
+}
+
+err_code_t retype_if_needed(context_t *context, ast_node_t *examined_operand,
+                            ast_node_t *other_operand) {
+  err_code_t err = NO_ERR;
+  inner_symbol_t empty_sym = create_empty_symbol();
+
+  if (are_data_types_identical(&node_int, examined_operand->data_type) &&
+      are_data_types_identical(&node_double, other_operand->data_type)) {
+    err = append_statement(context, INNER_INT2FLOATS, empty_sym, empty_sym,
+                           empty_sym);
+  }
+  RETURN_ERR(err);
 }
 
 /**
@@ -119,235 +335,237 @@ void block_body_list_traversal(context_t *context, ast_node_t *node) {
  * @param node Node with the root of the expression subtree
  */
 err_code_t convert_expression_on_stack(context_t *context, ast_node_t *node) {
-  if (node == NULL) {
-    return INTERNAL_ERR;
+  if (context == NULL || node == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   err_code_t err = NO_ERR;
   inner_symbol_t empty_sym = create_empty_symbol(),
                  operand = create_empty_symbol();
 
-  // if recursion end in this calling
+  // if recursion ends in this call
   if (node->type != AST_BINARY_OPERATION) {
-
-    if (node->type == AST_LITERAL) {
-      // TODO: (pain)
-    }
-
-    if (node->type == AST_IDENTIFIER) {
-      operand = create_var_symbol(
-          create_unique_variable(context, node->data.identifier.name));
-    }
-
-    // pushs
-    context->tail->next_statement =
-        create_statement(INNER_PUSHS, empty_sym, operand, empty_sym);
-    if (context->tail->next_statement == NULL) {
-      return INTERNAL_ERR;
-    }
-    context->tail = context->tail->next_statement;
-
-  } else { // recursion continues
-
-    // check invalid pointers
-    if (node->data.binary_operation.right == NULL ||
-        node->data.binary_operation.left == NULL) {
-      return INTERNAL_ERR;
-    }
-
-    // right child recursion
-    err =
-        convert_expression_on_stack(context, node->data.binary_operation.right);
+    err = create_operand(context, node, &operand);
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
-
-    // left child recursion
-    err =
-        convert_expression_on_stack(context, node->data.binary_operation.left);
-    if (err != NO_ERR) {
-      return err;
-    }
-
-    // choose what operation to convert
-    inner_statement_operation_t operation = INNER_NOP_CUSTOM;
-
-    switch (node->data.binary_operation.op) {
-    case TOK_BINARY_PLUS:
-      // adds
-      operation = INNER_ADDS;
-      break;
-    case TOK_BINARY_MINUS:
-      // subs
-      operation = INNER_SUBS;
-      break;
-    case TOK_MUL:
-      // muls
-      operation = INNER_MULS;
-      break;
-    case TOK_DIV:
-      // TODO: rozdelit podle typu na IDIV a DIV (celociselne / realne deleni)
-      break;
-
-      // TODO others
-
-    default:
-      break;
-    }
-
-    // convert the operation to statement
-    create_statement(operation, empty_sym, empty_sym, empty_sym);
-    if (context->tail->next_statement == NULL) {
-      return INTERNAL_ERR;
-    }
-    context->tail = context->tail->next_statement;
+    RETURN_ERR(
+        append_statement(context, INNER_PUSHS, empty_sym, operand, empty_sym));
   }
 
-  return err;
+  // check invalid pointers
+  if (node->data.binary_operation.right == NULL ||
+      node->data.binary_operation.left == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  // right child recursion
+  err = convert_expression_on_stack(context, node->data.binary_operation.right);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  err = retype_if_needed(context, node->data.binary_operation.right,
+                         node->data.binary_operation.left);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // left child recursion
+  err = convert_expression_on_stack(context, node->data.binary_operation.left);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  err = retype_if_needed(context, node->data.binary_operation.left,
+                         node->data.binary_operation.right);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // choose what operation to convert
+  inner_statement_operation_t operation = INNER_NOP_CUSTOM;
+  if (create_operation(node, &operation) == INTERNAL_ERR) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  RETURN_ERR(
+      append_statement(context, operation, empty_sym, empty_sym, empty_sym));
 }
 
 // conversion functions
 err_code_t convert_function_call(context_t *context, ast_node_t *node) {
-  err_code_t err = NO_ERR;
   inner_symbol_t empty_sym = create_empty_symbol();
-  inner_symbol_t label = create_var_symbol(node->data.function_call.name);
+  inner_symbol_t label = create_label_symbol(node->data.function_call.name);
 
-  // createframe
-  context->tail->next_statement =
-      create_statement(INNER_CREATEFRAME, empty_sym, empty_sym, empty_sym);
-  if (context->tail->next_statement == NULL) {
-    return INTERNAL_ERR;
+  // Push all arguments left-to-right onto the data stack
+  ast_node_t *arg_list = node->data.function_call.argument_lists;
+  while (arg_list != NULL) {
+    if (arg_list->type != AST_ARGUMENT_LIST) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+
+    ast_node_t *arg = arg_list->data.argument_list.arguments;
+    while (arg != NULL) {
+      err_code_t err = convert_expression_on_stack(context, arg);
+      if (err != NO_ERR) {
+        RETURN_ERR(err);
+      }
+      arg = arg->next;
+    }
+
+    arg_list = arg_list->next;
   }
-  context->tail = context->tail->next_statement;
 
-  // TODO params
-
-  // pushframe
-  context->tail->next_statement =
-      create_statement(INNER_PUSHFRAME, empty_sym, empty_sym, empty_sym);
-  if (context->tail->next_statement == NULL) {
-    return INTERNAL_ERR;
-  }
-  context->tail = context->tail->next_statement;
-
-  // label
-  context->tail->next_statement =
-      create_statement(INNER_CALL, empty_sym, label, empty_sym);
-  if (context->tail->next_statement == NULL) {
-    return INTERNAL_ERR;
-  }
-  context->tail = context->tail->next_statement;
-
-  return err;
+  // call
+  RETURN_ERR(
+      append_statement(context, INNER_CALL, empty_sym, label, empty_sym));
 }
 
 err_code_t convert_block(context_t *context, ast_node_t *node) {
-  // body of the block
-  block_body_list_traversal(context, node->data.block.statement);
-
-  return NO_ERR;
+  RETURN_ERR(block_body_list_traversal(context, node->data.block.statement));
 }
 
 err_code_t convert_var_declaration(context_t *context, ast_node_t *node) {
-  err_code_t err = NO_ERR;
   inner_symbol_t empty_sym = create_empty_symbol();
 
-  char *name = create_unique_variable(context, node->data.assignment.name);
-  if (name == NULL) {
-    return INTERNAL_ERR;
+  char *unique_name =
+      create_unique_variable(context, node->data.variable_declaration.name);
+  if (unique_name == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
   }
 
-  node->data.variable_declaration.unique_id = name; // TODO: spravne?
+  node->data.variable_declaration.unique_id = unique_name;
 
-  name = add_prefix_to_id(name, "TF@");
-  if (name == NULL) {
-    return INTERNAL_ERR;
+  char *lf_name = alloc_lf_var_name(unique_name);
+  if (lf_name == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
   }
-
-  inner_symbol_t variable = create_var_symbol(name);
 
   // defvar
-  context->tail->next_statement =
-      create_statement(INNER_DEFVAR, empty_sym, variable, empty_sym);
-  if (context->tail->next_statement == NULL) {
-    return INTERNAL_ERR;
+  err_code_t err = append_statement(context, INNER_DEFVAR, empty_sym,
+                                    create_var_symbol(lf_name), empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
   }
-  context->tail = context->tail->next_statement;
 
   // calculates the expression and leaves the result on top of the stack
   err = convert_expression_on_stack(context,
                                     node->data.variable_declaration.expression);
   if (err != NO_ERR) {
-    return err;
+    RETURN_ERR(err);
   }
 
   // pops
-  context->tail->next_statement =
-      create_statement(INNER_POPS, variable, empty_sym, empty_sym);
-  if (context->tail->next_statement == NULL) {
-    return INTERNAL_ERR;
-  }
-  context->tail = context->tail->next_statement;
-
-  return err;
+  RETURN_ERR(append_statement(context, INNER_POPS, create_var_symbol(lf_name),
+                              empty_sym, empty_sym));
 }
 
 err_code_t convert_assignment(context_t *context, ast_node_t *node) {
-  err_code_t err = NO_ERR;
   inner_symbol_t empty_sym = create_empty_symbol();
 
-  char *name = node->data.assignment.name; // TODO: potrebuju dostat unique name
-  name = add_prefix_to_id(name, "TF@");
+  char *orig_name;
+  if (node->data.assignment.calling->type == AST_PARAMETER) {
+    orig_name = node->data.assignment.calling->data.parameter.name;
+  } else {
+    orig_name =
+        node->data.assignment.calling->data.variable_declaration.unique_id;
+  }
+
+  char *name;
+  name = alloc_lf_var_name(orig_name);
   if (name == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   inner_symbol_t variable = create_var_symbol(name);
 
   // calculates the expression and leaves the result on top of the stack
-  err = convert_expression_on_stack(context, node->data.assignment.expression);
+  err_code_t err =
+      convert_expression_on_stack(context, node->data.assignment.expression);
   if (err != NO_ERR) {
-    return err;
+    RETURN_ERR(err);
   }
 
   // pops
-  context->tail->next_statement =
-      create_statement(INNER_POPS, variable, empty_sym, empty_sym);
-  if (context->tail->next_statement == NULL) {
-    return INTERNAL_ERR;
-  }
-  context->tail = context->tail->next_statement;
-
-  return err;
+  RETURN_ERR(
+      append_statement(context, INNER_POPS, variable, empty_sym, empty_sym));
 }
 
 err_code_t convert_return(context_t *context, ast_node_t *node) {
-  err_code_t err = NO_ERR;
   inner_symbol_t empty_sym = create_empty_symbol();
 
-  // calculates the expression and leaves the result on top of the stack
-  err = convert_expression_on_stack(context,
-                                    node->data.return_statement.expression);
+  // Push return value onto the data stack (nil@nil if bare return / Unit)
+  if (node->data.return_statement.expression != NULL) {
+    err_code_t err = convert_expression_on_stack(
+        context, node->data.return_statement.expression);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+  } else {
+    inner_value_t nil_val = {.inner_nil = NULL};
+    inner_symbol_t nil_sym = create_const_symbol(INNER_NIL, nil_val);
+    err_code_t err =
+        append_statement(context, INNER_PUSHS, empty_sym, nil_sym, empty_sym);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+  }
+
+  // Callee pops its own local frame before returning
+  err_code_t err = append_statement(context, INNER_POPFRAME, empty_sym,
+                                    empty_sym, empty_sym);
   if (err != NO_ERR) {
-    return err;
+    RETURN_ERR(err);
   }
 
-  // return
-  context->tail->next_statement =
-      create_statement(INNER_RETURN, empty_sym, empty_sym, empty_sym);
-  if (context->tail->next_statement == NULL) {
-    return INTERNAL_ERR;
-  }
-  context->tail = context->tail->next_statement;
-
-  return err;
+  RETURN_ERR(
+      append_statement(context, INNER_RETURN, empty_sym, empty_sym, empty_sym));
 }
 
 /****************************\
  * Interface implementation *
 \****************************/
 
+err_code_t append_statement(context_t *context, inner_statement_operation_t op,
+                            inner_symbol_t dest, inner_symbol_t src1,
+                            inner_symbol_t src2) {
+  inner_statement_t *statement = create_statement(op, dest, src1, src2);
+  if (statement == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  if (context->head == NULL) {
+    context->head = context->tail = statement;
+  } else {
+    context->tail->next_statement = statement;
+    context->tail = statement;
+  }
+
+  RETURN_ERR(NO_ERR);
+}
+
+char *alloc_lf_var_name(const char *identifier) {
+  if (identifier == NULL) {
+    return NULL;
+  }
+
+  size_t len = strlen("LF@") + strlen(identifier);
+  char *result = malloc(len + 1);
+  if (result == NULL) {
+    return NULL;
+  }
+
+  snprintf(result, len + 1, "LF@%s", identifier);
+  // TODO: should we replace the original id in node with the new one?
+  // (statments do not free identifiers)
+  return result;
+}
+
 err_code_t convert_node(context_t *context, ast_node_t *node) {
+  if (context == NULL || node == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
 
   err_code_t err = NO_ERR;
 
@@ -355,7 +573,7 @@ err_code_t convert_node(context_t *context, ast_node_t *node) {
   case AST_FUNCTION_CALL:
     err = enqueue_function(context, node->data.function_call.calling);
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
     err = convert_function_call(context, node);
     break;
@@ -381,7 +599,7 @@ err_code_t convert_node(context_t *context, ast_node_t *node) {
   case AST_FOR_DO:
     break;
   case AST_RETURN:
-    convert_return(context, node);
+    err = convert_return(context, node);
     break;
   case AST_MATCH:
     break;
@@ -398,5 +616,5 @@ err_code_t convert_node(context_t *context, ast_node_t *node) {
     break;
   }
 
-  return err;
+  RETURN_ERR(err);
 }
