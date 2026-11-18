@@ -1415,11 +1415,17 @@ static ast_node_t take_while_function_declaration = {
 
 #pragma region dropWhile((T) => Boolean) : List[T]
 
+static ast_node_t drop_while_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &drop_while_code},
+    .next = NULL,
+};
+
 static ast_node_t drop_while_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &drop_while_body,
             .is_main = false,
             .name = "List[T].dropWhile",
             .return_type = &generic_list_node,
