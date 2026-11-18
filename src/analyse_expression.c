@@ -549,8 +549,12 @@ err_code_t analyse_if(ast_node_t *node, hashtable_t *symtable,
     }
 
     // Choose larger type
-    err = duplicate_superset_type(true_branch->data_type,
-                                  false_branch->data_type, &node->data_type);
+    if (are_data_types_identical(true_branch->data_type, &node_int)) {
+      err = duplicate_type_node(false_branch->data_type, &node->data_type);
+    } else {
+      err = duplicate_type_node(true_branch->data_type, &node->data_type);
+    }
+
     RETURN_ERR(err);
   }
 
@@ -592,8 +596,11 @@ err_code_t analyse_binary_operation(ast_node_t *node, hashtable_t *symtable) {
   switch (node->data.binary_operation.op) {
     // Operators
   case TOK_BINARY_PLUS:
-    err = duplicate_superset_type(left->data_type, right->data_type,
-                                  &node->data_type);
+    if (are_data_types_identical(left->data_type, &node_int)) {
+      err = duplicate_type_node(right->data_type, &node->data_type);
+    } else {
+      err = duplicate_type_node(left->data_type, &node->data_type);
+    }
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
@@ -606,11 +613,15 @@ err_code_t analyse_binary_operation(ast_node_t *node, hashtable_t *symtable) {
   case TOK_BINARY_MINUS:
   case TOK_MUL:
   case TOK_DIV:
-    err = duplicate_superset_type(left->data_type, right->data_type,
-                                  &node->data_type);
+    if (are_data_types_identical(left->data_type, &node_int)) {
+      err = duplicate_type_node(right->data_type, &node->data_type);
+    } else {
+      err = duplicate_type_node(left->data_type, &node->data_type);
+    }
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
+
     if (!are_data_types_compatible(node->data_type, &node_double)) {
       return TYPE_COMPAT_ERR;
     }

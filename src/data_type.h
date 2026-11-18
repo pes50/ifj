@@ -225,16 +225,3 @@ bool are_data_types_compatible(data_type_node_t *data_type_a,
  * @return NO_ERR on success
  */
 err_code_t type_to_string(data_type_node_t *data_type, char **result);
-
-/**
- * @brief Duplicates a type that is the superset of the other one
- *
- * @param data_type_node_a A pointer to the first type to compare
- * @param data_type_node_b A pointer to the second type to compare
- * @param data_type_node_c [out] A pointer to the node to store the result to
- *
- * @return NO_ERR on success
- */
-err_code_t duplicate_superset_type(data_type_node_t *data_type_node_a,
-                                   data_type_node_t *data_type_node_b,
-                                   data_type_node_t **data_type_node_c);
