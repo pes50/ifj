@@ -600,11 +600,17 @@ static ast_node_t double_to_int_function_declaration = {
 
 #pragma region Double.floor: Double
 
+static ast_node_t floor_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &floor_code},
+    .next = NULL,
+};
+
 static ast_node_t double_floor_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &floor_body,
             .is_main = false,
             .name = "Double.floor",
             .return_type = &node_double,

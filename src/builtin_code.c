@@ -1302,7 +1302,7 @@ static inner_statement_t to_str_s1 = {
 };
 
 // LABEL toStr
-inner_statement_t to_string_code = {
+inner_statement_t to_str_code = {
     .operation = INNER_LABEL,
     .destination =
         {
@@ -2627,5 +2627,240 @@ inner_statement_t readdouble_maybe_code = {
             .data.identificator = "readDoubleMaybe",
         },
     .next_statement = &readdouble_maybe_s1,
+    .is_static = true,
+};
+
+/**
+ * Double.floor: Double
+ */
+
+// RETURN
+static inner_statement_t floor_s16 = {
+    .operation = INNER_RETURN,
+    .next_statement = NULL,
+    .is_static = true,
+};
+
+// POPFRAME
+static inner_statement_t floor_s15 = {
+    .operation = INNER_POPFRAME,
+    .next_statement = &floor_s16,
+    .is_static = true,
+};
+
+// PUSHS LF@return_val
+static inner_statement_t floor_s14 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .next_statement = &floor_s15,
+    .is_static = true,
+};
+
+// LABEL $$floor_end
+static inner_statement_t floor_s13 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$floor_end",
+        },
+    .next_statement = &floor_s14,
+    .is_static = true,
+};
+// SUB LF@return_val LF@return_val float@1.0
+static inner_statement_t floor_s12 = {
+    .operation = INNER_SUB,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_FLOAT,
+                    .value.inner_float = 1.0,
+                },
+        },
+    .next_statement = &floor_s13,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$floor_end LF@precondition bool@false
+static inner_statement_t floor_s11 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$floor_end",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_BOOL,
+                    .value.inner_bool = false,
+                },
+        },
+    .next_statement = &floor_s12,
+    .is_static = true,
+};
+
+// LT LF@precondition LF@value LF@return_val
+static inner_statement_t floor_s10 = {
+    .operation = INNER_LT,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .next_statement = &floor_s11,
+    .is_static = true,
+};
+
+// INT2FLOAT LF@return_val LF@to_int
+static inner_statement_t floor_s9 = {
+    .operation = INNER_INT2FLOAT,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@to_int",
+        },
+    .next_statement = &floor_s10,
+    .is_static = true,
+};
+
+// FLOAT2INT LF@to_int LF@value
+static inner_statement_t floor_s8 = {
+    .operation = INNER_FLOAT2INT,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@to_int",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value",
+        },
+    .next_statement = &floor_s9,
+    .is_static = true,
+};
+
+// POPS LF@value
+static inner_statement_t floor_s7 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value",
+        },
+    .next_statement = &floor_s8,
+    .is_static = true,
+};
+
+// DEFVAR LF@precondition
+static inner_statement_t floor_s6 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .next_statement = &floor_s7,
+    .is_static = true,
+};
+
+// DEFVAR LF@return_val
+static inner_statement_t floor_s5 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .next_statement = &floor_s6,
+    .is_static = true,
+};
+
+// DEFVAR LF@to_int
+static inner_statement_t floor_s4 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@to_int",
+        },
+    .next_statement = &floor_s5,
+    .is_static = true,
+};
+
+// DEFVAR LF@value
+static inner_statement_t floor_s3 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value",
+        },
+    .next_statement = &floor_s4,
+    .is_static = true,
+};
+
+// PUSHFRAME
+static inner_statement_t floor_s2 = {
+    .operation = INNER_PUSHFRAME,
+    .next_statement = &floor_s3,
+    .is_static = true,
+};
+
+// CREATEFRAME
+static inner_statement_t floor_s1 = {
+    .operation = INNER_CREATEFRAME,
+    .next_statement = &floor_s2,
+    .is_static = true,
+};
+
+// LABEL floor
+inner_statement_t floor_code = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "floor",
+        },
+    .next_statement = &floor_s1,
     .is_static = true,
 };
