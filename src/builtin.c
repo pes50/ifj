@@ -1367,11 +1367,17 @@ static ast_node_t target_list_func_parameter_list_node = {
 
 #pragma region filter((T) => Boolean) : List[T]
 
+static ast_node_t filter_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &filter_code},
+    .next = NULL,
+};
+
 static ast_node_t filter_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &filter_body,
             .is_main = false,
             .name = "List[T].filter",
             .return_type = &generic_list_node,
