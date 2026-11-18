@@ -38,5 +38,7 @@ extern inner_statement_t drop_while_code;
 extern inner_statement_t range_code;
 extern inner_statement_t to_list_code;
 extern inner_statement_t to_code;
+extern inner_statement_t by_code;
+extern inner_statement_t until_code;
 
 #endif
