@@ -547,7 +547,7 @@ static ast_node_t any_to_string_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &to_str_body,
             .is_main = false,
             .name = "Any.toString",
             .return_type = &node_string,
@@ -586,7 +586,7 @@ static ast_node_t double_to_int_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &to_int_body,
             .is_main = false,
             .name = "Double.toInt",
             .return_type = &node_int,
@@ -643,7 +643,7 @@ static ast_node_t string_length_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &str_length_body,
             .is_main = false,
             .name = "String.length",
             .return_type = &node_int,
