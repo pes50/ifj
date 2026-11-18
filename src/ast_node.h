@@ -81,7 +81,6 @@ typedef struct ast_node_t {
     struct {
       struct ast_node_t *parameters;
       struct ast_node_t *body;
-      data_type_node_t *return_type;
     } lambda_declaration;
 
     struct {
@@ -258,13 +257,11 @@ ast_node_t *create_dot_function_call_node(char *name, ast_node_t *target,
  *
  * @param parameters A pointer to the AST node representing the first parameter
  * @param body A pointer to the AST block node representing the function body
- * @param return_type Type of the return value
  *
  * @return A pointer to created node or NULL if failed
  */
 ast_node_t *create_lambda_declaration_node(ast_node_t *parameters,
-                                           ast_node_t *body,
-                                           data_type_node_t *return_type);
+                                           ast_node_t *body);
 
 /**
  * @brief Creates an AST node for function parameter list

@@ -2732,7 +2732,7 @@ err_code_t lambda(token_t *token, ast_node_t **node) {
     return ret;
   }
 
-  *node = create_lambda_declaration_node(parameters, body, NULL);
+  *node = create_lambda_declaration_node(parameters, body);
   if (*node == NULL) {
     destroy_node(parameters);
     destroy_node(body);

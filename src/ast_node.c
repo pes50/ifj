@@ -40,7 +40,6 @@ void destroy_node(ast_node_t *node) {
   case AST_LAMBDA_DECLARATION:
     destroy_node(node->data.lambda_declaration.parameters);
     destroy_node(node->data.lambda_declaration.body);
-    destroy_type_node(node->data.lambda_declaration.return_type);
     break;
   case AST_PARAMETER_LIST:
     destroy_node(node->data.parameter_list.parameters);
@@ -203,8 +202,7 @@ ast_node_t *create_dot_function_call_node(char *name, ast_node_t *target,
 }
 
 ast_node_t *create_lambda_declaration_node(ast_node_t *parameters,
-                                           ast_node_t *body,
-                                           data_type_node_t *return_type) {
+                                           ast_node_t *body) {
   // Create node
   ast_node_t *node = create_node();
   if (node == NULL) {
@@ -215,7 +213,6 @@ ast_node_t *create_lambda_declaration_node(ast_node_t *parameters,
   node->type = AST_LAMBDA_DECLARATION;
   node->data.lambda_declaration.parameters = parameters;
   node->data.lambda_declaration.body = body;
-  node->data.lambda_declaration.return_type = return_type;
 
   return node;
 }
