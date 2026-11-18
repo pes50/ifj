@@ -272,7 +272,7 @@ static data_type_node_t any_string_signature = {
     .next = NULL,
 };
 
-static ast_node_t to_str_function_declaration = {
+ast_node_t to_str_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
