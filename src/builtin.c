@@ -262,6 +262,16 @@ static ast_node_t to_str_body = {
     .next = NULL,
 };
 
+static data_type_node_t any_string_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = &node_any,
+            .return_type = &node_string,
+        },
+    .next = NULL,
+};
+
 static ast_node_t to_str_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
@@ -621,6 +631,16 @@ static ast_node_t chr_function_declaration = {
 static ast_node_t readboolean_body = {
     .type = AST_BUILTIN_BODY,
     .data.builtin_body = {.first_instruction = &readboolean_code},
+    .next = NULL,
+};
+
+static data_type_node_t empty_boolean_signature = {
+    .type = DATA_TYPE_LAMBDA,
+    .data.lambda_type =
+        {
+            .parameter_types = NULL,
+            .return_type = &node_boolean,
+        },
     .next = NULL,
 };
 
