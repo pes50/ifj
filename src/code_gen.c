@@ -9,6 +9,7 @@
 \******************************************************************************/
 
 #include "code_gen.h"
+#include "ast_convert.h"
 #include <string.h>
 
 /********************\
@@ -363,17 +364,13 @@ inner_statement_t *codegen_print_statement(inner_statement_t *statement,
  * Code generator interface implementation *
 \*******************************************/
 
-void codegen_print_program(inner_statement_t *statement, FILE *stream,
-                           bool should_deallocate) {
+void codegen_print_program(inner_statement_t *statement, FILE *stream) {
   fprintf(stream, ".IFJcode26\n");
+  fprintf(stream, "DEFVAR " TRASH "\n");
 
   inner_statement_t *first_statement = statement;
   inner_statement_t *next_statement = statement;
   do {
     next_statement = codegen_print_statement(next_statement, stream);
   } while (next_statement != NULL);
-
-  if (should_deallocate) {
-    destroy_statement_list(first_statement);
-  }
 }

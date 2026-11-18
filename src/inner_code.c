@@ -9,6 +9,7 @@
  \*****************************************************************************/
 
 #include "inner_code.h"
+#include "string_duplicate.h"
 
 /********************\
  * Helper functions *
@@ -30,6 +31,8 @@ inner_statement_t *allocate_statement() {
 inner_symbol_t create_empty_symbol() {
   inner_symbol_t empty;
   empty.type = INNER_SYM_EMPTY;
+  empty.data.identificator = NULL;
+  empty.owns_identifier = false;
   return empty;
 }
 
@@ -38,6 +41,7 @@ inner_symbol_t create_var_symbol(char *identificator) {
 
   var.type = INNER_SYM_VAR;
   var.data.identificator = identificator;
+  var.owns_identifier = false;
 
   return var;
 }
@@ -49,6 +53,7 @@ inner_symbol_t create_const_symbol(inner_datatype_t datatype,
   constant.type = INNER_SYM_CONST;
   constant.data.constant.datatype = datatype;
   constant.data.constant.value = value;
+  constant.owns_identifier = false;
 
   return constant;
 }
@@ -58,6 +63,7 @@ inner_symbol_t create_arr_symbol(char *identificator) {
 
   arr.type = INNER_SYM_ARR;
   arr.data.identificator = identificator;
+  arr.owns_identifier = false;
 
   return arr;
 }
@@ -67,8 +73,31 @@ inner_symbol_t create_label_symbol(char *identificator) {
 
   label.type = INNER_SYM_LABEL;
   label.data.identificator = identificator;
+  label.owns_identifier = false;
 
   return label;
+}
+
+static void destroy_symbol(inner_symbol_t *sym) {
+  if (sym->owns_identifier && sym->type != INNER_SYM_CONST &&
+      sym->type != INNER_SYM_EMPTY) {
+    free(sym->data.identificator);
+    sym->data.identificator = NULL;
+    sym->owns_identifier = false;
+  }
+}
+
+static inner_symbol_t clone_symbol(inner_symbol_t sym) {
+  if (sym.owns_identifier && sym.data.identificator != NULL &&
+      sym.type != INNER_SYM_CONST && sym.type != INNER_SYM_EMPTY) {
+    char *copy = string_duplicate(sym.data.identificator);
+    if (copy != NULL) {
+      sym.data.identificator = copy;
+    } else {
+      sym.owns_identifier = false;
+    }
+  }
+  return sym;
 }
 
 inner_statement_t *create_statement(inner_statement_operation_t operation,
@@ -79,12 +108,12 @@ inner_statement_t *create_statement(inner_statement_operation_t operation,
   if (statement == NULL) {
     return NULL;
   }
+
   statement->operation = operation;
   statement->destination = destination;
   statement->first_op = source1;
   statement->second_op = source2;
   statement->is_static = false;
-
   statement->next_statement = NULL;
 
   return statement;
@@ -95,6 +124,14 @@ inner_statement_t *destroy_statement(inner_statement_t *statement) {
     return NULL;
   }
   inner_statement_t *next_statement = statement->next_statement;
+
+  if (statement->is_static) {
+    return next_statement;
+  }
+
+  destroy_symbol(&statement->destination);
+  destroy_symbol(&statement->first_op);
+  destroy_symbol(&statement->second_op);
 
   free(statement);
 
@@ -122,9 +159,11 @@ inner_statement_t *duplicate_statement_list(inner_statement_t *statement,
       destroy_statement_list(head);
       return NULL;
     }
-
-    // Copy all fields
-    *copy = *statement;
+    copy->operation = statement->operation;
+    copy->destination = clone_symbol(statement->destination);
+    copy->first_op = clone_symbol(statement->first_op);
+    copy->second_op = clone_symbol(statement->second_op);
+    copy->is_static = false;
     copy->next_statement = NULL;
 
     if (head == NULL) {
