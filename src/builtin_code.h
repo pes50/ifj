@@ -26,5 +26,6 @@ extern inner_statement_t chr_code;
 extern inner_statement_t readboolean_code;
 extern inner_statement_t readint_maybe_code;
 extern inner_statement_t readdouble_maybe_code;
+extern inner_statement_t floor_code;
 
 #endif
