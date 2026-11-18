@@ -33,5 +33,6 @@ extern inner_statement_t slice_code;
 extern inner_statement_t take_code;
 extern inner_statement_t drop_code;
 extern inner_statement_t filter_code;
+extern inner_statement_t take_while_code;
 
 #endif
