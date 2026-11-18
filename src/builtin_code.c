@@ -6503,3 +6503,831 @@ inner_statement_t drop_while_code = {
     .next_statement = &drop_while_s1,
     .is_static = true,
 };
+
+/**
+ * List.range(start, end, [step])
+ */
+
+// RETURN
+static inner_statement_t range_s47 = {
+    .operation = INNER_RETURN,
+    .next_statement = NULL,
+    .is_static = true,
+};
+
+// POPFRAME
+static inner_statement_t range_s46 = {
+    .operation = INNER_POPFRAME,
+    .next_statement = &range_s47,
+    .is_static = true,
+};
+
+// PUSHS LF@return_list
+static inner_statement_t range_s45 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_list",
+        },
+    .next_statement = &range_s46,
+    .is_static = true,
+};
+
+// LABEL $$range_done
+static inner_statement_t range_s44 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$range_done",
+        },
+    .next_statement = &range_s45,
+    .is_static = true,
+};
+
+// JUMP $$range_loop
+static inner_statement_t range_s43 = {
+    .operation = INNER_JUMP,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$range_loop",
+        },
+    .next_statement = &range_s44,
+    .is_static = true,
+};
+
+// ADD LF@index LF@index int@1
+static inner_statement_t range_s42 = {
+    .operation = INNER_ADD,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &range_s43,
+    .is_static = true,
+};
+
+// ADD LF@start LF@start LF@step
+static inner_statement_t range_s41 = {
+    .operation = INNER_ADD,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@start",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@start",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@step",
+        },
+    .next_statement = &range_s42,
+    .is_static = true,
+};
+
+// ARRAYSET LF@return_list LF@index LF@start
+static inner_statement_t range_s40 = {
+    .operation = INNER_ARRAYSET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_list",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@start",
+        },
+    .next_statement = &range_s41,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$range_done LF@index LF@size
+static inner_statement_t range_s39 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$range_done",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .next_statement = &range_s40,
+    .is_static = true,
+};
+
+// LABEL $$range_loop
+static inner_statement_t range_s38 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$range_loop",
+        },
+    .next_statement = &range_s39,
+    .is_static = true,
+};
+
+// MOVE LF@index int@2
+static inner_statement_t range_s37 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 2,
+                },
+        },
+    .next_statement = &range_s38,
+    .is_static = true,
+};
+
+// ARRAYSET LF@return_list int@1 LF@size
+static inner_statement_t range_s36 = {
+    .operation = INNER_ARRAYSET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_list",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .next_statement = &range_s37,
+    .is_static = true,
+};
+
+// ARRAYSET LF@return_list int@0 string@list
+static inner_statement_t range_s35 = {
+    .operation = INNER_ARRAYSET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_list",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_STRING,
+                    .value.inner_string = "list",
+                },
+        },
+    .next_statement = &range_s36,
+    .is_static = true,
+};
+
+// NEWARRAY LF@return_list LF@size
+static inner_statement_t range_s34 = {
+    .operation = INNER_NEWARRAY,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_list",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .next_statement = &range_s35,
+    .is_static = true,
+};
+
+// ADD LF@size LF@count int@2
+static inner_statement_t range_s33 = {
+    .operation = INNER_ADD,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@count",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 2,
+                },
+        },
+    .next_statement = &range_s34,
+    .is_static = true,
+};
+
+// LABEL $$range_alloc
+static inner_statement_t range_s32 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$range_alloc",
+        },
+    .next_statement = &range_s33,
+    .is_static = true,
+};
+
+// ADD LF@count LF@count int@1
+static inner_statement_t range_s31 = {
+    .operation = INNER_ADD,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@count",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@count",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &range_s32,
+    .is_static = true,
+};
+
+// IDIV LF@count LF@diff LF@abs_step
+static inner_statement_t range_s30 = {
+    .operation = INNER_IDIV,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@count",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@diff",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@abs_step",
+        },
+    .next_statement = &range_s31,
+    .is_static = true,
+};
+
+// SUB LF@diff LF@diff int@1
+static inner_statement_t range_s29 = {
+    .operation = INNER_SUB,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@diff",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@diff",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &range_s30,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$range_alloc LF@precondition bool@false
+static inner_statement_t range_s28 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$range_alloc",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_BOOL,
+                    .value.inner_bool = false,
+                },
+        },
+    .next_statement = &range_s29,
+    .is_static = true,
+};
+
+// GT LF@precondition LF@diff int@0
+static inner_statement_t range_s27 = {
+    .operation = INNER_GT,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@diff",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .next_statement = &range_s28,
+    .is_static = true,
+};
+
+// MOVE LF@count int@0
+static inner_statement_t range_s26 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@count",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .next_statement = &range_s27,
+    .is_static = true,
+};
+
+// LABEL $$range_calc_count
+static inner_statement_t range_s25 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$range_calc_count",
+        },
+    .next_statement = &range_s26,
+    .is_static = true,
+};
+
+// SUB LF@abs_step int@0 LF@abs_step
+static inner_statement_t range_s24 = {
+    .operation = INNER_SUB,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@abs_step",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@abs_step",
+        },
+    .next_statement = &range_s25,
+    .is_static = true,
+};
+
+// SUB LF@diff int@0 LF@diff
+static inner_statement_t range_s23 = {
+    .operation = INNER_SUB,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@diff",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@diff",
+        },
+    .next_statement = &range_s24,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$range_calc_count LF@precondition bool@false
+static inner_statement_t range_s22 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$range_calc_count",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_BOOL,
+                    .value.inner_bool = false,
+                },
+        },
+    .next_statement = &range_s23,
+    .is_static = true,
+};
+
+// LT LF@precondition LF@step int@0
+static inner_statement_t range_s21 = {
+    .operation = INNER_LT,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@step",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .next_statement = &range_s22,
+    .is_static = true,
+};
+
+// MOVE LF@abs_step LF@step
+static inner_statement_t range_s20 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@abs_step",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@step",
+        },
+    .next_statement = &range_s21,
+    .is_static = true,
+};
+
+// SUB LF@diff LF@end LF@start
+static inner_statement_t range_s19 = {
+    .operation = INNER_SUB,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@diff",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@end",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@start",
+        },
+    .next_statement = &range_s20,
+    .is_static = true,
+};
+
+// LABEL $$range_step_ok
+static inner_statement_t range_s18 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$range_step_ok",
+        },
+    .next_statement = &range_s19,
+    .is_static = true,
+};
+
+// EXIT int@40
+static inner_statement_t range_s17 = {
+    .operation = INNER_EXIT,
+    .destination =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 40,
+                },
+        },
+    .next_statement = &range_s18,
+    .is_static = true,
+};
+
+// JUMPIFNEQ $$range_step_ok LF@step int@0
+static inner_statement_t range_s16 = {
+    .operation = INNER_JUMPIFNEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$range_step_ok",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@step",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .next_statement = &range_s17,
+    .is_static = true,
+};
+
+// POPS LF@start
+static inner_statement_t range_s15 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@start",
+        },
+    .next_statement = &range_s16,
+    .is_static = true,
+};
+
+// POPS LF@end
+static inner_statement_t range_s14 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@end",
+        },
+    .next_statement = &range_s15,
+    .is_static = true,
+};
+
+// POPS LF@step
+static inner_statement_t range_s13 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@step",
+        },
+    .next_statement = &range_s14,
+    .is_static = true,
+};
+
+// DEFVAR LF@index
+static inner_statement_t range_s12 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .next_statement = &range_s13,
+    .is_static = true,
+};
+
+// DEFVAR LF@return_list
+static inner_statement_t range_s11 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_list",
+        },
+    .next_statement = &range_s12,
+    .is_static = true,
+};
+
+// DEFVAR LF@size
+static inner_statement_t range_s10 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .next_statement = &range_s11,
+    .is_static = true,
+};
+
+// DEFVAR LF@count
+static inner_statement_t range_s9 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@count",
+        },
+    .next_statement = &range_s10,
+    .is_static = true,
+};
+
+// DEFVAR LF@precondition
+static inner_statement_t range_s8 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .next_statement = &range_s9,
+    .is_static = true,
+};
+
+// DEFVAR LF@abs_step
+static inner_statement_t range_s7 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@abs_step",
+        },
+    .next_statement = &range_s8,
+    .is_static = true,
+};
+
+// DEFVAR LF@diff
+static inner_statement_t range_s6 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@diff",
+        },
+    .next_statement = &range_s7,
+    .is_static = true,
+};
+
+// DEFVAR LF@step
+static inner_statement_t range_s5 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@step",
+        },
+    .next_statement = &range_s6,
+    .is_static = true,
+};
+
+// DEFVAR LF@end
+static inner_statement_t range_s4 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@end",
+        },
+    .next_statement = &range_s5,
+    .is_static = true,
+};
+
+// DEFVAR LF@start
+static inner_statement_t range_s3 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@start",
+        },
+    .next_statement = &range_s4,
+    .is_static = true,
+};
+
+// PUSHFRAME
+static inner_statement_t range_s2 = {
+    .operation = INNER_PUSHFRAME,
+    .next_statement = &range_s3,
+    .is_static = true,
+};
+
+// CREATEFRAME
+static inner_statement_t range_s1 = {
+    .operation = INNER_CREATEFRAME,
+    .next_statement = &range_s2,
+    .is_static = true,
+};
+
+// LABEL range
+inner_statement_t range_code = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "range",
+        },
+    .next_statement = &range_s1,
+    .is_static = true,
+};
