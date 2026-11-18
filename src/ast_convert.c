@@ -30,32 +30,27 @@ err_code_t pop_parameter_list_reverse(context_t *context, ast_node_t *param) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  inner_symbol_t empty_sym = create_empty_symbol();
-
-  // parameters needen't have unique IDs because every other variable will have
-  char *def_name = alloc_lf_var_name(param->data.parameter.name);
-  if (def_name == NULL) {
+  char *lf_name = alloc_lf_var_name(param->data.parameter.name);
+  if (lf_name == NULL) {
     RETURN_ERR(INTERNAL_ERR);
   }
+  free(param->data.parameter.name);
+  param->data.parameter.name = lf_name;
+
+  inner_symbol_t empty_sym = create_empty_symbol();
 
   err_code_t err = append_statement(context, INNER_DEFVAR, empty_sym,
-                                    create_var_symbol(def_name), empty_sym);
+                                    create_var_symbol(lf_name), empty_sym);
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
-  // Recurse first so POPS instructions are emitted from rightmost to leftmost
   err = pop_parameter_list_reverse(context, param->next);
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
-  char *pops_name = alloc_lf_var_name(param->data.parameter.name);
-  if (pops_name == NULL) {
-    RETURN_ERR(INTERNAL_ERR);
-  }
-
-  RETURN_ERR(append_statement(context, INNER_POPS, create_var_symbol(pops_name),
+  RETURN_ERR(append_statement(context, INNER_POPS, create_var_symbol(lf_name),
                               empty_sym, empty_sym));
 }
 
@@ -173,6 +168,9 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
     }
   }
 
+  // Mark the end of the function prologue
+  context->function_start = context->tail;
+
   // saves pointer to first node from function body
   ast_node_t *curr_node = node->data.function_declaration.body;
 
@@ -180,6 +178,12 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
   while (context->tail->operation != INNER_RETURN) {
     // adds return if the function doesn't have one
     if (curr_node == NULL) {
+      err_code_t err = append_statement(context, INNER_POPFRAME, empty_sym,
+                                        empty_sym, empty_sym);
+      if (err != NO_ERR) {
+        RETURN_ERR(err);
+      }
+
       err = append_statement(context, INNER_RETURN, empty_sym, empty_sym,
                              empty_sym);
       if (err != NO_ERR) {

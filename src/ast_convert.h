@@ -28,6 +28,7 @@ typedef struct {
   hashtable_t *table;
   inner_statement_t *head;
   inner_statement_t *tail;
+  inner_statement_t *function_start;
 } context_t;
 
 /**
