@@ -28,5 +28,9 @@ extern inner_statement_t readint_maybe_code;
 extern inner_statement_t readdouble_maybe_code;
 extern inner_statement_t floor_code;
 extern inner_statement_t head_code;
+extern inner_statement_t tail_code;
+extern inner_statement_t slice_code;
+extern inner_statement_t take_code;
+extern inner_statement_t drop_code;
 
 #endif
