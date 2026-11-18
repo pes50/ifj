@@ -4898,3 +4898,760 @@ inner_statement_t tail_code = {
     .next_statement = &tail_s1,
     .is_static = true,
 };
+
+/**
+ * filter((T) => Boolean)
+ */
+
+// RETURN
+static inner_statement_t filter_s46 = {
+    .operation = INNER_RETURN,
+    .next_statement = NULL,
+    .is_static = true,
+};
+
+// POPFRAME
+static inner_statement_t filter_s45 = {
+    .operation = INNER_POPFRAME,
+    .next_statement = &filter_s46,
+    .is_static = true,
+};
+
+// PUSHS LF@return_list
+static inner_statement_t filter_s44 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_list",
+        },
+    .next_statement = &filter_s45,
+    .is_static = true,
+};
+
+// LABEL $$filter_done
+static inner_statement_t filter_s43 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$filter_done",
+        },
+    .next_statement = &filter_s44,
+    .is_static = true,
+};
+
+// JUMP $$filter_copy
+static inner_statement_t filter_s42 = {
+    .operation = INNER_JUMP,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$filter_copy",
+        },
+    .next_statement = &filter_s43,
+    .is_static = true,
+};
+
+// ADD LF@index LF@index int@1
+static inner_statement_t filter_s41 = {
+    .operation = INNER_ADD,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &filter_s42,
+    .is_static = true,
+};
+
+// ARRAYSET LF@return_list LF@index LF@list_item
+static inner_statement_t filter_s40 = {
+    .operation = INNER_ARRAYSET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_list",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item",
+        },
+    .next_statement = &filter_s41,
+    .is_static = true,
+};
+
+// ARRAYGET LF@list_item LF@list_copied_with_cond LF@index
+static inner_statement_t filter_s39 = {
+    .operation = INNER_ARRAYGET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_copied_with_cond",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .next_statement = &filter_s40,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$filter_done LF@index LF@out_size
+static inner_statement_t filter_s38 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$filter_done",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@out_size",
+        },
+    .next_statement = &filter_s39,
+    .is_static = true,
+};
+
+// LABEL $$filter_copy
+static inner_statement_t filter_s37 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$filter_copy",
+        },
+    .next_statement = &filter_s38,
+    .is_static = true,
+};
+
+// MOVE LF@index int@2
+static inner_statement_t filter_s36 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 2,
+                },
+        },
+    .next_statement = &filter_s37,
+    .is_static = true,
+};
+
+// ARRAYSET LF@return_list int@1 LF@out_size
+static inner_statement_t filter_s35 = {
+    .operation = INNER_ARRAYSET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_list",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@out_size",
+        },
+    .next_statement = &filter_s36,
+    .is_static = true,
+};
+
+// ARRAYSET LF@return_list int@0 LF@list_type
+static inner_statement_t filter_s34 = {
+    .operation = INNER_ARRAYSET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_list",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_type",
+        },
+    .next_statement = &filter_s35,
+    .is_static = true,
+};
+
+// NEWARRAY LF@return_list LF@out_size
+static inner_statement_t filter_s33 = {
+    .operation = INNER_NEWARRAY,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_list",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@out_size",
+        },
+    .next_statement = &filter_s34,
+    .is_static = true,
+};
+
+// LABEL $$filter_loop_done
+static inner_statement_t filter_s32 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$filter_loop_done",
+        },
+    .next_statement = &filter_s33,
+    .is_static = true,
+};
+
+// JUMP $$filter_loop
+static inner_statement_t filter_s31 = {
+    .operation = INNER_JUMP,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$filter_loop",
+        },
+    .next_statement = &filter_s32,
+    .is_static = true,
+};
+
+// ADD LF@index LF@index int@1
+static inner_statement_t filter_s30 = {
+    .operation = INNER_ADD,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &filter_s31,
+    .is_static = true,
+};
+
+// LABEL $$filter_next
+static inner_statement_t filter_s29 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$filter_next",
+        },
+    .next_statement = &filter_s30,
+    .is_static = true,
+};
+
+// ADD LF@out_size LF@out_size int@1
+static inner_statement_t filter_s28 = {
+    .operation = INNER_ADD,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@out_size",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@out_size",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &filter_s29,
+    .is_static = true,
+};
+
+// ARRAYSET LF@list_copied_with_cond LF@out_size LF@list_item
+static inner_statement_t filter_s27 = {
+    .operation = INNER_ARRAYSET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_copied_with_cond",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@out_size",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item",
+        },
+    .next_statement = &filter_s28,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$filter_next LF@list_item_filtered bool@false
+static inner_statement_t filter_s26 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$filter_next",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item_filtered",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_BOOL,
+                    .value.inner_bool = false,
+                },
+        },
+    .next_statement = &filter_s27,
+    .is_static = true,
+};
+
+// POPS LF@list_item_filtered
+static inner_statement_t filter_s25 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item_filtered",
+        },
+    .next_statement = &filter_s26,
+    .is_static = true,
+};
+
+// CALL LF@condition
+static inner_statement_t filter_s24 = {
+    .operation = INNER_CALL,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@condition",
+        },
+    .next_statement = &filter_s25,
+    .is_static = true,
+};
+
+// PUSHS LF@list_item
+static inner_statement_t filter_s23 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item",
+        },
+    .next_statement = &filter_s24,
+    .is_static = true,
+};
+
+// ARRAYGET LF@list_item LF@list LF@index
+static inner_statement_t filter_s22 = {
+    .operation = INNER_ARRAYGET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .next_statement = &filter_s23,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$filter_loop_done LF@index LF@size
+static inner_statement_t filter_s21 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$filter_loop_done",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .next_statement = &filter_s22,
+    .is_static = true,
+};
+
+// LABEL $$filter_loop
+static inner_statement_t filter_s20 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$filter_loop",
+        },
+    .next_statement = &filter_s21,
+    .is_static = true,
+};
+
+// MOVE LF@out_size int@2
+static inner_statement_t filter_s19 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@out_size",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 2,
+                },
+        },
+    .next_statement = &filter_s20,
+    .is_static = true,
+};
+
+// MOVE LF@index int@2
+static inner_statement_t filter_s18 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 2,
+                },
+        },
+    .next_statement = &filter_s19,
+    .is_static = true,
+};
+
+// NEWARRAY LF@list_copied_with_cond LF@size
+static inner_statement_t filter_s17 = {
+    .operation = INNER_NEWARRAY,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_copied_with_cond",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .next_statement = &filter_s18,
+    .is_static = true,
+};
+
+// ARRAYGET LF@size LF@list int@1
+static inner_statement_t filter_s16 = {
+    .operation = INNER_ARRAYGET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &filter_s17,
+    .is_static = true,
+};
+
+// ARRAYGET LF@list_type LF@list int@0
+static inner_statement_t filter_s15 = {
+    .operation = INNER_ARRAYGET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_type",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .next_statement = &filter_s16,
+    .is_static = true,
+};
+
+// POPS LF@list
+static inner_statement_t filter_s14 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &filter_s15,
+    .is_static = true,
+};
+
+// POPS LF@condition
+static inner_statement_t filter_s13 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@condition",
+        },
+    .next_statement = &filter_s14,
+    .is_static = true,
+};
+
+// DEFVAR LF@return_list
+static inner_statement_t filter_s12 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_list",
+        },
+    .next_statement = &filter_s13,
+    .is_static = true,
+};
+
+// DEFVAR LF@list_item_filtered
+static inner_statement_t filter_s11 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item_filtered",
+        },
+    .next_statement = &filter_s12,
+    .is_static = true,
+};
+
+// DEFVAR LF@list_item
+static inner_statement_t filter_s10 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item",
+        },
+    .next_statement = &filter_s11,
+    .is_static = true,
+};
+
+// DEFVAR LF@out_size
+static inner_statement_t filter_s9 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@out_size",
+        },
+    .next_statement = &filter_s10,
+    .is_static = true,
+};
+
+// DEFVAR LF@index
+static inner_statement_t filter_s8 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .next_statement = &filter_s9,
+    .is_static = true,
+};
+
+// DEFVAR LF@list_copied_with_cond
+static inner_statement_t filter_s7 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_copied_with_cond",
+        },
+    .next_statement = &filter_s8,
+    .is_static = true,
+};
+
+// DEFVAR LF@size
+static inner_statement_t filter_s6 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .next_statement = &filter_s7,
+    .is_static = true,
+};
+
+// DEFVAR LF@list_type
+static inner_statement_t filter_s5 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_type",
+        },
+    .next_statement = &filter_s6,
+    .is_static = true,
+};
+
+// DEFVAR LF@condition
+static inner_statement_t filter_s4 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@condition",
+        },
+    .next_statement = &filter_s5,
+    .is_static = true,
+};
+
+// DEFVAR LF@list
+static inner_statement_t filter_s3 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &filter_s4,
+    .is_static = true,
+};
+
+// PUSHFRAME
+static inner_statement_t filter_s2 = {
+    .operation = INNER_PUSHFRAME,
+    .next_statement = &filter_s3,
+    .is_static = true,
+};
+
+// CREATEFRAME
+static inner_statement_t filter_s1 = {
+    .operation = INNER_CREATEFRAME,
+    .next_statement = &filter_s2,
+    .is_static = true,
+};
+
+// LABEL filter
+inner_statement_t filter_code = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "filter",
+        },
+    .next_statement = &filter_s1,
+    .is_static = true,
+};
