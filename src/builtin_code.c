@@ -2147,3 +2147,112 @@ inner_statement_t ord_code = {
     .next_statement = &ord_s1,
     .is_static = true,
 };
+
+/**
+ * chr(code: Int): String
+ */
+
+// RETURN
+static inner_statement_t chr_s9 = {
+    .operation = INNER_RETURN,
+    .next_statement = NULL,
+    .is_static = true,
+};
+
+// POPFRAME
+static inner_statement_t chr_s8 = {
+    .operation = INNER_POPFRAME,
+    .next_statement = &chr_s9,
+    .is_static = true,
+};
+
+// PUSHS LF@return_val
+static inner_statement_t chr_s7 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .next_statement = &chr_s8,
+    .is_static = true,
+};
+
+// INT2CHAR LF@return_val LF@code
+static inner_statement_t chr_s6 = {
+    .operation = INNER_INT2CHAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@code",
+        },
+    .next_statement = &chr_s7,
+    .is_static = true,
+};
+
+// POPS LF@code
+static inner_statement_t chr_s5 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@code",
+        },
+    .next_statement = &chr_s6,
+    .is_static = true,
+};
+
+// DEFVAR LF@return_val
+static inner_statement_t chr_s4 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .next_statement = &chr_s5,
+    .is_static = true,
+};
+
+// DEFVAR LF@code
+static inner_statement_t chr_s3 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@code",
+        },
+    .next_statement = &chr_s4,
+    .is_static = true,
+};
+
+// PUSHFRAME
+static inner_statement_t chr_s2 = {
+    .operation = INNER_PUSHFRAME,
+    .next_statement = &chr_s3,
+    .is_static = true,
+};
+
+// CREATEFRAME
+static inner_statement_t chr_s1 = {
+    .operation = INNER_CREATEFRAME,
+    .next_statement = &chr_s2,
+    .is_static = true,
+};
+
+// LABEL chr
+inner_statement_t chr_code = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "chr",
+        },
+    .next_statement = &chr_s1,
+    .is_static = true,
+};

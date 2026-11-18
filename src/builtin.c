@@ -453,6 +453,12 @@ static ast_node_t ord_function_declaration = {
 
 #pragma region chr(code: Int): String
 
+static ast_node_t chr_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &chr_code},
+    .next = NULL,
+};
+
 static ast_node_t chr_parameter = {
     .type = AST_PARAMETER,
     .data.parameter =
@@ -478,7 +484,7 @@ static ast_node_t chr_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &chr_body,
             .is_main = false,
             .name = "chr",
             .return_type = &node_string,
