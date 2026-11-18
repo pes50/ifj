@@ -397,6 +397,12 @@ static ast_node_t sub_str_function_declaration = {
 
 #pragma region ord(value: String, index: Int): Int
 
+static ast_node_t ord_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &ord_code},
+    .next = NULL,
+};
+
 static ast_node_t ord_index_parameter = {
     .type = AST_PARAMETER,
     .data.parameter =
@@ -433,7 +439,7 @@ static ast_node_t ord_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &ord_body,
             .is_main = false,
             .name = "ord",
             .return_type = &node_int,

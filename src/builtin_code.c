@@ -1811,3 +1811,339 @@ inner_statement_t sub_str_code = {
     .next_statement = &sub_str_s1,
     .is_static = true,
 };
+
+/**
+ * ord(value: String, index: Int): Int
+ */
+
+// RETURN
+static inner_statement_t ord_s22 = {
+    .operation = INNER_RETURN,
+    .next_statement = NULL,
+    .is_static = true,
+};
+
+// POPFRAME
+static inner_statement_t ord_s21 = {
+    .operation = INNER_POPFRAME,
+    .next_statement = &ord_s22,
+    .is_static = true,
+};
+
+// PUSHS LF@return_val
+static inner_statement_t ord_s20 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .next_statement = &ord_s21,
+    .is_static = true,
+};
+
+// LABEL $$ord_end
+static inner_statement_t ord_s19 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$ord_end",
+        },
+    .next_statement = &ord_s20,
+    .is_static = true,
+};
+
+// MOVE LF@return_val int@-1
+static inner_statement_t ord_s18 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = -1,
+                },
+        },
+    .next_statement = &ord_s19,
+    .is_static = true,
+};
+
+// LABEL $$ord_invalid_string
+static inner_statement_t ord_s17 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$ord_invalid_string",
+        },
+    .next_statement = &ord_s18,
+    .is_static = true,
+};
+
+// JUMP $$ord_end
+static inner_statement_t ord_s16 = {
+    .operation = INNER_JUMP,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$ord_end",
+        },
+    .next_statement = &ord_s17,
+    .is_static = true,
+};
+
+// STRI2INT LF@return_val LF@value LF@index
+static inner_statement_t ord_s15 = {
+    .operation = INNER_STRI2INT,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .next_statement = &ord_s16,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$ord_invalid_string LF@precondition bool@false
+static inner_statement_t ord_s14 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$ord_invalid_string",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_BOOL,
+                    .value.inner_bool = false,
+                },
+        },
+    .next_statement = &ord_s15,
+    .is_static = true,
+};
+
+// LT LF@precondition LF@index LF@value_len
+static inner_statement_t ord_s13 = {
+    .operation = INNER_LT,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value_len",
+        },
+    .next_statement = &ord_s14,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$ord_invalid_string LF@precondition bool@true
+static inner_statement_t ord_s12 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$ord_invalid_string",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_BOOL,
+                    .value.inner_bool = true,
+                },
+        },
+    .next_statement = &ord_s13,
+    .is_static = true,
+};
+
+// LT LF@precondition LF@index int@0
+static inner_statement_t ord_s11 = {
+    .operation = INNER_LT,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .next_statement = &ord_s12,
+    .is_static = true,
+};
+
+// STRLEN LF@value_len LF@value
+static inner_statement_t ord_s10 = {
+    .operation = INNER_STRLEN,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value_len",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value",
+        },
+    .next_statement = &ord_s11,
+    .is_static = true,
+};
+
+// POPS LF@value
+static inner_statement_t ord_s9 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value",
+        },
+    .next_statement = &ord_s10,
+    .is_static = true,
+};
+
+// POPS LF@index
+static inner_statement_t ord_s8 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .next_statement = &ord_s9,
+    .is_static = true,
+};
+
+// DEFVAR LF@return_val
+static inner_statement_t ord_s7 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .next_statement = &ord_s8,
+    .is_static = true,
+};
+
+// DEFVAR LF@value_len
+static inner_statement_t ord_s6 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value_len",
+        },
+    .next_statement = &ord_s7,
+    .is_static = true,
+};
+
+// DEFVAR LF@precondition
+static inner_statement_t ord_s5 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .next_statement = &ord_s6,
+    .is_static = true,
+};
+
+// DEFVAR LF@index
+static inner_statement_t ord_s4 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .next_statement = &ord_s5,
+    .is_static = true,
+};
+
+// DEFVAR LF@value
+static inner_statement_t ord_s3 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value",
+        },
+    .next_statement = &ord_s4,
+    .is_static = true,
+};
+
+// PUSHFRAME
+static inner_statement_t ord_s2 = {
+    .operation = INNER_PUSHFRAME,
+    .next_statement = &ord_s3,
+    .is_static = true,
+};
+
+// CREATEFRAME
+static inner_statement_t ord_s1 = {
+    .operation = INNER_CREATEFRAME,
+    .next_statement = &ord_s2,
+    .is_static = true,
+};
+
+// LABEL ord
+inner_statement_t ord_code = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "ord",
+        },
+    .next_statement = &ord_s1,
+    .is_static = true,
+};
