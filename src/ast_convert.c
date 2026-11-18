@@ -91,6 +91,12 @@ err_code_t append_main_call(context_t *context, ast_node_t *node) {
     RETURN_ERR(err);
   }
 
+  err =
+      append_statement(context, INNER_CLEARS, empty_sym, empty_sym, empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
   inner_value_t zero = {.inner_int = 0};
   inner_symbol_t zero_const = create_const_symbol(INNER_INT, zero);
   err = append_statement(context, INNER_EXIT, empty_sym, zero_const, empty_sym);
