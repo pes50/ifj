@@ -2459,3 +2459,173 @@ inner_statement_t readboolean_code = {
     .next_statement = &readboolean_s1,
     .is_static = true,
 };
+
+/**
+ * readIntMaybe(): Int | Unit
+ */
+
+// RETURN
+static inner_statement_t readint_maybe_s7 = {
+    .operation = INNER_RETURN,
+    .next_statement = NULL,
+    .is_static = true,
+};
+
+// POPFRAME
+static inner_statement_t readint_maybe_s6 = {
+    .operation = INNER_POPFRAME,
+    .next_statement = &readint_maybe_s7,
+    .is_static = true,
+};
+
+// PUSHS LF@readed_value
+static inner_statement_t readint_maybe_s5 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@readed_value",
+        },
+    .next_statement = &readint_maybe_s6,
+    .is_static = true,
+};
+
+// READ LF@readed_value int
+static inner_statement_t readint_maybe_s4 = {
+    .operation = INNER_READ,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@readed_value",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_ARR,
+            .data.identificator = "int",
+        },
+    .next_statement = &readint_maybe_s5,
+    .is_static = true,
+};
+
+// DEFVAR LF@readed_value
+static inner_statement_t readint_maybe_s3 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@readed_value",
+        },
+    .next_statement = &readint_maybe_s4,
+    .is_static = true,
+};
+
+// PUSHFRAME
+static inner_statement_t readint_maybe_s2 = {
+    .operation = INNER_PUSHFRAME,
+    .next_statement = &readint_maybe_s3,
+    .is_static = true,
+};
+
+// CREATEFRAME
+static inner_statement_t readint_maybe_s1 = {
+    .operation = INNER_CREATEFRAME,
+    .next_statement = &readint_maybe_s2,
+    .is_static = true,
+};
+
+// LABEL readIntMaybe
+inner_statement_t readint_maybe_code = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "readIntMaybe",
+        },
+    .next_statement = &readint_maybe_s1,
+    .is_static = true,
+};
+
+/**
+ * readDoubleMaybe(): Double | Unit
+ */
+
+// RETURN
+static inner_statement_t readdouble_maybe_s7 = {
+    .operation = INNER_RETURN,
+    .next_statement = NULL,
+    .is_static = true,
+};
+
+// POPFRAME
+static inner_statement_t readdouble_maybe_s6 = {
+    .operation = INNER_POPFRAME,
+    .next_statement = &readdouble_maybe_s7,
+    .is_static = true,
+};
+
+// PUSHS LF@readed_value
+static inner_statement_t readdouble_maybe_s5 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@readed_value",
+        },
+    .next_statement = &readdouble_maybe_s6,
+    .is_static = true,
+};
+
+// READ LF@readed_value float
+static inner_statement_t readdouble_maybe_s4 = {
+    .operation = INNER_READ,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@readed_value",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_ARR,
+            .data.identificator = "float",
+        },
+    .next_statement = &readdouble_maybe_s5,
+    .is_static = true,
+};
+
+// DEFVAR LF@readed_value
+static inner_statement_t readdouble_maybe_s3 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@readed_value",
+        },
+    .next_statement = &readdouble_maybe_s4,
+    .is_static = true,
+};
+
+// PUSHFRAME
+static inner_statement_t readdouble_maybe_s2 = {
+    .operation = INNER_PUSHFRAME,
+    .next_statement = &readdouble_maybe_s3,
+    .is_static = true,
+};
+
+// CREATEFRAME
+static inner_statement_t readdouble_maybe_s1 = {
+    .operation = INNER_CREATEFRAME,
+    .next_statement = &readdouble_maybe_s2,
+    .is_static = true,
+};
+
+// LABEL readDoubleMaybe
+inner_statement_t readdouble_maybe_code = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "readDoubleMaybe",
+        },
+    .next_statement = &readdouble_maybe_s1,
+    .is_static = true,
+};
