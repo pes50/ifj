@@ -273,4 +273,16 @@ inner_statement_t *destroy_statement(inner_statement_t *statement);
  */
 void destroy_statement_list(inner_statement_t *statement);
 
+/**
+ * @brief Duplicates a statement and its entire chain of next statements
+ *
+ * @param statement Pointer to the head of the statement list to duplicate
+ * @param out_tail [out] Pointer to the tail of the duplicated statement list
+ *
+ * @return A pointer to the head of the duplicated statement list or NULL if
+ * failed
+ */
+inner_statement_t *duplicate_statement_list(inner_statement_t *statement,
+                                            inner_statement_t **out_tail);
+
 #endif

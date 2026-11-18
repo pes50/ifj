@@ -106,3 +106,38 @@ void destroy_statement_list(inner_statement_t *statement) {
     statement = destroy_statement(statement);
   }
 }
+
+inner_statement_t *duplicate_statement_list(inner_statement_t *statement,
+                                            inner_statement_t **out_tail) {
+  if (statement == NULL) {
+    return NULL;
+  }
+
+  inner_statement_t *head = NULL;
+  inner_statement_t *tail = NULL;
+
+  while (statement != NULL) {
+    inner_statement_t *copy = allocate_statement();
+    if (copy == NULL) {
+      destroy_statement_list(head);
+      return NULL;
+    }
+
+    // Copy all fields
+    *copy = *statement;
+    copy->next_statement = NULL;
+
+    if (head == NULL) {
+      head = copy;
+      tail = copy;
+    } else {
+      tail->next_statement = copy;
+      tail = copy;
+    }
+
+    statement = statement->next_statement;
+  }
+
+  *out_tail = tail;
+  return head;
+}
