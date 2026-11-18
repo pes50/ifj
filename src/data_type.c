@@ -492,18 +492,3 @@ err_code_t type_to_string(data_type_node_t *data_type, char **result) {
 
   return NO_ERR;
 }
-
-err_code_t duplicate_superset_type(data_type_node_t *data_type_node_a,
-                                   data_type_node_t *data_type_node_b,
-                                   data_type_node_t **data_type_node_c) {
-  if (data_type_node_a == NULL || data_type_node_b == NULL) {
-    return INTERNAL_ERR;
-  }
-
-  // TODO implement support for types other than Int
-
-  if (are_data_types_identical(data_type_node_a, &node_int)) {
-    return duplicate_type_node(data_type_node_b, data_type_node_c);
-  }
-  return duplicate_type_node(data_type_node_a, data_type_node_c);
-}
