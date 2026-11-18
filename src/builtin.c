@@ -1034,11 +1034,17 @@ static ast_node_t target_list_n_parameter_list_node = {
 
 #pragma region drop(n): List[T]
 
+static ast_node_t drop_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &drop_code},
+    .next = NULL,
+};
+
 static ast_node_t drop_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &drop_body,
             .is_main = false,
             .name = "List[T].drop",
             .return_type = &generic_list_node,
@@ -1052,11 +1058,17 @@ static ast_node_t drop_function_declaration = {
 
 #pragma region take(n): List[T]
 
+static ast_node_t take_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &take_code},
+    .next = NULL,
+};
+
 static ast_node_t take_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &take_body,
             .is_main = false,
             .name = "List[T].take",
             .return_type = &generic_list_node,
@@ -1069,6 +1081,12 @@ static ast_node_t take_function_declaration = {
 #pragma endregion
 
 #pragma region slice(from, until): List[T]
+
+static ast_node_t slice_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &slice_code},
+    .next = NULL,
+};
 
 static ast_node_t until_int_parameter_node = {
     .type = AST_PARAMETER,
@@ -1116,7 +1134,7 @@ static ast_node_t slice_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &slice_body,
             .is_main = false,
             .name = "List[T].slice",
             .return_type = &generic_list_node,
@@ -1164,11 +1182,17 @@ static ast_node_t head_function_declaration = {
 
 #pragma region tail: List[T]
 
+static ast_node_t tail_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &tail_code},
+    .next = NULL,
+};
+
 static ast_node_t tail_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &tail_body,
             .is_main = false,
             .name = "List[T].tail",
             .return_type = &generic_list_node,

@@ -2982,3 +2982,1269 @@ inner_statement_t head_code = {
     .next_statement = &head_s0,
     .is_static = true,
 };
+
+/**
+ * slice(from, until): List[T]  (jadro, ostatni metody na nej skacou)
+ */
+
+// RETURN
+static inner_statement_t slice_s46 = {
+    .operation = INNER_RETURN,
+    .next_statement = NULL,
+    .is_static = true,
+};
+
+// POPFRAME
+static inner_statement_t slice_s45 = {
+    .operation = INNER_POPFRAME,
+    .next_statement = &slice_s46,
+    .is_static = true,
+};
+
+// PUSHS LF@result
+static inner_statement_t slice_s44 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@result",
+        },
+    .next_statement = &slice_s45,
+    .is_static = true,
+};
+
+// LABEL $$slice_loop_done
+static inner_statement_t slice_s43 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$slice_loop_done",
+        },
+    .next_statement = &slice_s44,
+    .is_static = true,
+};
+
+// JUMP $$slice_loop
+static inner_statement_t slice_s42 = {
+    .operation = INNER_JUMP,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$slice_loop",
+        },
+    .next_statement = &slice_s43,
+    .is_static = true,
+};
+
+// ADD LF@index_1 LF@index_1 int@1
+static inner_statement_t slice_s41 = {
+    .operation = INNER_ADD,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index_1",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index_1",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &slice_s42,
+    .is_static = true,
+};
+
+// ARRAYSET LF@result LF@i LF@item
+static inner_statement_t slice_s40 = {
+    .operation = INNER_ARRAYSET,
+    .destination = {.type = INNER_SYM_VAR, .data.identificator = "LF@result"},
+    .first_op = {.type = INNER_SYM_VAR, .data.identificator = "LF@i"},
+    .second_op = {.type = INNER_SYM_VAR, .data.identificator = "LF@item"},
+    .next_statement = &slice_s41,
+    .is_static = true,
+};
+
+// ARRAYGET LF@list_item LF@list LF@index_2
+static inner_statement_t slice_s39 = {
+    .operation = INNER_ARRAYGET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index_2",
+        },
+    .next_statement = &slice_s40,
+    .is_static = true,
+};
+
+// ADD LF@index_2 LF@index_1 LF@startt
+static inner_statement_t slice_s38 = {
+    .operation = INNER_ADD,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index_2",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index_1",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@start",
+        },
+    .next_statement = &slice_s39,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$slice_loop_done LF@precondition bool@true
+static inner_statement_t slice_s37 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$slice_loop_done",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_BOOL,
+                    .value.inner_bool = true,
+                },
+        },
+    .next_statement = &slice_s38,
+    .is_static = true,
+};
+
+// GT LF@precondition LF@index_1 LF@counter
+static inner_statement_t slice_s36 = {
+    .operation = INNER_GT,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index_1",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@counter",
+        },
+    .next_statement = &slice_s37,
+    .is_static = true,
+};
+
+// LABEL $$slice_loop
+static inner_statement_t slice_s35 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$slice_loop",
+        },
+    .next_statement = &slice_s36,
+    .is_static = true,
+};
+
+// MOVE LF@index_1 int@1
+static inner_statement_t slice_s34 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index_1",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &slice_s35,
+    .is_static = true,
+};
+
+// ARRAYSET LF@result int@0 LF@counter
+static inner_statement_t slice_s33 = {
+    .operation = INNER_ARRAYSET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@result",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@counter",
+        },
+    .next_statement = &slice_s34,
+    .is_static = true,
+};
+
+// NEWARRAY LF@result LF@size
+static inner_statement_t slice_s32 = {
+    .operation = INNER_NEWARRAY,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@result",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .next_statement = &slice_s33,
+    .is_static = true,
+};
+
+// ADD LF@size LF@counter int@1
+static inner_statement_t slice_s31 = {
+    .operation = INNER_ADD,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@counter",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &slice_s32,
+    .is_static = true,
+};
+
+// LABEL $$slice_build_list
+static inner_statement_t slice_s30 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$slice_build_list",
+        },
+    .next_statement = &slice_s31,
+    .is_static = true,
+};
+
+// MOVE LF@counter int@0
+static inner_statement_t slice_s29 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@counter",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .next_statement = &slice_s30,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$slice_build_list LF@precondition bool@true
+static inner_statement_t slice_s28 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$slice_build_list",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_BOOL,
+                    .value.inner_bool = true,
+                },
+        },
+    .next_statement = &slice_s29,
+    .is_static = true,
+};
+
+// GT LF@precondition LF@counter int@0
+static inner_statement_t slice_s27 = {
+    .operation = INNER_GT,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@counter",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .next_statement = &slice_s28,
+    .is_static = true,
+};
+
+// SUB LF@counter LF@end LF@start
+static inner_statement_t slice_s26 = {
+    .operation = INNER_SUB,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@counter",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@end",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@start",
+        },
+    .next_statement = &slice_s27,
+    .is_static = true,
+};
+
+// LABEL $$slice_end
+static inner_statement_t slice_s25 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$slice_end",
+        },
+    .next_statement = &slice_s26,
+    .is_static = true,
+};
+
+// MOVE LF@end LF@list_length
+static inner_statement_t slice_s24 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@end",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_length",
+        },
+    .next_statement = &slice_s25,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$slice_end LF@precondition bool@false
+static inner_statement_t slice_s23 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$slice_end",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_BOOL,
+                    .value.inner_bool = false,
+                },
+        },
+    .next_statement = &slice_s24,
+    .is_static = true,
+};
+
+// GT LF@precondition LF@end LF@list_length
+static inner_statement_t slice_s22 = {
+    .operation = INNER_GT,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@end",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_length",
+        },
+    .next_statement = &slice_s23,
+    .is_static = true,
+};
+
+// LABEL $$slice_start
+static inner_statement_t slice_s21 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$slice_start",
+        },
+    .next_statement = &slice_s22,
+    .is_static = true,
+};
+
+// MOVE LF@start int@0
+static inner_statement_t slice_s20 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@start",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .next_statement = &slice_s21,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$slice_start LF@precondition bool@false
+static inner_statement_t slice_s19 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$slice_start",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_BOOL,
+                    .value.inner_bool = false,
+                },
+        },
+    .next_statement = &slice_s20,
+    .is_static = true,
+};
+
+// LT LF@precondition LF@start int@0
+static inner_statement_t slice_s18 = {
+    .operation = INNER_LT,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@check",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@from",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .next_statement = &slice_s19,
+    .is_static = true,
+};
+
+// ARRAYGET LF@list_length LF@list int@0
+static inner_statement_t slice_s17 = {
+    .operation = INNER_ARRAYGET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_length",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .next_statement = &slice_s18,
+    .is_static = true,
+};
+
+// POPS LF@list
+static inner_statement_t slice_s16 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &slice_s17,
+    .is_static = true,
+};
+
+// POPS LF@start
+static inner_statement_t slice_s15 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@start",
+        },
+    .next_statement = &slice_s16,
+    .is_static = true,
+};
+
+// POPS LF@end
+static inner_statement_t slice_s14 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@end",
+        },
+    .next_statement = &slice_s15,
+    .is_static = true,
+};
+
+// DEFVAR LF@list_item
+static inner_statement_t slice_s13 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item",
+        },
+    .next_statement = &slice_s14,
+    .is_static = true,
+};
+
+// DEFVAR LF@index_2
+static inner_statement_t slice_s12 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index_2",
+        },
+    .next_statement = &slice_s13,
+    .is_static = true,
+};
+
+// DEFVAR LF@index_1
+static inner_statement_t slice_s11 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index_1",
+        },
+    .next_statement = &slice_s12,
+    .is_static = true,
+};
+
+// DEFVAR LF@result
+static inner_statement_t slice_s10 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@result",
+        },
+    .next_statement = &slice_s11,
+    .is_static = true,
+};
+
+// DEFVAR LF@size
+static inner_statement_t slice_s9 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .next_statement = &slice_s10,
+    .is_static = true,
+};
+
+// DEFVAR LF@counter
+static inner_statement_t slice_s8 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@counter",
+        },
+    .next_statement = &slice_s9,
+    .is_static = true,
+};
+
+// DEFVAR LF@precondition
+static inner_statement_t slice_s7 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@precondition",
+        },
+    .next_statement = &slice_s8,
+    .is_static = true,
+};
+
+// DEFVAR LF@list_length
+static inner_statement_t slice_s6 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_length",
+        },
+    .next_statement = &slice_s7,
+    .is_static = true,
+};
+
+// DEFVAR LF@end
+static inner_statement_t slice_s5 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@end",
+        },
+    .next_statement = &slice_s6,
+    .is_static = true,
+};
+
+// DEFVAR LF@start
+static inner_statement_t slice_s4 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@start",
+        },
+    .next_statement = &slice_s5,
+    .is_static = true,
+};
+
+// DEFVAR LF@list
+static inner_statement_t slice_s3 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &slice_s4,
+    .is_static = true,
+};
+
+// PUSHFRAME
+static inner_statement_t slice_s2 = {
+    .operation = INNER_PUSHFRAME,
+    .next_statement = &slice_s3,
+    .is_static = true,
+};
+
+// CREATEFRAME
+static inner_statement_t slice_s1 = {
+    .operation = INNER_CREATEFRAME,
+    .next_statement = &slice_s2,
+    .is_static = true,
+};
+
+// LABEL slice
+inner_statement_t slice_code = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "slice",
+        },
+    .next_statement = &slice_s1,
+    .is_static = true,
+};
+
+/**
+ * drop(n): List[T]
+ */
+
+// JUMP slice
+static inner_statement_t drop_s13 = {
+    .operation = INNER_JUMP,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "slice",
+        },
+    .next_statement = NULL,
+    .is_static = true,
+};
+
+// POPFRAME
+static inner_statement_t drop_s12 = {
+    .operation = INNER_POPFRAME,
+    .next_statement = &drop_s13,
+    .is_static = true,
+};
+
+// PUSHS LF@list_length
+static inner_statement_t drop_s11 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_length",
+        },
+    .next_statement = &drop_s12,
+    .is_static = true,
+};
+
+// PUSHS LF@throw_away
+static inner_statement_t drop_s10 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@throw_away",
+        },
+    .next_statement = &drop_s11,
+    .is_static = true,
+};
+
+// PUSHS LF@list
+static inner_statement_t drop_s9 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &drop_s10,
+    .is_static = true,
+};
+
+// ARRAYGET LF@list_length LF@list int@0
+static inner_statement_t drop_s8 = {
+    .operation = INNER_ARRAYGET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_length",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .next_statement = &drop_s9,
+    .is_static = true,
+};
+
+// POPS LF@list
+static inner_statement_t drop_s7 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &drop_s8,
+    .is_static = true,
+};
+
+// POPS LF@throw_away
+static inner_statement_t drop_s6 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@throw_away",
+        },
+    .next_statement = &drop_s7,
+    .is_static = true,
+};
+
+// DEFVAR LF@list_length
+static inner_statement_t drop_s5 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_length",
+        },
+    .next_statement = &drop_s6,
+    .is_static = true,
+};
+
+// DEFVAR LF@throw_away
+static inner_statement_t drop_s4 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@throw_away",
+        },
+    .next_statement = &drop_s5,
+    .is_static = true,
+};
+
+// DEFVAR LF@list
+static inner_statement_t drop_s3 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &drop_s4,
+    .is_static = true,
+};
+
+// PUSHFRAME
+static inner_statement_t drop_s2 = {
+    .operation = INNER_PUSHFRAME,
+    .next_statement = &drop_s3,
+    .is_static = true,
+};
+
+// CREATEFRAME
+static inner_statement_t drop_s1 = {
+    .operation = INNER_CREATEFRAME,
+    .next_statement = &drop_s2,
+    .is_static = true,
+};
+
+// LABEL drop
+inner_statement_t drop_code = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "drop",
+        },
+    .next_statement = &drop_s1,
+    .is_static = true,
+};
+
+/**
+ * take(n): List[T]
+ */
+
+// JUMP slice
+static inner_statement_t take_s11 = {
+    .operation = INNER_JUMP,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "slice",
+        },
+    .next_statement = NULL,
+    .is_static = true,
+};
+
+// POPFRAME
+static inner_statement_t take_s10 = {
+    .operation = INNER_POPFRAME,
+    .next_statement = &take_s11,
+    .is_static = true,
+};
+
+// PUSHS LF@max_num
+static inner_statement_t take_s9 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@max_num",
+        },
+    .next_statement = &take_s10,
+    .is_static = true,
+};
+
+// PUSHS int@0
+static inner_statement_t take_s8 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .next_statement = &take_s9,
+    .is_static = true,
+};
+
+// PUSHS LF@list
+static inner_statement_t take_s7 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &take_s8,
+    .is_static = true,
+};
+
+// POPS LF@list
+static inner_statement_t take_s6 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &take_s7,
+    .is_static = true,
+};
+
+// POPS LF@max_num
+static inner_statement_t take_s5 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@max_num",
+        },
+    .next_statement = &take_s6,
+    .is_static = true,
+};
+
+// DEFVAR LF@max_num
+static inner_statement_t take_s4 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@max_num",
+        },
+    .next_statement = &take_s5,
+    .is_static = true,
+};
+
+// DEFVAR LF@list
+static inner_statement_t take_s3 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &take_s4,
+    .is_static = true,
+};
+
+// PUSHFRAME
+static inner_statement_t take_s2 = {
+    .operation = INNER_PUSHFRAME,
+    .next_statement = &take_s3,
+    .is_static = true,
+};
+
+// CREATEFRAME
+static inner_statement_t take_s1 = {
+    .operation = INNER_CREATEFRAME,
+    .next_statement = &take_s2,
+    .is_static = true,
+};
+
+// LABEL take
+inner_statement_t take_code = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$take",
+        },
+    .next_statement = &take_s1,
+    .is_static = true,
+};
+
+/**
+ * tail: List[T]
+ */
+
+// JUMP slice
+static inner_statement_t tail_s13 = {
+    .operation = INNER_JUMP,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "slice",
+        },
+    .next_statement = NULL,
+    .is_static = true,
+};
+
+// POPFRAME
+static inner_statement_t tail_s12 = {
+    .operation = INNER_POPFRAME,
+    .next_statement = &tail_s13,
+    .is_static = true,
+};
+
+// PUSHS LF@len
+static inner_statement_t tail_s11 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@len",
+        },
+    .next_statement = &tail_s12,
+    .is_static = true,
+};
+
+// PUSHS int@1
+static inner_statement_t tail_s10 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &tail_s11,
+    .is_static = true,
+};
+
+// PUSHS LF@list
+static inner_statement_t tail_s9 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &tail_s10,
+    .is_static = true,
+};
+
+// ARRAYGET LF@list_length LF@list int@0
+static inner_statement_t tail_s8 = {
+    .operation = INNER_ARRAYGET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_length",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .next_statement = &tail_s9,
+    .is_static = true,
+};
+
+// ARRAYGET LF@first LF@list int@1
+static inner_statement_t tail_s7 = {
+    .operation = INNER_ARRAYGET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@first",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant = {.datatype = INNER_INT, .value.inner_int = 1},
+        },
+    .next_statement = &tail_s8,
+    .is_static = true,
+};
+
+// POPS LF@list
+static inner_statement_t tail_s6 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &tail_s7,
+    .is_static = true,
+};
+
+// DEFVAR LF@first
+static inner_statement_t tail_s5 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@first",
+        },
+    .next_statement = &tail_s6,
+    .is_static = true,
+};
+
+// DEFVAR LF@list_length
+static inner_statement_t tail_s4 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_length",
+        },
+    .next_statement = &tail_s5,
+    .is_static = true,
+};
+
+// DEFVAR LF@list
+static inner_statement_t tail_s3 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &tail_s4,
+    .is_static = true,
+};
+
+// PUSHFRAME
+static inner_statement_t tail_s2 = {
+    .operation = INNER_PUSHFRAME,
+    .next_statement = &tail_s3,
+    .is_static = true,
+};
+
+// CREATEFRAME
+static inner_statement_t tail_s1 = {
+    .operation = INNER_CREATEFRAME,
+    .next_statement = &tail_s2,
+    .is_static = true,
+};
+
+// LABEL tail
+inner_statement_t tail_code = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "tail",
+        },
+    .next_statement = &tail_s1,
+    .is_static = true,
+};
