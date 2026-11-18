@@ -662,6 +662,12 @@ static data_type_node_t union_unit = {
 
 #pragma region readIntMaybe() : Int | Unit
 
+static ast_node_t readint_maybe_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &readint_maybe_code},
+    .next = NULL,
+};
+
 static data_type_node_t union_int = {
     .type = DATA_TYPE_PRIMITIVE,
     .data.primitive_type = PRIMITIVE_INT,
@@ -681,7 +687,7 @@ static ast_node_t read_int_maybe_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &readint_maybe_body,
             .is_main = false,
             .name = "readIntMaybe",
             .return_type = &int_unit_node,
@@ -694,6 +700,12 @@ static ast_node_t read_int_maybe_function_declaration = {
 #pragma endregion
 
 #pragma region readDoubleMaybe() : Double | Unit
+
+static ast_node_t readdouble_maybe_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &readdouble_maybe_code},
+    .next = NULL,
+};
 
 static data_type_node_t union_double = {
     .type = DATA_TYPE_PRIMITIVE,
@@ -714,7 +726,7 @@ static ast_node_t read_double_maybe_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &readdouble_maybe_body,
             .is_main = false,
             .name = "readDoubleMaybe",
             .return_type = &double_unit_node,
