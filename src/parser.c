@@ -2528,20 +2528,24 @@ err_code_t list(token_t *token, ast_node_t **node) {
 err_code_t interpol(token_t *token, ast_node_t **node) {
   ast_node_t *expressions = NULL;
 
-  token_clear(token);
-  err_code_t ret = lexer_get_token(token, FORBIDDEN);
-  if (ret != NO_ERR) {
-    return ret;
-  }
-
-  ret = interpol_part(token, &expressions);
+  err_code_t ret = interpol_part(token, &expressions);
   if (ret != NO_ERR) {
     destroy_node(expressions);
+    return ret;
   }
 
   if (token->type != TOK_LIT_INTERP_STRING_END) {
     destroy_node(expressions);
     return SYNTAX_ERR;
+  }
+
+  if (strcmp(token->value, "")) {
+    ast_node_t *end = create_leaf_node(token);
+    if (end == NULL) {
+      destroy_node(expressions);
+      return INTERNAL_ERR;
+    }
+    node_append(expressions, end);
   }
 
   token_clear(token);
@@ -2564,6 +2568,34 @@ err_code_t interpol_part(token_t *token, ast_node_t **node) {
     return NO_ERR;
   }
   if (token->type == TOK_LIT_INTERP_STRING_PART) {
+    if (!strcmp(token->value, "")) {
+      token_clear(token);
+
+      err_code_t ret = lexer_get_token(token, FORBIDDEN);
+      if (ret != NO_ERR) {
+        *node = NULL;
+        return ret;
+      }
+
+      return interpol_part(token, node);
+    }
+    *node = create_leaf_node(token);
+    if (*node == NULL) {
+      return INTERNAL_ERR;
+    }
+
+    token_clear(token);
+    err_code_t ret = lexer_get_token(token, FORBIDDEN);
+    if (ret != NO_ERR) {
+      destroy_node(*node);
+      *node = NULL;
+      return ret;
+    }
+
+    return interpol_part(token, &(*node)->next);
+  }
+
+  if (token->type == TOK_IDENTIFIER) {
     *node = create_leaf_node(token);
     if (*node == NULL) {
       return INTERNAL_ERR;
@@ -2614,21 +2646,24 @@ err_code_t interpol_part(token_t *token, ast_node_t **node) {
 
 err_code_t interpol_m(token_t *token, ast_node_t **node) {
   ast_node_t *expressions = NULL;
-
-  token_clear(token);
-  err_code_t ret = lexer_get_token(token, ALLOWED);
-  if (ret != NO_ERR) {
-    return ret;
-  }
-
-  ret = interpol_part_m(token, &expressions);
+  err_code_t ret = interpol_part_m(token, &expressions);
   if (ret != NO_ERR) {
     destroy_node(expressions);
+    return ret;
   }
 
   if (token->type != TOK_LIT_INTERP_M_STRING_END) {
     destroy_node(expressions);
     return SYNTAX_ERR;
+  }
+
+  if (strcmp(token->value, "")) {
+    ast_node_t *end = create_leaf_node(token);
+    if (end == NULL) {
+      destroy_node(expressions);
+      return INTERNAL_ERR;
+    }
+    node_append(expressions, end);
   }
 
   token_clear(token);
@@ -2647,10 +2682,22 @@ err_code_t interpol_m(token_t *token, ast_node_t **node) {
 }
 
 err_code_t interpol_part_m(token_t *token, ast_node_t **node) {
-  if (token->type == TOK_LIT_INTERP_STRING_END) {
+  if (token->type == TOK_LIT_INTERP_M_STRING_END) {
     return NO_ERR;
   }
   if (token->type == TOK_LIT_INTERP_M_STRING_PART) {
+    if (!strcmp(token->value, "")) {
+      token_clear(token);
+
+      err_code_t ret = lexer_get_token(token, ALLOWED);
+      if (ret != NO_ERR) {
+        *node = NULL;
+        return ret;
+      }
+
+      return interpol_part_m(token, node);
+    }
+
     *node = create_leaf_node(token);
     if (*node == NULL) {
       return INTERNAL_ERR;
@@ -2664,7 +2711,24 @@ err_code_t interpol_part_m(token_t *token, ast_node_t **node) {
       return ret;
     }
 
-    return interpol_part(token, &(*node)->next);
+    return interpol_part_m(token, &(*node)->next);
+  }
+
+  if (token->type == TOK_IDENTIFIER) {
+    *node = create_leaf_node(token);
+    if (*node == NULL) {
+      return INTERNAL_ERR;
+    }
+
+    token_clear(token);
+    err_code_t ret = lexer_get_token(token, ALLOWED);
+    if (ret != NO_ERR) {
+      destroy_node(*node);
+      *node = NULL;
+      return ret;
+    }
+
+    return interpol_part_m(token, &(*node)->next);
   }
 
   if (token->type != TOK_EXPRESSION_START) {
@@ -2696,7 +2760,7 @@ err_code_t interpol_part_m(token_t *token, ast_node_t **node) {
     return ret;
   }
 
-  return interpol_part(token, &(*node)->next);
+  return interpol_part_m(token, &(*node)->next);
 }
 
 err_code_t lambda(token_t *token, ast_node_t **node) {
