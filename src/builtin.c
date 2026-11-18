@@ -498,11 +498,17 @@ static ast_node_t chr_function_declaration = {
 
 #pragma region readBoolean(): Boolean
 
+static ast_node_t readboolean_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &readboolean_code},
+    .next = NULL,
+};
+
 static ast_node_t read_boolean_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &readboolean_body,
             .is_main = false,
             .name = "readBoolean",
             .return_type = &node_boolean,
