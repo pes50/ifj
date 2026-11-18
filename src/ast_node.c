@@ -577,7 +577,7 @@ ast_node_t *create_leaf_node(token_t *token) {
   case TOK_UNDERSCORE:
     node->type = AST_LITERAL;
     node->data.literal.data_type = &node_any;
-    node->data.literal.raw = string_duplicate(token->value);
+    node->data.literal.raw = string_duplicate("_");
     break;
   default:
     // Invalid token for leaf node
