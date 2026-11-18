@@ -2137,6 +2137,13 @@ err_code_t expr(token_t *token, ast_node_t **node) {
         destroy_token_stack(stack);
         return SYNTAX_ERR;
       }
+
+      token_clear(token);
+      ret = lexer_get_token(token, ALLOWED);
+      if (ret != NO_ERR) {
+        destroy_token_stack(stack);
+        return ret;
+      }
       break;
 
     case ERROR:
@@ -2399,7 +2406,7 @@ err_code_t dot_call(token_t *token, ast_node_t **node) {
   }
 
   token_clear(token);
-  ret = lexer_get_token(token, FORBIDDEN);
+  ret = lexer_get_token(token, ALLOWED);
   if (ret != NO_ERR) {
     destroy_node(target);
     return ret;
@@ -2451,7 +2458,7 @@ err_code_t dot_call_tail(token_t *token, ast_node_t **node,
   }
 
   token_clear(token);
-  ret = lexer_get_token(token, FORBIDDEN);
+  ret = lexer_get_token(token, ALLOWED);
   if (ret != NO_ERR) {
     destroy_node(target);
     return ret;
