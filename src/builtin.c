@@ -972,11 +972,17 @@ static ast_node_t to_function_declaration = {
 
 #pragma region until(n: Int) : $Range
 
+static ast_node_t until_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &until_code},
+    .next = NULL,
+};
+
 static ast_node_t until_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &until_body,
             .is_main = false,
             .name = "Int.until",
             .return_type = &node_range,
@@ -1011,11 +1017,17 @@ static ast_node_t target_range_parameter_list_node = {
 
 #pragma region by(n: Int) : $Range
 
+static ast_node_t by_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &by_code},
+    .next = NULL,
+};
+
 static ast_node_t by_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &by_body,
             .is_main = false,
             .name = "$Range.by",
             .return_type = &node_range,
