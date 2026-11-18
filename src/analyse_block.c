@@ -122,6 +122,8 @@ err_code_t analyse_assignment(ast_node_t *node, hashtable_t *symtable) {
     return OTHER_SEMANTIC_ERR;
   }
 
+  node->data.assignment.calling = table_node;
+
   if (table_node->data.variable_declaration.is_const) {
     return ASSIGN_CONST_ERR;
   }
