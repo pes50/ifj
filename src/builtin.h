@@ -10,7 +10,10 @@
 
 #pragma once
 
+#include "ast_node.h"
 #include "symtable.h"
+
+extern ast_node_t to_str_function_declaration;
 
 /**
  * @brief Creates a symtable populated with built-in functions of IFJ26

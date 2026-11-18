@@ -843,8 +843,7 @@ ast_node_t *test_ext_lists_higher_order() {
     return create_lambda_declaration_node(
         create_parameter_node(const_cast<char *>("x"), &node_int),
         create_block_node(
-            create_binary_operation_node(op, id("x"), lit_int(bound))),
-        nullptr);
+            create_binary_operation_node(op, id("x"), lit_int(bound))));
   };
 
   return wrap_main({
