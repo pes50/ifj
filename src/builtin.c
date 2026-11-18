@@ -1445,6 +1445,12 @@ static ast_node_t drop_while_function_declaration = {
 
 #pragma region toList : List[Int]
 
+static ast_node_t to_list_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &to_list_code},
+    .next = NULL,
+};
+
 static ast_node_t target_range_empty_parameter_list_node = {
     .type = AST_PARAMETER_LIST,
     .data.parameter_list =
@@ -1459,7 +1465,7 @@ static ast_node_t to_list_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &to_list_body,
             .is_main = false,
             .name = "$Range.toList",
             .return_type = &list_int_node,
