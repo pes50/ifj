@@ -256,13 +256,9 @@ static ast_node_t read_double_function_declaration = {
 
 #pragma region toStr(value: Any) String
 
-static data_type_node_t any_string_signature = {
-    .type = DATA_TYPE_LAMBDA,
-    .data.lambda_type =
-        {
-            .parameter_types = &node_any,
-            .return_type = &node_string,
-        },
+static ast_node_t to_str_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &to_str_code},
     .next = NULL,
 };
 
@@ -270,7 +266,7 @@ static ast_node_t to_str_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &to_str_body,
             .is_main = false,
             .name = "toStr",
             .return_type = &node_string,
@@ -394,6 +390,12 @@ static ast_node_t str_length_function_declaration = {
 
 #pragma region subStr(value: String, start: Int, end: Int): String
 
+static ast_node_t sub_str_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &sub_str_code},
+    .next = NULL,
+};
+
 static ast_node_t sub_str_end_parameter = {
     .type = AST_PARAMETER,
     .data.parameter =
@@ -469,7 +471,7 @@ static ast_node_t sub_str_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &sub_str_body,
             .is_main = false,
             .name = "subStr",
             .return_type = &node_string,
@@ -482,6 +484,12 @@ static ast_node_t sub_str_function_declaration = {
 #pragma endregion
 
 #pragma region ord(value: String, index: Int): Int
+
+static ast_node_t ord_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &ord_code},
+    .next = NULL,
+};
 
 static ast_node_t ord_index_parameter = {
     .type = AST_PARAMETER,
@@ -541,7 +549,7 @@ static ast_node_t ord_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &ord_body,
             .is_main = false,
             .name = "ord",
             .return_type = &node_int,
@@ -554,6 +562,12 @@ static ast_node_t ord_function_declaration = {
 #pragma endregion
 
 #pragma region chr(code: Int): String
+
+static ast_node_t chr_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &chr_code},
+    .next = NULL,
+};
 
 static ast_node_t chr_parameter = {
     .type = AST_PARAMETER,
@@ -590,7 +604,7 @@ static ast_node_t chr_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &chr_body,
             .is_main = false,
             .name = "chr",
             .return_type = &node_string,
@@ -604,13 +618,9 @@ static ast_node_t chr_function_declaration = {
 
 #pragma region readBoolean(): Boolean
 
-static data_type_node_t empty_boolean_signature = {
-    .type = DATA_TYPE_LAMBDA,
-    .data.lambda_type =
-        {
-            .parameter_types = NULL,
-            .return_type = &node_boolean,
-        },
+static ast_node_t readboolean_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &readboolean_code},
     .next = NULL,
 };
 
@@ -618,7 +628,7 @@ static ast_node_t read_boolean_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &readboolean_body,
             .is_main = false,
             .name = "readBoolean",
             .return_type = &node_boolean,
@@ -657,7 +667,7 @@ static ast_node_t any_to_string_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &to_str_body,
             .is_main = false,
             .name = "Any.toString",
             .return_type = &node_string,
@@ -696,7 +706,7 @@ static ast_node_t double_to_int_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &to_int_body,
             .is_main = false,
             .name = "Double.toInt",
             .return_type = &node_int,
@@ -710,11 +720,17 @@ static ast_node_t double_to_int_function_declaration = {
 
 #pragma region Double.floor: Double
 
+static ast_node_t floor_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &floor_code},
+    .next = NULL,
+};
+
 static ast_node_t double_floor_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &floor_body,
             .is_main = false,
             .name = "Double.floor",
             .return_type = &node_double,
@@ -753,7 +769,7 @@ static ast_node_t string_length_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &str_length_body,
             .is_main = false,
             .name = "String.length",
             .return_type = &node_int,
@@ -771,6 +787,12 @@ static data_type_node_t union_unit = {
 };
 
 #pragma region readIntMaybe() : Int | Unit
+
+static ast_node_t readint_maybe_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &readint_maybe_code},
+    .next = NULL,
+};
 
 static data_type_node_t union_int = {
     .type = DATA_TYPE_PRIMITIVE,
@@ -801,7 +823,7 @@ static ast_node_t read_int_maybe_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &readint_maybe_body,
             .is_main = false,
             .name = "readIntMaybe",
             .return_type = &int_unit_node,
@@ -814,6 +836,12 @@ static ast_node_t read_int_maybe_function_declaration = {
 #pragma endregion
 
 #pragma region readDoubleMaybe() : Double | Unit
+
+static ast_node_t readdouble_maybe_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &readdouble_maybe_code},
+    .next = NULL,
+};
 
 static data_type_node_t union_double = {
     .type = DATA_TYPE_PRIMITIVE,
@@ -844,7 +872,7 @@ static ast_node_t read_double_maybe_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &readdouble_maybe_body,
             .is_main = false,
             .name = "readDoubleMaybe",
             .return_type = &double_unit_node,

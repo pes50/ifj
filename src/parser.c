@@ -128,7 +128,7 @@ err_code_t prolog(token_t *token) {
   if (ret != NO_ERR) {
     return ret;
   }
-  if (!strcmp(token->value, "ifj26")) {
+  if (strcmp(token->value, "ifj26")) {
     return SYNTAX_ERR;
   }
   token_clear(token);
@@ -589,7 +589,7 @@ err_code_t param_lists(token_t *token, ast_node_t **node) {
     return ret;
   }
 
-  ast_node_t *parameters;
+  ast_node_t *parameters = NULL;
   ret = params(token, &parameters);
 
   if (ret != NO_ERR) {
@@ -618,6 +618,7 @@ err_code_t param_lists(token_t *token, ast_node_t **node) {
 
   if (ret != NO_ERR) {
     destroy_node(*node);
+    *node = NULL;
     return ret;
   }
   return NO_ERR;
@@ -637,6 +638,7 @@ err_code_t ret_type(token_t *token, data_type_node_t **node) {
 
   if (ret != NO_ERR) {
     destroy_type_node(*node);
+    *node = NULL;
     return ret;
   }
   return NO_ERR;
@@ -658,6 +660,9 @@ err_code_t type(token_t *token, data_type_node_t **node) {
     break;
   case TOK_KW_STRING:
     *node = create_primitive_type_node(PRIMITIVE_STRING);
+    break;
+  case TOK_IDENTIFIER:
+    *node = create_class_type_node(token->value);
     break;
   case TOK_KW_LIST:
     token_clear(token);
@@ -706,6 +711,7 @@ err_code_t type(token_t *token, data_type_node_t **node) {
   err_code_t ret = lexer_get_token(token, ALLOWED);
   if (ret != NO_ERR) {
     destroy_type_node(*node);
+    *node = NULL;
   }
   return ret;
 }
@@ -724,6 +730,7 @@ err_code_t types(token_t *token, data_type_node_t **node) {
 
   if (ret != NO_ERR) {
     destroy_type_node(*node);
+    *node = NULL;
     return ret;
   }
 
@@ -731,6 +738,7 @@ err_code_t types(token_t *token, data_type_node_t **node) {
 
   if (ret != NO_ERR) {
     destroy_type_node(*node);
+    *node = NULL;
   }
   return ret;
 }
@@ -820,6 +828,7 @@ err_code_t params(token_t *token, ast_node_t **node) {
 
   if (ret != NO_ERR) {
     destroy_node(*node);
+    *node = NULL;
   }
   return ret;
 }
@@ -868,9 +877,16 @@ err_code_t param(token_t *token, ast_node_t **node) {
   }
 
   data_type_node_t *data_type = NULL;
-  ret = types(token, &data_type);
+  ret = type(token, &data_type);
   if (ret != NO_ERR) {
     free(name);
+    return ret;
+  }
+
+  ret = types(token, &data_type->next);
+  if (ret != NO_ERR) {
+    free(name);
+    destroy_type_node(data_type);
     return ret;
   }
 
@@ -899,6 +915,7 @@ err_code_t fun_body(token_t *token, ast_node_t **node) {
     ret = lexer_get_token(token, FORBIDDEN);
     if (ret != NO_ERR) {
       destroy_node(*node);
+      *node = NULL;
     }
     return ret;
   }
@@ -934,6 +951,7 @@ err_code_t fun_body(token_t *token, ast_node_t **node) {
 
   if (token->type != TOK_DEDENT) {
     destroy_node(*node);
+    *node = NULL;
     return SYNTAX_ERR;
   }
 
@@ -941,11 +959,15 @@ err_code_t fun_body(token_t *token, ast_node_t **node) {
   ret = lexer_get_token(token, ALLOWED);
   if (ret != NO_ERR) {
     destroy_node(*node);
+    *node = NULL;
   }
   return ret;
 }
 
 err_code_t block(token_t *token, ast_node_t **node) {
+  if (token->type == TOK_DEDENT) {
+    return NO_ERR;
+  }
   err_code_t ret = stmt(token, node);
   if (ret != NO_ERR) {
     return ret;
@@ -955,9 +977,20 @@ err_code_t block(token_t *token, ast_node_t **node) {
   ret = stmt_tail(token, &statement);
   if (ret != NO_ERR) {
     destroy_node(*node);
+    *node = NULL;
     return ret;
   }
   node_append(*node, statement);
+
+  ast_node_t *statement2 = NULL;
+  ret = block(token, &statement2);
+  if (ret != NO_ERR) {
+    destroy_node(*node);
+    *node = NULL;
+    return ret;
+  }
+  node_append(*node, statement2);
+
   return NO_ERR;
 }
 
@@ -971,7 +1004,7 @@ err_code_t stmt_tail(token_t *token, ast_node_t **node) {
     return lexer_get_token(token, FORBIDDEN);
   }
   if (token->type != TOK_SEMICOLON) {
-    return SYNTAX_ERR;
+    return NO_ERR;
   }
 
   token_clear(token);
@@ -988,6 +1021,7 @@ err_code_t stmt_tail(token_t *token, ast_node_t **node) {
   ret = stmt_tail(token, &(*node)->next);
   if (ret != NO_ERR) {
     destroy_node(*node);
+    *node = NULL;
   }
   return ret;
 }
@@ -1093,9 +1127,19 @@ err_code_t if_stmt(token_t *token, ast_node_t **node) {
 err_code_t if_stmt_tail(token_t *token, ast_node_t **true_branch,
                         ast_node_t **false_branch) {
   err_code_t ret;
-  if (token->type == TOK_INDENT) {
+  if (token->type == TOK_EOL) {
     token_clear(token);
-    ret = lexer_get_token(token, ALLOWED);
+    ret = lexer_get_token(token, FORBIDDEN);
+    if (ret != NO_ERR) {
+      return ret;
+    }
+
+    if (token->type != TOK_INDENT) {
+      return SYNTAX_ERR;
+    }
+
+    token_clear(token);
+    ret = lexer_get_token(token, FORBIDDEN);
     if (ret != NO_ERR) {
       return ret;
     }
@@ -1160,12 +1204,22 @@ err_code_t else_stmt(token_t *token, ast_node_t **node) {
 }
 
 err_code_t else_stmt_tail(token_t *token, ast_node_t **node) {
-  if (token->type != TOK_INDENT) {
+  if (token->type != TOK_EOL) {
     return stmt(token, node);
   }
 
   token_clear(token);
   err_code_t ret = lexer_get_token(token, FORBIDDEN);
+  if (ret != NO_ERR) {
+    return ret;
+  }
+
+  if (token->type != TOK_INDENT) {
+    return SYNTAX_ERR;
+  }
+
+  token_clear(token);
+  ret = lexer_get_token(token, FORBIDDEN);
   if (ret != NO_ERR) {
     return ret;
   }
@@ -1184,6 +1238,7 @@ err_code_t else_stmt_tail(token_t *token, ast_node_t **node) {
 
   if (token->type != TOK_DEDENT) {
     destroy_node(*node);
+    *node = NULL;
     return SYNTAX_ERR;
   }
 
@@ -1191,6 +1246,7 @@ err_code_t else_stmt_tail(token_t *token, ast_node_t **node) {
   ret = lexer_get_token(token, ALLOWED);
   if (ret != NO_ERR) {
     destroy_node(*node);
+    *node = NULL;
   }
   return ret;
 }
@@ -1395,6 +1451,7 @@ err_code_t for_loop(token_t *token, ast_node_t **node) {
 
   if (token->type != TOK_DEDENT) {
     destroy_node(*node);
+    *node = NULL;
     return SYNTAX_ERR;
   }
 
@@ -1402,6 +1459,7 @@ err_code_t for_loop(token_t *token, ast_node_t **node) {
   ret = lexer_get_token(token, ALLOWED);
   if (ret != NO_ERR) {
     destroy_node(*node);
+    *node = NULL;
   }
 
   return ret;
@@ -1712,6 +1770,7 @@ err_code_t while_loop(token_t *token, ast_node_t **node) {
 
   if (token->type != TOK_DEDENT) {
     destroy_node(*node);
+    *node = NULL;
     return SYNTAX_ERR;
   }
 
@@ -1719,6 +1778,7 @@ err_code_t while_loop(token_t *token, ast_node_t **node) {
   ret = lexer_get_token(token, ALLOWED);
   if (ret != NO_ERR) {
     destroy_node(*node);
+    *node = NULL;
   }
   return ret;
 }
@@ -1762,6 +1822,7 @@ err_code_t case_list(token_t *token, ast_node_t **node) {
   ret = case_list(token, &(*node)->next);
   if (ret != NO_ERR) {
     destroy_node(*node);
+    *node = NULL;
   }
   return ret;
 }
@@ -1774,18 +1835,6 @@ err_code_t case_tail(token_t *token, ast_node_t **guard,
     if (ret != NO_ERR) {
       return ret;
     }
-
-    if (token->type != TOK_EOL) {
-      destroy_node(*guard);
-      return SYNTAX_ERR;
-    }
-
-    token_clear(token);
-    ret = lexer_get_token(token, FORBIDDEN);
-    if (ret != NO_ERR) {
-      destroy_node(*guard);
-      return ret;
-    }
   }
 
   if (token->type != TOK_ARROW_RIGHT) {
@@ -1794,13 +1843,13 @@ err_code_t case_tail(token_t *token, ast_node_t **guard,
   }
 
   token_clear(token);
-  ret = lexer_get_token(token, FORBIDDEN);
+  ret = lexer_get_token(token, ALLOWED);
   if (ret != NO_ERR) {
     destroy_node(*guard);
     return ret;
   }
 
-  ret = expr(token, expression);
+  ret = fun_body(token, expression);
   if (ret != NO_ERR) {
     destroy_node(*guard);
   }
@@ -1826,6 +1875,7 @@ err_code_t case_param(token_t *token, ast_node_t **node) {
     err_code_t ret = lexer_get_token(token, FORBIDDEN);
     if (ret != NO_ERR) {
       destroy_node(*node);
+      *node = NULL;
     }
     return ret;
 
@@ -1942,6 +1992,7 @@ err_code_t arg_lists(token_t *token, ast_node_t **node) {
   ret = arg_lists(token, &(*node)->next);
   if (ret != NO_ERR) {
     destroy_node(*node);
+    *node = NULL;
   }
   return ret;
 }
@@ -1959,6 +2010,7 @@ err_code_t args(token_t *token, ast_node_t **node) {
   ret = args_tail(token, &(*node)->next);
   if (ret != NO_ERR) {
     destroy_node(*node);
+    *node = NULL;
   }
   return ret;
 }
@@ -1986,6 +2038,7 @@ err_code_t args_tail(token_t *token, ast_node_t **node) {
   ret = args_tail(token, &(*node)->next);
   if (ret != NO_ERR) {
     destroy_node(*node);
+    *node = NULL;
   }
   return ret;
 }
@@ -2064,10 +2117,11 @@ err_code_t expr(token_t *token, ast_node_t **node) {
         return INTERNAL_ERR;
       }
 
-      token = token_create();
-      if (token == NULL) {
+      token_clear(token);
+      ret = lexer_get_token(token, ALLOWED);
+      if (ret != NO_ERR) {
         destroy_token_stack(stack);
-        return INTERNAL_ERR;
+        return ret;
       }
       break;
 
@@ -2083,6 +2137,13 @@ err_code_t expr(token_t *token, ast_node_t **node) {
         destroy_token_stack(stack);
         return SYNTAX_ERR;
       }
+
+      token_clear(token);
+      ret = lexer_get_token(token, ALLOWED);
+      if (ret != NO_ERR) {
+        destroy_token_stack(stack);
+        return ret;
+      }
       break;
 
     case ERROR:
@@ -2096,13 +2157,16 @@ err_code_t expr(token_t *token, ast_node_t **node) {
     default:
       break;
     }
-    ret = lexer_get_token(token, ALLOWED);
-    if (ret != NO_ERR) {
-      destroy_token_stack(stack);
-      return ret;
-    }
     end = is_end(token);
   }
+
+  while (!is_token_empty(stack)) {
+    if (!reduce(stack)) {
+      destroy_token_stack(stack);
+      return SYNTAX_ERR;
+    }
+  }
+
   *node = return_final_node(stack);
   destroy_token_stack(stack);
   if (*node == NULL) {
@@ -2229,7 +2293,7 @@ err_code_t expr_pre_parse(token_t *token, ast_node_t **node) {
         return ret;
       }
       token_clear(token);
-      ret = lexer_get_token(token, FORBIDDEN);
+      ret = lexer_get_token(token, ALLOWED);
       if (ret != NO_ERR) {
         return ret;
       }
@@ -2342,7 +2406,7 @@ err_code_t dot_call(token_t *token, ast_node_t **node) {
   }
 
   token_clear(token);
-  ret = lexer_get_token(token, FORBIDDEN);
+  ret = lexer_get_token(token, ALLOWED);
   if (ret != NO_ERR) {
     destroy_node(target);
     return ret;
@@ -2394,7 +2458,7 @@ err_code_t dot_call_tail(token_t *token, ast_node_t **node,
   }
 
   token_clear(token);
-  ret = lexer_get_token(token, FORBIDDEN);
+  ret = lexer_get_token(token, ALLOWED);
   if (ret != NO_ERR) {
     destroy_node(target);
     return ret;
@@ -2498,6 +2562,7 @@ err_code_t interpol_part(token_t *token, ast_node_t **node) {
     err_code_t ret = lexer_get_token(token, FORBIDDEN);
     if (ret != NO_ERR) {
       destroy_node(*node);
+      *node = NULL;
       return ret;
     }
 
@@ -2521,6 +2586,7 @@ err_code_t interpol_part(token_t *token, ast_node_t **node) {
 
   if (token->type != TOK_EXPRESSION_END) {
     destroy_node(*node);
+    *node = NULL;
     return SYNTAX_ERR;
   }
 
@@ -2528,6 +2594,7 @@ err_code_t interpol_part(token_t *token, ast_node_t **node) {
   ret = lexer_get_token(token, FORBIDDEN);
   if (ret != NO_ERR) {
     destroy_node(*node);
+    *node = NULL;
     return ret;
   }
 
@@ -2582,6 +2649,7 @@ err_code_t interpol_part_m(token_t *token, ast_node_t **node) {
     err_code_t ret = lexer_get_token(token, ALLOWED);
     if (ret != NO_ERR) {
       destroy_node(*node);
+      *node = NULL;
       return ret;
     }
 
@@ -2605,6 +2673,7 @@ err_code_t interpol_part_m(token_t *token, ast_node_t **node) {
 
   if (token->type != TOK_EXPRESSION_END) {
     destroy_node(*node);
+    *node = NULL;
     return SYNTAX_ERR;
   }
 
@@ -2612,6 +2681,7 @@ err_code_t interpol_part_m(token_t *token, ast_node_t **node) {
   ret = lexer_get_token(token, ALLOWED);
   if (ret != NO_ERR) {
     destroy_node(*node);
+    *node = NULL;
     return ret;
   }
 

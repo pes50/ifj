@@ -39,6 +39,16 @@ struct token_stack_t {
   uint32_t token_count;
 };
 
+token_t *token_copy(token_t *token) {
+  token_t *tmp_token = token_create();
+  if (tmp_token == NULL) {
+    return NULL;
+  }
+
+  token_set(tmp_token, token->type, token->value, token->length);
+  return tmp_token;
+}
+
 bool push_nonterm(token_stack_t *stack, ast_node_t *node) {
   if (stack == NULL || node == NULL) {
     return false;
@@ -115,7 +125,11 @@ bool push_token(token_stack_t *stack, token_t *token) {
   }
 
   elem->type = TOKEN;
-  elem->token.token = token;
+  elem->token.token = token_copy(token);
+  if (elem->token.token == NULL) {
+    free(elem);
+    return false;
+  }
 
   if (!stack_push(stack->top, elem)) {
     free(elem);

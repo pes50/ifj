@@ -70,6 +70,7 @@ void destroy_node(ast_node_t *node) {
     free(node->data.variable_declaration.name);
     destroy_node(node->data.variable_declaration.expression);
     destroy_type_node(node->data.variable_declaration.data_type);
+    free(node->data.variable_declaration.unique_id);
     break;
   case AST_ASSIGNMENT:
     free(node->data.assignment.name);
@@ -573,7 +574,7 @@ ast_node_t *create_leaf_node(token_t *token) {
   case TOK_UNDERSCORE:
     node->type = AST_LITERAL;
     node->data.literal.data_type = &node_any;
-    node->data.literal.raw = string_duplicate(token->value);
+    node->data.literal.raw = string_duplicate("_");
     break;
   default:
     // Invalid token for leaf node

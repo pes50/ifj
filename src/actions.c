@@ -99,8 +99,11 @@ associativity_t get_assoc(priority_t priority) {
 
 actions_t get_action(token_type_t input, token_type_t stack) {
   // deal with the outlier first
-  if (input == TOK_R_PAREN && stack == TOK_L_PAREN) {
-    return CONSUME_PAREN;
+  if (stack == TOK_L_PAREN) {
+    if (input == TOK_R_PAREN) {
+      return CONSUME_PAREN;
+    }
+    return SHIFT;
   }
 
   // if there is extra closing paren, end the loop
