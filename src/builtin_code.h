@@ -23,5 +23,6 @@ extern inner_statement_t to_str_code;
 extern inner_statement_t sub_str_code;
 extern inner_statement_t ord_code;
 extern inner_statement_t chr_code;
+extern inner_statement_t readboolean_code;
 
 #endif
