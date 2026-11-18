@@ -21,5 +21,6 @@ extern inner_statement_t readint_code;
 extern inner_statement_t readdouble_code;
 extern inner_statement_t to_str_code;
 extern inner_statement_t sub_str_code;
+extern inner_statement_t ord_code;
 
 #endif
