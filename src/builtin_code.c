@@ -5655,3 +5655,429 @@ inner_statement_t filter_code = {
     .next_statement = &filter_s1,
     .is_static = true,
 };
+
+/**
+ * takeWhile((T) => Boolean)
+ */
+
+// JUMP slice
+static inner_statement_t take_while_s28 = {
+    .operation = INNER_JUMP,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "slice",
+        },
+    .next_statement = NULL,
+    .is_static = true,
+};
+
+// POPFRAME
+static inner_statement_t take_while_s27 = {
+    .operation = INNER_POPFRAME,
+    .next_statement = &take_while_s28,
+    .is_static = true,
+};
+
+// PUSHS LF@index
+static inner_statement_t take_while_s26 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .next_statement = &take_while_s27,
+    .is_static = true,
+};
+
+// PUSHS int@0
+static inner_statement_t take_while_s25 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .next_statement = &take_while_s26,
+    .is_static = true,
+};
+
+// PUSHS LF@list
+static inner_statement_t take_while_s24 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &take_while_s25,
+    .is_static = true,
+};
+
+// SUB LF@index LF@index int@2
+static inner_statement_t take_while_s23 = {
+    .operation = INNER_SUB,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 2,
+                },
+        },
+    .next_statement = &take_while_s24,
+    .is_static = true,
+};
+
+// LABEL $$take_while_done
+static inner_statement_t take_while_s22 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$take_while_done",
+        },
+    .next_statement = &take_while_s23,
+    .is_static = true,
+};
+
+// JUMP $$take_while_loop
+static inner_statement_t take_while_s21 = {
+    .operation = INNER_JUMP,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$take_while_loop",
+        },
+    .next_statement = &take_while_s22,
+    .is_static = true,
+};
+
+// ADD LF@index LF@index int@1
+static inner_statement_t take_while_s20 = {
+    .operation = INNER_ADD,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &take_while_s21,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$take_while_done LF@list_item_filtered bool@false
+static inner_statement_t take_while_s19 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$take_while_done",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item_filtered",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_BOOL,
+                    .value.inner_bool = false,
+                },
+        },
+    .next_statement = &take_while_s20,
+    .is_static = true,
+};
+
+// POPS LF@list_item_filtered
+static inner_statement_t take_while_s18 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item_filtered",
+        },
+    .next_statement = &take_while_s19,
+    .is_static = true,
+};
+
+// CALL LF@condition
+static inner_statement_t take_while_s17 = {
+    .operation = INNER_CALL,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@condition",
+        },
+    .next_statement = &take_while_s18,
+    .is_static = true,
+};
+
+// PUSHS LF@list_item
+static inner_statement_t take_while_s16 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item",
+        },
+    .next_statement = &take_while_s17,
+    .is_static = true,
+};
+
+// ARRAYGET LF@list_item LF@list LF@index
+static inner_statement_t take_while_s15 = {
+    .operation = INNER_ARRAYGET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .next_statement = &take_while_s16,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$take_while_done LF@index LF@size
+static inner_statement_t take_while_s14 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$take_while_done",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .next_statement = &take_while_s15,
+    .is_static = true,
+};
+
+// LABEL $$take_while_loop
+static inner_statement_t take_while_s13 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$take_while_loop",
+        },
+    .next_statement = &take_while_s14,
+    .is_static = true,
+};
+
+// MOVE LF@index int@2
+static inner_statement_t take_while_s12 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 2,
+                },
+        },
+    .next_statement = &take_while_s13,
+    .is_static = true,
+};
+
+// ARRAYGET LF@size LF@list int@1
+static inner_statement_t take_while_s11 = {
+    .operation = INNER_ARRAYGET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &take_while_s12,
+    .is_static = true,
+};
+
+// POPS LF@list
+static inner_statement_t take_while_s10 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &take_while_s11,
+    .is_static = true,
+};
+
+// POPS LF@condition
+static inner_statement_t take_while_s9 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@condition",
+        },
+    .next_statement = &take_while_s10,
+    .is_static = true,
+};
+
+// DEFVAR LF@list_item_filtered
+static inner_statement_t take_while_s8 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item_filtered",
+        },
+    .next_statement = &take_while_s9,
+    .is_static = true,
+};
+
+// DEFVAR LF@list_item
+static inner_statement_t take_while_s7 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item",
+        },
+    .next_statement = &take_while_s8,
+    .is_static = true,
+};
+
+// DEFVAR LF@index
+static inner_statement_t take_while_s6 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .next_statement = &take_while_s7,
+    .is_static = true,
+};
+
+// DEFVAR LF@size
+static inner_statement_t take_while_s5 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .next_statement = &take_while_s6,
+    .is_static = true,
+};
+
+// DEFVAR LF@condition
+static inner_statement_t take_while_s4 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@condition",
+        },
+    .next_statement = &take_while_s5,
+    .is_static = true,
+};
+
+// DEFVAR LF@list
+static inner_statement_t take_while_s3 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list",
+        },
+    .next_statement = &take_while_s4,
+    .is_static = true,
+};
+
+// PUSHFRAME
+static inner_statement_t take_while_s2 = {
+    .operation = INNER_PUSHFRAME,
+    .next_statement = &take_while_s3,
+    .is_static = true,
+};
+
+// CREATEFRAME
+static inner_statement_t take_while_s1 = {
+    .operation = INNER_CREATEFRAME,
+    .next_statement = &take_while_s2,
+    .is_static = true,
+};
+
+// LABEL takeWhile
+inner_statement_t take_while_code = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "takeWhile",
+        },
+    .next_statement = &take_while_s1,
+    .is_static = true,
+};

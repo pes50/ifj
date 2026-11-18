@@ -1391,11 +1391,17 @@ static ast_node_t filter_function_declaration = {
 
 #pragma region takeWhile((T) => Boolean) : List[T]
 
+static ast_node_t take_while_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &take_while_code},
+    .next = NULL,
+};
+
 static ast_node_t take_while_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &take_while_body,
             .is_main = false,
             .name = "List[T].takeWhile",
             .return_type = &generic_list_node,
