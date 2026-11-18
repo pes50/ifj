@@ -7770,3 +7770,252 @@ inner_statement_t to_list_code = {
     .next_statement = &to_list_s1,
     .is_static = true,
 };
+
+/**
+ * Int.to
+ */
+
+// RETURN
+static inner_statement_t to_s15 = {
+    .operation = INNER_RETURN,
+    .next_statement = NULL,
+    .is_static = true,
+};
+
+// POPFRAME
+static inner_statement_t to_s14 = {
+    .operation = INNER_POPFRAME,
+    .next_statement = &to_s15,
+    .is_static = true,
+};
+
+// PUSHS LF@return_list
+static inner_statement_t to_s13 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@range",
+        },
+    .next_statement = &to_s14,
+    .is_static = true,
+};
+
+// ARRAYSET LF@range int@3 bool@true
+static inner_statement_t to_s12 = {
+    .operation = INNER_ARRAYSET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "range",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 3,
+                },
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_BOOL,
+                    .value.inner_bool = true,
+                },
+        },
+    .next_statement = &to_s13,
+    .is_static = true,
+};
+
+// ARRAYSET LF@range int@2 int@1
+static inner_statement_t to_s11 = {
+    .operation = INNER_ARRAYSET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "range",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 2,
+                },
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &to_s12,
+    .is_static = true,
+};
+
+// ARRAYSET LF@range int@1 LF@end
+static inner_statement_t to_s10 = {
+    .operation = INNER_ARRAYSET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@range",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@end",
+        },
+    .next_statement = &to_s11,
+    .is_static = true,
+};
+
+// ARRAYSET LF@range int@0 LF@start
+static inner_statement_t to_s9 = {
+    .operation = INNER_ARRAYSET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@range",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 0,
+                },
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@start",
+        },
+    .next_statement = &to_s10,
+    .is_static = true,
+};
+
+// NEWARRAY LF@range int@4
+static inner_statement_t to_s8 = {
+    .operation = INNER_NEWARRAY,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@range",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 4,
+                },
+        },
+    .next_statement = &to_s9,
+    .is_static = true,
+};
+
+// POPS LF@start
+static inner_statement_t to_s7 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@start",
+        },
+    .next_statement = &to_s8,
+    .is_static = true,
+};
+
+// POPS LF@end
+static inner_statement_t to_s6 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@end",
+        },
+    .next_statement = &to_s7,
+    .is_static = true,
+};
+
+// DEFVAR LF@range
+static inner_statement_t to_s5 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@range",
+        },
+    .next_statement = &to_s6,
+    .is_static = true,
+};
+
+// DEFVAR LF@start
+static inner_statement_t to_s4 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@start",
+        },
+    .next_statement = &to_s5,
+    .is_static = true,
+};
+
+// DEFVAR LF@end
+static inner_statement_t to_s3 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@end",
+        },
+    .next_statement = &to_s4,
+    .is_static = true,
+};
+
+// PUSHFRAME
+static inner_statement_t to_s2 = {
+    .operation = INNER_PUSHFRAME,
+    .next_statement = &to_s3,
+    .is_static = true,
+};
+
+// CREATEFRAME
+static inner_statement_t to_s1 = {
+    .operation = INNER_CREATEFRAME,
+    .next_statement = &to_s2,
+    .is_static = true,
+};
+
+// LABEL to
+inner_statement_t to_code = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "to",
+        },
+    .next_statement = &to_s1,
+    .is_static = true,
+};

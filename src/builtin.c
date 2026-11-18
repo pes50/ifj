@@ -948,11 +948,17 @@ static ast_node_t target_int_parameter_list_node = {
 
 #pragma region to(n: Int) : $Range
 
+static ast_node_t to_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &to_code},
+    .next = NULL,
+};
+
 static ast_node_t to_function_declaration = {
     .type = AST_FUNCTION_DECLARATION,
     .data.function_declaration =
         {
-            .body = NULL,
+            .body = &to_body,
             .is_main = false,
             .name = "Int.to",
             .return_type = &node_range,
