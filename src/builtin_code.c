@@ -154,45 +154,117 @@ inner_statement_t to_int_code = {
  */
 
 // RETURN
-static inner_statement_t print_s15 = {
+static inner_statement_t print_s22 = {
     .operation = INNER_RETURN,
     .next_statement = NULL,
     .is_static = true,
 };
 
 // POPFRAME
-static inner_statement_t print_s14 = {
+static inner_statement_t print_s21 = {
     .operation = INNER_POPFRAME,
-    .next_statement = &print_s15,
+    .next_statement = &print_s22,
     .is_static = true,
 };
 
 // PUSHS nil@nil
-static inner_statement_t print_s13 = {
+static inner_statement_t print_s20 = {
     .operation = INNER_PUSHS,
     .destination =
         {
             .type = INNER_SYM_CONST,
             .data.constant.datatype = INNER_NIL,
         },
-    .next_statement = &print_s14,
+    .next_statement = &print_s21,
     .is_static = true,
 };
 
 // LABEL $$print_end
-static inner_statement_t print_s12 = {
+static inner_statement_t print_s19 = {
     .operation = INNER_LABEL,
     .destination =
         {
             .type = INNER_SYM_LABEL,
             .data.identificator = "$$print_end",
         },
-    .next_statement = &print_s13,
+    .next_statement = &print_s20,
+    .is_static = true,
+};
+
+// WRITE LF@value
+static inner_statement_t print_s18 = {
+    .operation = INNER_WRITE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value",
+        },
+    .next_statement = &print_s19,
+    .is_static = true,
+};
+
+// POPS LF@value
+static inner_statement_t print_s17 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value",
+        },
+    .next_statement = &print_s18,
+    .is_static = true,
+};
+
+// CALL toStr
+static inner_statement_t print_s16 = {
+    .operation = INNER_CALL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "toStr",
+        },
+    .next_statement = &print_s17,
+    .is_static = true,
+};
+
+// PUSHS LF@value
+static inner_statement_t print_s15 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value",
+        },
+    .next_statement = &print_s16,
+    .is_static = true,
+};
+
+// LABEL $$print_array
+static inner_statement_t print_s14 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$print_array",
+        },
+    .next_statement = &print_s15,
+    .is_static = true,
+};
+
+// JUMP $$print_end
+static inner_statement_t print_s13 = {
+    .operation = INNER_JUMP,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$print_end",
+        },
+    .next_statement = &print_s14,
     .is_static = true,
 };
 
 // WRITE " () "   Print " () " in case Unit type was given.
-static inner_statement_t print_s11 = {
+static inner_statement_t print_s12 = {
     .operation = INNER_WRITE,
     .destination =
         {
@@ -203,41 +275,67 @@ static inner_statement_t print_s11 = {
                     .value.inner_string = " () ",
                 },
         },
-    .next_statement = &print_s12,
+    .next_statement = &print_s13,
     .is_static = true,
 };
 
 // LABEL $$print_unit
-static inner_statement_t print_s10 = {
+static inner_statement_t print_s11 = {
     .operation = INNER_LABEL,
     .destination =
         {
             .type = INNER_SYM_LABEL,
             .data.identificator = "$$print_unit",
         },
-    .next_statement = &print_s11,
+    .next_statement = &print_s12,
     .is_static = true,
 };
 
 // JUMP $$print_end
-static inner_statement_t print_s9 = {
+static inner_statement_t print_s10 = {
     .operation = INNER_JUMP,
     .destination =
         {
             .type = INNER_SYM_LABEL,
             .data.identificator = "$$print_end",
         },
-    .next_statement = &print_s10,
+    .next_statement = &print_s11,
     .is_static = true,
 };
 
 // WRITE LF@value
-static inner_statement_t print_s8 = {
+static inner_statement_t print_s9 = {
     .operation = INNER_WRITE,
     .destination =
         {
             .type = INNER_SYM_VAR,
             .data.identificator = "LF@value",
+        },
+    .next_statement = &print_s10,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$print_array LF@type string@array
+static inner_statement_t print_s8 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$print_array",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@type",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_STRING,
+                    .value.inner_string = "array",
+                },
         },
     .next_statement = &print_s9,
     .is_static = true,
@@ -845,45 +943,391 @@ inner_statement_t readdouble_code = {
  */
 
 // RETURN
-static inner_statement_t to_str_s30 = {
+static inner_statement_t to_str_s54 = {
     .operation = INNER_RETURN,
     .next_statement = NULL,
     .is_static = true,
 };
 
 // POPFRAME
-static inner_statement_t to_str_s29 = {
+static inner_statement_t to_str_s53 = {
     .operation = INNER_POPFRAME,
-    .next_statement = &to_str_s30,
+    .next_statement = &to_str_s54,
     .is_static = true,
 };
 
 // PUSHS LF@return_val
-static inner_statement_t to_str_s28 = {
+static inner_statement_t to_str_s52 = {
     .operation = INNER_PUSHS,
     .destination =
         {
             .type = INNER_SYM_VAR,
             .data.identificator = "LF@return_val",
         },
-    .next_statement = &to_str_s29,
+    .next_statement = &to_str_s53,
     .is_static = true,
 };
 
 // LABEL $$to_str_end
-static inner_statement_t to_str_s27 = {
+static inner_statement_t to_str_s51 = {
     .operation = INNER_LABEL,
     .destination =
         {
             .type = INNER_SYM_LABEL,
             .data.identificator = "$$to_str_end",
         },
-    .next_statement = &to_str_s28,
+    .next_statement = &to_str_s52,
     .is_static = true,
 };
 
-// MOVE LF@retrurn_val string@()
-static inner_statement_t to_str_s26 = {
+// CONCAT LF@return_val LF@return_val string@)
+static inner_statement_t to_str_s50 = {
+    .operation = INNER_CONCAT,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_STRING,
+                    .value.inner_string = ")",
+                },
+        },
+    .next_statement = &to_str_s51,
+    .is_static = true,
+};
+
+// LABEL $$to_str_array_done
+static inner_statement_t to_str_s49 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$to_str_array_done",
+        },
+    .next_statement = &to_str_s50,
+    .is_static = true,
+};
+
+// JUMP $$to_str_array_loop
+static inner_statement_t to_str_s48 = {
+    .operation = INNER_JUMP,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$to_str_array_loop",
+        },
+    .next_statement = &to_str_s49,
+    .is_static = true,
+};
+
+// ADD LF@index LF@index int@1
+static inner_statement_t to_str_s47 = {
+    .operation = INNER_ADD,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &to_str_s48,
+    .is_static = true,
+};
+
+// CONCAT LF@return_val LF@return_val LF@list_item_string
+static inner_statement_t to_str_s46 = {
+    .operation = INNER_CONCAT,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item_string",
+        },
+    .next_statement = &to_str_s47,
+    .is_static = true,
+};
+
+// POPS LF@list_item_string
+static inner_statement_t to_str_s45 = {
+    .operation = INNER_POPS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item_string",
+        },
+    .next_statement = &to_str_s46,
+    .is_static = true,
+};
+
+// CALL toStr
+static inner_statement_t to_str_s44 = {
+    .operation = INNER_CALL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "toStr",
+        },
+    .next_statement = &to_str_s45,
+    .is_static = true,
+};
+
+// PUSHS LF@item
+static inner_statement_t to_str_s43 = {
+    .operation = INNER_PUSHS,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@item",
+        },
+    .next_statement = &to_str_s44,
+    .is_static = true,
+};
+
+// ARRAYGET LF@item LF@value LF@index
+static inner_statement_t to_str_s42 = {
+    .operation = INNER_ARRAYGET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .next_statement = &to_str_s43,
+    .is_static = true,
+};
+
+// LABEL $$to_str_array_first
+static inner_statement_t to_str_s41 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$to_str_array_first",
+        },
+    .next_statement = &to_str_s42,
+    .is_static = true,
+};
+
+// CONCAT LF@return_val LF@return_val string@,
+static inner_statement_t to_str_s40 = {
+    .operation = INNER_CONCAT,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_STRING,
+                    .value.inner_string = ", ",
+                },
+        },
+    .next_statement = &to_str_s41,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$to_str_array_first LF@index int@2
+static inner_statement_t to_str_s39 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$to_str_array_first",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 2,
+                },
+        },
+    .next_statement = &to_str_s40,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$to_str_array_done LF@index LF@size
+static inner_statement_t to_str_s38 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$to_str_array_done",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .next_statement = &to_str_s39,
+    .is_static = true,
+};
+
+// LABEL $$to_str_array_loop
+static inner_statement_t to_str_s37 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$to_str_array_loop",
+        },
+    .next_statement = &to_str_s38,
+    .is_static = true,
+};
+
+// MOVE LF@index int@2
+static inner_statement_t to_str_s36 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 2,
+                },
+        },
+    .next_statement = &to_str_s37,
+    .is_static = true,
+};
+
+// ARRAYGET LF@size LF@value int@1
+static inner_statement_t to_str_s35 = {
+    .operation = INNER_ARRAYGET,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@value",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_INT,
+                    .value.inner_int = 1,
+                },
+        },
+    .next_statement = &to_str_s36,
+    .is_static = true,
+};
+
+// MOVE LF@return_val string@List(
+static inner_statement_t to_str_s34 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@return_val",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_STRING,
+                    .value.inner_string = "List(",
+                },
+        },
+    .next_statement = &to_str_s35,
+    .is_static = true,
+};
+
+// LABEL $$to_str_array
+static inner_statement_t to_str_s33 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$to_str_array",
+        },
+    .next_statement = &to_str_s34,
+    .is_static = true,
+};
+
+// JUMP $$to_str_end
+static inner_statement_t to_str_s32 = {
+    .operation = INNER_JUMP,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$to_str_end",
+        },
+    .next_statement = &to_str_s33,
+    .is_static = true,
+};
+
+// MOVE LF@return_val string@ ()
+static inner_statement_t to_str_s31 = {
     .operation = INNER_MOVE,
     .destination =
         {
@@ -899,36 +1343,36 @@ static inner_statement_t to_str_s26 = {
                     .value.inner_string = " () ",
                 },
         },
-    .next_statement = &to_str_s27,
+    .next_statement = &to_str_s32,
     .is_static = true,
 };
 
 // LABEL $$to_str_nil
-static inner_statement_t to_str_s25 = {
+static inner_statement_t to_str_s30 = {
     .operation = INNER_LABEL,
     .destination =
         {
             .type = INNER_SYM_LABEL,
             .data.identificator = "$$to_str_nil",
         },
-    .next_statement = &to_str_s26,
+    .next_statement = &to_str_s31,
     .is_static = true,
 };
 
 // JUMP $$to_str_end
-static inner_statement_t to_str_s24 = {
+static inner_statement_t to_str_s29 = {
     .operation = INNER_JUMP,
     .destination =
         {
             .type = INNER_SYM_LABEL,
             .data.identificator = "$$to_str_end",
         },
-    .next_statement = &to_str_s25,
+    .next_statement = &to_str_s30,
     .is_static = true,
 };
 
 // MOVE LF@return_val string@true
-static inner_statement_t to_str_s23 = {
+static inner_statement_t to_str_s28 = {
     .operation = INNER_MOVE,
     .destination =
         {
@@ -944,12 +1388,12 @@ static inner_statement_t to_str_s23 = {
                     .value.inner_string = "true",
                 },
         },
-    .next_statement = &to_str_s24,
+    .next_statement = &to_str_s29,
     .is_static = true,
 };
 
 // JUMPIFNEQ $$to_str_end LF@value bool@true
-static inner_statement_t to_str_s22 = {
+static inner_statement_t to_str_s27 = {
     .operation = INNER_JUMPIFNEQ,
     .destination =
         {
@@ -970,12 +1414,12 @@ static inner_statement_t to_str_s22 = {
                     .value.inner_bool = true,
                 },
         },
-    .next_statement = &to_str_s23,
+    .next_statement = &to_str_s28,
     .is_static = true,
 };
 
 // MOVE LF@return_val string@false
-static inner_statement_t to_str_s21 = {
+static inner_statement_t to_str_s26 = {
     .operation = INNER_MOVE,
     .destination =
         {
@@ -991,36 +1435,36 @@ static inner_statement_t to_str_s21 = {
                     .value.inner_string = "false",
                 },
         },
-    .next_statement = &to_str_s22,
+    .next_statement = &to_str_s27,
     .is_static = true,
 };
 
 // LABEL $$to_str_bool
-static inner_statement_t to_str_s20 = {
+static inner_statement_t to_str_s25 = {
     .operation = INNER_LABEL,
     .destination =
         {
             .type = INNER_SYM_LABEL,
             .data.identificator = "$$to_str_bool",
         },
-    .next_statement = &to_str_s21,
+    .next_statement = &to_str_s26,
     .is_static = true,
 };
 
 // JUMP $$to_str_end
-static inner_statement_t to_str_s19 = {
+static inner_statement_t to_str_s24 = {
     .operation = INNER_JUMP,
     .destination =
         {
             .type = INNER_SYM_LABEL,
             .data.identificator = "$$to_str_end",
         },
-    .next_statement = &to_str_s20,
+    .next_statement = &to_str_s25,
     .is_static = true,
 };
 
-// FLOAT2STR LF@retrurn_val LF@value
-static inner_statement_t to_str_s18 = {
+// FLOAT2STR LF@retrn_val LF@value
+static inner_statement_t to_str_s23 = {
     .operation = INNER_FLOAT2STR,
     .destination =
         {
@@ -1032,36 +1476,36 @@ static inner_statement_t to_str_s18 = {
             .type = INNER_SYM_VAR,
             .data.identificator = "LF@value",
         },
-    .next_statement = &to_str_s19,
+    .next_statement = &to_str_s24,
     .is_static = true,
 };
 
 // LABEL $$to_str_float
-static inner_statement_t to_str_s17 = {
+static inner_statement_t to_str_s22 = {
     .operation = INNER_LABEL,
     .destination =
         {
             .type = INNER_SYM_LABEL,
             .data.identificator = "$$to_str_float",
         },
-    .next_statement = &to_str_s18,
+    .next_statement = &to_str_s23,
     .is_static = true,
 };
 
 // JUMP $$to_str_end
-static inner_statement_t to_str_s16 = {
+static inner_statement_t to_str_s21 = {
     .operation = INNER_JUMP,
     .destination =
         {
             .type = INNER_SYM_LABEL,
             .data.identificator = "$$to_str_end",
         },
-    .next_statement = &to_str_s17,
+    .next_statement = &to_str_s22,
     .is_static = true,
 };
 
-// INT2STR LF@retrurn_val LF@value
-static inner_statement_t to_str_s15 = {
+// INT2STR LF@return_val LF@value
+static inner_statement_t to_str_s20 = {
     .operation = INNER_INT2STR,
     .destination =
         {
@@ -1073,36 +1517,36 @@ static inner_statement_t to_str_s15 = {
             .type = INNER_SYM_VAR,
             .data.identificator = "LF@value",
         },
-    .next_statement = &to_str_s16,
+    .next_statement = &to_str_s21,
     .is_static = true,
 };
 
 // LABEL $$to_str_int
-static inner_statement_t to_str_s14 = {
+static inner_statement_t to_str_s19 = {
     .operation = INNER_LABEL,
     .destination =
         {
             .type = INNER_SYM_LABEL,
             .data.identificator = "$$to_str_int",
         },
-    .next_statement = &to_str_s15,
+    .next_statement = &to_str_s20,
     .is_static = true,
 };
 
 // JUMP $$to_str_end
-static inner_statement_t to_str_s13 = {
+static inner_statement_t to_str_s18 = {
     .operation = INNER_JUMP,
     .destination =
         {
             .type = INNER_SYM_LABEL,
             .data.identificator = "$$to_str_end",
         },
-    .next_statement = &to_str_s14,
+    .next_statement = &to_str_s19,
     .is_static = true,
 };
 
-// MOVE LF@retrurn_val LF@value
-static inner_statement_t to_str_s12 = {
+// MOVE LF@return_val LF@value
+static inner_statement_t to_str_s17 = {
     .operation = INNER_MOVE,
     .destination =
         {
@@ -1114,12 +1558,38 @@ static inner_statement_t to_str_s12 = {
             .type = INNER_SYM_VAR,
             .data.identificator = "LF@value",
         },
-    .next_statement = &to_str_s13,
+    .next_statement = &to_str_s18,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$to_str_array LF@type string@array
+static inner_statement_t to_str_s16 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$to_str_array",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@type",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_STRING,
+                    .value.inner_string = "array",
+                },
+        },
+    .next_statement = &to_str_s17,
     .is_static = true,
 };
 
 // JUMPIFEQ $$to_str_nil LF@type string@nil
-static inner_statement_t to_str_s11 = {
+static inner_statement_t to_str_s15 = {
     .operation = INNER_JUMPIFEQ,
     .destination =
         {
@@ -1140,12 +1610,12 @@ static inner_statement_t to_str_s11 = {
                     .value.inner_string = "nil",
                 },
         },
-    .next_statement = &to_str_s12,
+    .next_statement = &to_str_s16,
     .is_static = true,
 };
 
 // JUMPIFEQ $$to_str_bool LF@type string@bool
-static inner_statement_t to_str_s10 = {
+static inner_statement_t to_str_s14 = {
     .operation = INNER_JUMPIFEQ,
     .destination =
         {
@@ -1166,12 +1636,12 @@ static inner_statement_t to_str_s10 = {
                     .value.inner_string = "bool",
                 },
         },
-    .next_statement = &to_str_s11,
+    .next_statement = &to_str_s15,
     .is_static = true,
 };
 
 // JUMPIFEQ $$to_str_float LF@type string@float
-static inner_statement_t to_str_s9 = {
+static inner_statement_t to_str_s13 = {
     .operation = INNER_JUMPIFEQ,
     .destination =
         {
@@ -1192,12 +1662,12 @@ static inner_statement_t to_str_s9 = {
                     .value.inner_string = "float",
                 },
         },
-    .next_statement = &to_str_s10,
+    .next_statement = &to_str_s14,
     .is_static = true,
 };
 
-// JUMPIFEQ $$to_str_int LF@value string@int
-static inner_statement_t to_str_s8 = {
+// JUMPIFEQ $$to_str_int LF@type string@int
+static inner_statement_t to_str_s12 = {
     .operation = INNER_JUMPIFEQ,
     .destination =
         {
@@ -1218,12 +1688,12 @@ static inner_statement_t to_str_s8 = {
                     .value.inner_string = "int",
                 },
         },
-    .next_statement = &to_str_s9,
+    .next_statement = &to_str_s13,
     .is_static = true,
 };
 
 // TYPE LF@type LF@value
-static inner_statement_t to_str_s7 = {
+static inner_statement_t to_str_s11 = {
     .operation = INNER_TYPE,
     .destination =
         {
@@ -1235,17 +1705,65 @@ static inner_statement_t to_str_s7 = {
             .type = INNER_SYM_VAR,
             .data.identificator = "LF@value",
         },
-    .next_statement = &to_str_s8,
+    .next_statement = &to_str_s12,
     .is_static = true,
 };
 
 // POPS LF@value
-static inner_statement_t to_str_s6 = {
+static inner_statement_t to_str_s10 = {
     .operation = INNER_POPS,
     .destination =
         {
             .type = INNER_SYM_VAR,
             .data.identificator = "LF@value",
+        },
+    .next_statement = &to_str_s11,
+    .is_static = true,
+};
+
+// DEFVAR LF@list_item_string
+static inner_statement_t to_str_s9 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item_string",
+        },
+    .next_statement = &to_str_s10,
+    .is_static = true,
+};
+
+// DEFVAR LF@list_item
+static inner_statement_t to_str_s8 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@list_item",
+        },
+    .next_statement = &to_str_s9,
+    .is_static = true,
+};
+
+// DEFVAR LF@index
+static inner_statement_t to_str_s7 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@index",
+        },
+    .next_statement = &to_str_s8,
+    .is_static = true,
+};
+
+// DEFVAR LF@size
+static inner_statement_t to_str_s6 = {
+    .operation = INNER_DEFVAR,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@size",
         },
     .next_statement = &to_str_s7,
     .is_static = true,
@@ -2895,7 +3413,7 @@ static inner_statement_t head_s6 = {
     .is_static = true,
 };
 
-// ARRAYGET LF@return_val LF@list int@1
+// ARRAYGET LF@return_val LF@list int@2
 static inner_statement_t head_s5 = {
     .operation = INNER_ARRAYGET,
     .destination =
@@ -2914,7 +3432,7 @@ static inner_statement_t head_s5 = {
             .data.constant =
                 {
                     .datatype = INNER_INT,
-                    .value.inner_int = 1,
+                    .value.inner_int = 2,
                 },
         },
     .next_statement = &head_s6,
