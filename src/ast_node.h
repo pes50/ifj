@@ -127,6 +127,7 @@ typedef struct ast_node_t {
     struct {
       char *name;
       struct ast_node_t *expression;
+      struct ast_node_t *calling;
     } assignment;
 
     struct {
