@@ -16,6 +16,8 @@
 #include "stack.h"
 #include "symtable.h"
 
+#define TRASH "GF@$trash"
+
 #define visited_table_size 100
 
 /**

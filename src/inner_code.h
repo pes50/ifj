@@ -153,6 +153,7 @@ typedef union {
  */
 typedef struct inner_symbol {
   inner_symbol_type_t type;
+  bool owns_identifier;
 
   // possible types of symbols
   union {
@@ -178,6 +179,7 @@ typedef struct inner_statement {
   inner_symbol_t destination;
   inner_symbol_t first_op;
   inner_symbol_t second_op;
+
   bool is_static;
 
   // next statement
@@ -254,7 +256,9 @@ inner_statement_t *create_statement(inner_statement_operation_t operation,
 
 /**
  * @brief Deallocates all memory held by the statement
- *       and returns the next statement pointer
+ *        and returns the next statement pointer.
+ *        Frees identifier only when  owns_identifier == true
+ *        for respective symbols
  *
  * @param statement Pointer to the statement struct memory
  *                  is NOT set tu NULL -> caller mustn't access

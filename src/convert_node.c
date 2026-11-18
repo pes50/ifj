@@ -11,6 +11,7 @@
 
 #include "convert_node.h"
 #include "ast_node.h"
+#include "builtin.h"
 #include "string.h"
 #include "token.h"
 #include <stdio.h>
@@ -18,6 +19,10 @@
 /*********************************\
  * Helper functions declarations *
 \*********************************/
+
+char *create_unique_variable(context_t *context, char *identifier);
+
+err_code_t convert_expression_on_stack(context_t *context, ast_node_t *node);
 
 err_code_t convert_function_call(context_t *context, ast_node_t *node);
 
@@ -50,6 +55,12 @@ err_code_t convert_binary_op(context_t *context, ast_node_t *node);
 err_code_t convert_unary_op(context_t *context, ast_node_t *node);
 
 err_code_t list_ctor(context_t *context, ast_node_t *node);
+
+err_code_t discard_stack_top(context_t *context);
+
+/***********************************\
+ * Helper functions implementation *
+\***********************************/
 
 err_code_t insert_at_function_start(context_t *context,
                                     inner_statement_operation_t op,
@@ -117,8 +128,8 @@ static char *clean_numeric_literal(const char *raw, bool strip_d_suffix) {
 }
 
 static err_code_t create_literal_symbol(ast_node_t *node,
-                                        inner_symbol_t *out_symbol) {
-  if (node == NULL || node->type != AST_LITERAL || out_symbol == NULL) {
+                                        inner_symbol_t *out_identifier) {
+  if (node == NULL || node->type != AST_LITERAL || out_identifier == NULL) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
@@ -132,7 +143,7 @@ static err_code_t create_literal_symbol(ast_node_t *node,
   // Convert unit to nil
   if (dtype->type == DATA_TYPE_UNIT) {
     val.inner_nil = NULL;
-    *out_symbol = create_const_symbol(INNER_NIL, val);
+    *out_identifier = create_const_symbol(INNER_NIL, val);
     RETURN_ERR(NO_ERR);
   }
 
@@ -161,7 +172,7 @@ static err_code_t create_literal_symbol(ast_node_t *node,
       RETURN_ERR(INTERNAL_ERR);
     }
 
-    *out_symbol = create_const_symbol(INNER_INT, val);
+    *out_identifier = create_const_symbol(INNER_INT, val);
     RETURN_ERR(NO_ERR);
   }
 
@@ -180,27 +191,124 @@ static err_code_t create_literal_symbol(ast_node_t *node,
       RETURN_ERR(INTERNAL_ERR);
     }
 
-    *out_symbol = create_const_symbol(INNER_FLOAT, val);
+    *out_identifier = create_const_symbol(INNER_FLOAT, val);
     RETURN_ERR(NO_ERR);
   }
 
   case PRIMITIVE_BOOLEAN:
     val.inner_bool = strcmp(raw, "true") == 0;
-    *out_symbol = create_const_symbol(INNER_BOOL, val);
+    *out_identifier = create_const_symbol(INNER_BOOL, val);
     RETURN_ERR(NO_ERR);
 
   case PRIMITIVE_STRING:
     val.inner_string = raw;
-    *out_symbol = create_const_symbol(INNER_STRING, val);
+    *out_identifier = create_const_symbol(INNER_STRING, val);
     RETURN_ERR(NO_ERR);
   }
 
   RETURN_ERR(INTERNAL_ERR);
 }
 
-/***********************************\
- * Helper functions implementation *
-\***********************************/
+err_code_t create_helper_variable(context_t *context, ast_node_t *node,
+                                  inner_symbol_t *out_identifier) {
+  (void)node;
+  inner_symbol_t empty_sym = create_empty_symbol();
+
+  char *helper_var_identifier = create_unique_variable(context, "helper");
+  if (helper_var_identifier == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_symbol_t non_owning_sym = create_var_symbol(helper_var_identifier);
+  inner_symbol_t owning_sym = non_owning_sym;
+  owning_sym.owns_identifier = true;
+
+  err_code_t err = insert_at_function_start(context, INNER_DEFVAR, empty_sym,
+                                            owning_sym, empty_sym);
+  if (err != NO_ERR) {
+    free(helper_var_identifier);
+    *out_identifier = create_empty_symbol();
+    RETURN_ERR(err);
+  }
+
+  *out_identifier = non_owning_sym;
+  RETURN_ERR(NO_ERR);
+}
+
+static err_code_t convert_interpolated_string_on_stack(context_t *context,
+                                                       ast_node_t *node) {
+  if (context == NULL || node == NULL ||
+      node->type != AST_INTERPOLATED_STRING) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_symbol_t empty_sym = create_empty_symbol();
+  inner_symbol_t acc_var;
+  inner_symbol_t part_var;
+
+  // create helper variables for the accumulated string and current segment
+  err_code_t err = create_helper_variable(context, node, &acc_var);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  err = create_helper_variable(context, node, &part_var);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // initialize accumulator to empty string
+  inner_value_t empty_str_val = {.inner_string = ""};
+  inner_symbol_t empty_str_sym =
+      create_const_symbol(INNER_STRING, empty_str_val);
+  err =
+      append_statement(context, INNER_MOVE, acc_var, empty_str_sym, empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // "include" to str
+  enqueue_function(context, &to_str_function_declaration);
+
+  // iterate through all segments in the interpolated string
+  ast_node_t *expression = node->data.interpolated_string.expressions;
+  while (expression != NULL) {
+    // Evaluate segment expression -> pushes result onto the data stack
+    err = convert_expression_on_stack(context, expression);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+
+    // use toStr if the expression type is not string
+    if (!are_data_types_identical(&node_string, expression->data_type)) {
+      err = append_statement(
+          context, INNER_CALL, empty_sym,
+          create_label_symbol(
+              to_str_function_declaration.data.function_declaration.name),
+          empty_sym);
+      if (err != NO_ERR) {
+        RETURN_ERR(err);
+      }
+    }
+
+    // pop the resulting string into part_var and concatenate with acc_var
+    err = append_statement(context, INNER_POPS, part_var, empty_sym, empty_sym);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+
+    err = append_statement(context, INNER_CONCAT, acc_var, acc_var, part_var);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+
+    expression = expression->next;
+  }
+
+  // push final concatenated string
+  RETURN_ERR(
+      append_statement(context, INNER_PUSHS, empty_sym, acc_var, empty_sym));
+}
 
 /**
  * @brief Converts number to it's string equivalent
@@ -225,13 +333,13 @@ char *number_to_string(size_t number) {
   return result;
 }
 
-// Adds $unique_number prefix to vraibles or helper labels
+// Adds $unique_number$ prefix to vraibles or helper labels
 char *prefix_number_with_dollar(size_t unique_number, char *identifier) {
   if (identifier == NULL) {
     return NULL;
   }
 
-  int len = snprintf(NULL, 0, "LF@$%llu%s", (unsigned long long)unique_number,
+  int len = snprintf(NULL, 0, "LF@$%llu$%s", (unsigned long long)unique_number,
                      identifier);
   if (len < 0) {
     return NULL;
@@ -242,7 +350,7 @@ char *prefix_number_with_dollar(size_t unique_number, char *identifier) {
     return NULL;
   }
 
-  snprintf(result, (size_t)len + 1, "LF@$%llu%s",
+  snprintf(result, (size_t)len + 1, "LF@$%llu$%s",
            (unsigned long long)unique_number, identifier);
   return result;
 }
@@ -250,6 +358,28 @@ char *prefix_number_with_dollar(size_t unique_number, char *identifier) {
 char *create_unique_variable(context_t *context, char *identifier) {
   context->unique_var_counter++;
   return prefix_number_with_dollar(context->unique_var_counter - 1, identifier);
+}
+
+char *create_unique_label(context_t *context, const char *identifier) {
+  if (context == NULL || identifier == NULL) {
+    return NULL;
+  }
+
+  size_t unique_number = context->unique_var_counter++;
+  int len = snprintf(NULL, 0, "$%llu$%s", (unsigned long long)unique_number,
+                     identifier);
+  if (len < 0) {
+    return NULL;
+  }
+
+  char *result = malloc((size_t)len + 1);
+  if (result == NULL) {
+    return NULL;
+  }
+
+  snprintf(result, (size_t)len + 1, "$%llu$%s",
+           (unsigned long long)unique_number, identifier);
+  return result;
 }
 
 // To traverse all nodes inside block
@@ -294,7 +424,10 @@ err_code_t create_operand(context_t *context, ast_node_t *node,
 }
 
 err_code_t create_operation(ast_node_t *node,
-                            inner_statement_operation_t *operation) {
+                            inner_statement_operation_t *operation,
+                            bool *out_append_not) {
+  *out_append_not = false;
+
   switch (node->data.binary_operation.op) {
   case TOK_BINARY_PLUS:
     *operation = INNER_ADDS;
@@ -319,8 +452,36 @@ err_code_t create_operation(ast_node_t *node,
       *operation = INNER_IDIVS;
     }
     break;
+  case TOK_LOWER_T:
+    *operation = INNER_LTS;
+    break;
+  case TOK_LOWER_EQ:
+    *operation = INNER_GTS;
+    *out_append_not = true;
+    break;
+  case TOK_GREATER_T:
+    *operation = INNER_GTS;
+    break;
+  case TOK_GREATER_EQ:
+    *operation = INNER_LTS;
+    *out_append_not = true;
+    break;
+  case TOK_EQUAL:
+    *operation = INNER_EQS;
+    break;
+  case TOK_NOT_EQ:
+    *operation = INNER_EQS;
+    *out_append_not = true;
+    break;
 
-    // TODO others
+  case TOK_AND:
+    *operation = INNER_ANDS;
+    break;
+  case TOK_OR:
+    *operation = INNER_ORS;
+    break;
+
+    // TODO TOK_CONCAT_LIST
 
   default:
     RETURN_ERR(INTERNAL_ERR);
@@ -341,6 +502,131 @@ err_code_t retype_if_needed(context_t *context, ast_node_t *examined_operand,
   RETURN_ERR(err);
 }
 
+err_code_t create_string_operand(ast_node_t *node,
+                                 inner_symbol_t *operand_sym) {
+  if (node->type == AST_LITERAL) {
+    inner_value_t value = {.inner_string = node->data.literal.raw};
+    *operand_sym = create_const_symbol(INNER_STRING, value);
+
+  } else if (node->type == AST_IDENTIFIER) {
+    *operand_sym = create_var_symbol(
+        node->data.identifier.calling->data.variable_declaration.unique_id);
+  } else {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+  RETURN_ERR(NO_ERR);
+}
+
+err_code_t convert_string_expression(context_t *context, ast_node_t *node) {
+  if (node->data.binary_operation.op != TOK_BINARY_PLUS) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  ast_node_t *left_operand = node->data.binary_operation.left;
+  ast_node_t *right_operand = node->data.binary_operation.right;
+  if (left_operand == NULL || right_operand == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_symbol_t empty_sym = create_empty_symbol();
+
+  // evaluate left and right string expressions left-to-right onto the stack
+  err_code_t err = convert_expression_on_stack(context, left_operand);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  err = convert_expression_on_stack(context, right_operand);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // pop operands into helper variables
+  inner_symbol_t left_var;
+  inner_symbol_t right_var;
+  inner_symbol_t dst_var;
+
+  err = create_helper_variable(context, node, &left_var);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+  err = create_helper_variable(context, node, &right_var);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+  err = create_helper_variable(context, node, &dst_var);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  err = append_statement(context, INNER_POPS, right_var, empty_sym, empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  err = append_statement(context, INNER_POPS, left_var, empty_sym, empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  err = append_statement(context, INNER_CONCAT, dst_var, left_var, right_var);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  RETURN_ERR(
+      append_statement(context, INNER_PUSHS, empty_sym, dst_var, empty_sym));
+}
+
+err_code_t convert_unary_op_expression(context_t *context, ast_node_t *node) {
+  err_code_t err = NO_ERR;
+  inner_symbol_t empty_sym = create_empty_symbol();
+
+  if (node->data.unary_operation.op == TOK_UNARY_MINUS) {
+    inner_symbol_t zero_const;
+    if (are_data_types_identical(
+            &node_int, node->data.unary_operation.expression->data_type)) {
+      inner_value_t zero = {.inner_int = 0};
+      zero_const = create_const_symbol(INNER_INT, zero);
+    } else if (are_data_types_identical(
+                   &node_double,
+                   node->data.unary_operation.expression->data_type)) {
+      inner_value_t zero = {.inner_float = 0.0};
+      zero_const = create_const_symbol(INNER_FLOAT, zero);
+    } else {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+
+    err = append_statement(context, INNER_PUSHS, empty_sym, zero_const,
+                           empty_sym);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+
+    err = convert_expression_on_stack(context,
+                                      node->data.unary_operation.expression);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+
+    RETURN_ERR(
+        append_statement(context, INNER_SUBS, empty_sym, empty_sym, empty_sym));
+  }
+
+  if (node->data.unary_operation.op == TOK_NOT) {
+    err = convert_expression_on_stack(context,
+                                      node->data.unary_operation.expression);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+
+    RETURN_ERR(
+        append_statement(context, INNER_NOTS, empty_sym, empty_sym, empty_sym));
+  }
+
+  RETURN_ERR(INTERNAL_ERR);
+}
+
 /**
  * @brief Converts expression using stack instruction and
  *        puts result on top of data stack (in ifjcode26)
@@ -351,6 +637,10 @@ err_code_t retype_if_needed(context_t *context, ast_node_t *examined_operand,
 err_code_t convert_expression_on_stack(context_t *context, ast_node_t *node) {
   if (context == NULL || node == NULL) {
     RETURN_ERR(INTERNAL_ERR);
+  }
+
+  if (node->type == AST_INTERPOLATED_STRING) {
+    RETURN_ERR(convert_interpolated_string_on_stack(context, node));
   }
 
   err_code_t err = NO_ERR;
@@ -369,55 +659,22 @@ err_code_t convert_expression_on_stack(context_t *context, ast_node_t *node) {
 
   // if node is unary operation
   if (node->type == AST_UNARY_OPERATION) {
-    if (node->data.unary_operation.op == TOK_UNARY_MINUS) {
-      inner_symbol_t zero_const;
-      if (are_data_types_identical(
-              &node_int, node->data.unary_operation.expression->data_type)) {
-        inner_value_t zero = {.inner_int = 0};
-        zero_const = create_const_symbol(INNER_INT, zero);
-      } else if (are_data_types_identical(
-                     &node_double,
-                     node->data.unary_operation.expression->data_type)) {
-        inner_value_t zero = {.inner_float = 0};
-        zero_const = create_const_symbol(INNER_FLOAT, zero);
-      } else {
-        RETURN_ERR(INTERNAL_ERR);
-      }
-
-      err = append_statement(context, INNER_PUSHS, empty_sym, zero_const,
-                             empty_sym);
-      if (err != NO_ERR) {
-        RETURN_ERR(err);
-      }
-
-      err = convert_expression_on_stack(context,
-                                        node->data.unary_operation.expression);
-      if (err != NO_ERR) {
-        RETURN_ERR(err);
-      }
-
-      err = append_statement(context, INNER_SUBS, empty_sym, empty_sym,
-                             empty_sym);
-      if (err != NO_ERR) {
-        RETURN_ERR(err);
-      }
-    }
-    err = create_operand(context, node->data.unary_operation.expression,
-                         &operand);
-    if (err != NO_ERR) {
-      RETURN_ERR(err);
-    }
-    if (node->data.unary_operation.op == TOK_NOT) {
-      RETURN_ERR(append_statement(context, INNER_NOTS, empty_sym, operand,
-                                  empty_sym)); // tohle je spravne?
-    }
-
-    RETURN_ERR(NO_ERR);
+    RETURN_ERR(convert_unary_op_expression(context, node));
   }
 
   // if node is binary operation
   ast_node_t *left_operand = node->data.binary_operation.left;
   ast_node_t *right_operand = node->data.binary_operation.right;
+
+  if (right_operand == NULL || left_operand == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  // concat strings
+  if (node->data.binary_operation.op == TOK_BINARY_PLUS &&
+      are_data_types_identical(&node_string, left_operand->data_type)) {
+    RETURN_ERR(convert_string_expression(context, node));
+  }
 
   // check invalid pointers
   if (right_operand == NULL || left_operand == NULL) {
@@ -448,12 +705,111 @@ err_code_t convert_expression_on_stack(context_t *context, ast_node_t *node) {
 
   // choose what operation to convert
   inner_statement_operation_t operation = INNER_NOP_CUSTOM;
-  if (create_operation(node, &operation) == INTERNAL_ERR) {
+  bool should_append_not = false;
+  if (create_operation(node, &operation, &should_append_not) == INTERNAL_ERR) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  RETURN_ERR(
-      append_statement(context, operation, empty_sym, empty_sym, empty_sym));
+  err = append_statement(context, operation, empty_sym, empty_sym, empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  if (should_append_not) {
+    err =
+        append_statement(context, INNER_NOTS, empty_sym, empty_sym, empty_sym);
+  }
+
+  RETURN_ERR(err);
+}
+
+err_code_t convert_while_do(context_t *context, ast_node_t *node) {
+  if (context == NULL || node == NULL || node->type != AST_WHILE_DO) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  ast_node_t *condition = node->data.while_do.condition;
+  ast_node_t *body = node->data.while_do.body;
+  if (condition == NULL || body == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_symbol_t empty_sym = create_empty_symbol();
+
+  char *start_label_name = create_unique_label(context, "while_start");
+  char *end_label_name = create_unique_label(context, "while_end");
+  if (start_label_name == NULL || end_label_name == NULL) {
+    free(start_label_name);
+    free(end_label_name);
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_symbol_t start_label = create_label_symbol(start_label_name);
+  inner_symbol_t start_label_owned = start_label;
+  start_label_owned.owns_identifier = true;
+
+  inner_symbol_t end_label = create_label_symbol(end_label_name);
+  inner_symbol_t end_label_owned = end_label;
+  end_label_owned.owns_identifier = true;
+
+  inner_value_t true_val = {.inner_bool = true};
+  inner_symbol_t true_sym = create_const_symbol(INNER_BOOL, true_val);
+
+  // label while_start
+  err_code_t err = append_statement(context, INNER_LABEL, empty_sym,
+                                    start_label_owned, empty_sym);
+  if (err != NO_ERR) {
+    free(start_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // condition
+  err = convert_expression_on_stack(context, condition);
+  if (err != NO_ERR) {
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // push true
+  err = append_statement(context, INNER_PUSHS, empty_sym, true_sym, empty_sym);
+  if (err != NO_ERR) {
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // jump to while_end
+  err = append_statement(context, INNER_JUMPIFNEQS, end_label, empty_sym,
+                         empty_sym);
+  if (err != NO_ERR) {
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // loop body
+  err = convert_node(context, body);
+  if (err != NO_ERR) {
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // back to while_start
+  err =
+      append_statement(context, INNER_JUMP, start_label, empty_sym, empty_sym);
+  if (err != NO_ERR) {
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // while_end
+  err = append_statement(context, INNER_LABEL, empty_sym, end_label_owned,
+                         empty_sym);
+  if (err != NO_ERR) {
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  RETURN_ERR(NO_ERR);
 }
 
 // conversion functions
@@ -577,6 +933,14 @@ err_code_t convert_return(context_t *context, ast_node_t *node) {
       append_statement(context, INNER_RETURN, empty_sym, empty_sym, empty_sym));
 }
 
+err_code_t discard_stack_top(context_t *context) {
+  inner_symbol_t trash_var = create_var_symbol(TRASH);
+  inner_symbol_t empty_sym = create_empty_symbol();
+
+  RETURN_ERR(
+      append_statement(context, INNER_POPS, trash_var, empty_sym, empty_sym));
+}
+
 /****************************\
  * Interface implementation *
 \****************************/
@@ -647,6 +1011,7 @@ err_code_t convert_node(context_t *context, ast_node_t *node) {
   case AST_IF:
     break;
   case AST_WHILE_DO:
+    err = convert_while_do(context, node);
     break;
   case AST_FOR_DO:
     break;
