@@ -368,7 +368,6 @@ void codegen_print_program(inner_statement_t *statement, FILE *stream) {
   fprintf(stream, ".IFJcode26\n");
   fprintf(stream, "DEFVAR " TRASH "\n");
 
-  inner_statement_t *first_statement = statement;
   inner_statement_t *next_statement = statement;
   do {
     next_statement = codegen_print_statement(next_statement, stream);
