@@ -263,7 +263,7 @@ static inner_statement_t print_s13 = {
     .is_static = true,
 };
 
-// WRITE " () "   Print " () " in case Unit type was given.
+// WRITE "()"   Print "()" in case Unit type was given.
 static inner_statement_t print_s12 = {
     .operation = INNER_WRITE,
     .destination =
@@ -272,7 +272,7 @@ static inner_statement_t print_s12 = {
             .data.constant =
                 {
                     .datatype = INNER_STRING,
-                    .value.inner_string = " () ",
+                    .value.inner_string = "()",
                 },
         },
     .next_statement = &print_s13,
@@ -1340,7 +1340,7 @@ static inner_statement_t to_str_s31 = {
             .data.constant =
                 {
                     .datatype = INNER_STRING,
-                    .value.inner_string = " () ",
+                    .value.inner_string = "()",
                 },
         },
     .next_statement = &to_str_s32,

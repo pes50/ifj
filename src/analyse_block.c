@@ -407,7 +407,12 @@ err_code_t analyse_block(ast_node_t *node, hashtable_t *symtable,
   }
 
   if (err == NO_ERR) {
-    err = duplicate_type_node(last_type, &node->data_type);
+    if (explicit_data_type != NULL &&
+        are_data_types_identical(explicit_data_type, &node_unit)) {
+      err = duplicate_type_node(&node_unit, &node->data_type);
+    } else {
+      err = duplicate_type_node(last_type, &node->data_type);
+    }
   }
 
   return err;

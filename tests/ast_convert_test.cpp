@@ -1008,6 +1008,79 @@ ast_node_t *test_ext_funexp_nested_and_expr_args() {
   return create_block_node(chain_nodes({fn_add, fn_main}));
 }
 
+// Unit function discards trailing expression & intermediate block values are
+// popped def unitWithExpr(): Unit = { 1 + 2; print("ok:"); 99 }
+// @main def main(): Unit = print(unitWithExpr()) -> "ok:()"
+ast_node_t *test_ext_funexp_unit_discard_and_block_cleanup() {
+  ast_node_t *fn_unit = create_function_declaration_node(
+      const_cast<char *>("unitWithExpr"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          create_binary_operation_node(TOK_BINARY_PLUS, lit_int("1"),
+                                       lit_int("2")),
+          print_call(lit_str("ok:")),
+          lit_int("99"),
+      })),
+      &node_unit, false);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(print_call(call("unitWithExpr"))), &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_unit, fn_main}));
+}
+
+// Left-to-right evaluation order of function calls in expressions & args
+// def sub(a: Int, b: Int): Int = a - b
+// @main def main(): Unit = print(sub(readInt(), readInt())) (stdin: "10\n3\n"
+// -> "7")
+ast_node_t *test_ext_funexp_eval_order() {
+  ast_node_t *params = create_parameter_list_node(chain_nodes({
+      create_parameter_node(const_cast<char *>("a"), &node_int),
+      create_parameter_node(const_cast<char *>("b"), &node_int),
+  }));
+  ast_node_t *fn_sub = create_function_declaration_node(
+      const_cast<char *>("sub"), params,
+      create_block_node(
+          create_binary_operation_node(TOK_BINARY_MINUS, id("a"), id("b"))),
+      &node_int, false);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(
+          print_call(call("sub", {call("readInt"), call("readInt")}))),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_sub, fn_main}));
+}
+
+// Implicit Int -> Double promotion on function return + recursion in
+// expression def fact(n: Int): Int = if n <= 1 then 1 else n * fact(n - 1)
+// @main def main(): Unit = print(toStr(fact(4) + 0.5)) -> "24.50"
+ast_node_t *test_ext_funexp_recursion_and_promotion() {
+  ast_node_t *cond =
+      create_binary_operation_node(TOK_LOWER_EQ, id("n"), lit_int("1"));
+  ast_node_t *rec = create_binary_operation_node(
+      TOK_MUL, id("n"),
+      call("fact", {create_binary_operation_node(TOK_BINARY_MINUS, id("n"),
+                                                 lit_int("1"))}));
+  ast_node_t *fn_fact = create_function_declaration_node(
+      const_cast<char *>("fact"),
+      create_parameter_list_node(
+          create_parameter_node(const_cast<char *>("n"), &node_int)),
+      create_block_node(create_if_node(cond, create_block_node(lit_int("1")),
+                                       create_block_node(rec))),
+      &node_int, false);
+
+  ast_node_t *expr = create_binary_operation_node(
+      TOK_BINARY_PLUS, call("fact", {lit_int("4")}), lit_double("0.5"));
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(print_call(call("toStr", {expr}))), &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_fact, fn_main}));
+}
+
 #pragma endregion
 
 #pragma region Extension BOOLTHEN (Additional): Operators, Short-Circuit & Branching
@@ -1673,6 +1746,13 @@ INSTANTIATE_TEST_SUITE_P(
         // Extension FUNEXP: Functions in Expressions
         CodegenTestCase{"ExtFunexp_NestedAndExprArgs",
                         test_ext_funexp_nested_and_expr_args, "27"},
+        CodegenTestCase{"ExtFunexp_UnitDiscardAndBlockCleanup",
+                        test_ext_funexp_unit_discard_and_block_cleanup,
+                        "ok:()"},
+        CodegenTestCase{"ExtFunexp_EvalOrder", test_ext_funexp_eval_order, "7",
+                        "10\n3\n"},
+        CodegenTestCase{"ExtFunexp_RecursionAndPromotion",
+                        test_ext_funexp_recursion_and_promotion, "24.50"},
 
         // Extension BOOLTHEN (Additional): Operators & Branching
         CodegenTestCase{"ExtBoolthen_ShortCircuitOps",

@@ -119,6 +119,12 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
+  ast_node_t *fn_body = node->data.function_declaration.body;
+  data_type_node_t *return_type = node->data.function_declaration.return_type;
+  if (fn_body == NULL || return_type == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
   if (node->data.function_declaration.is_main) {
     err_code_t err = append_main_call(context, node);
     if (err != NO_ERR) {
@@ -127,24 +133,28 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
   }
 
   // builtin functions have the declaration predefined
-  ast_node_t *fn_body = node->data.function_declaration.body;
   if (fn_body != NULL && fn_body->type == AST_BUILTIN_BODY) {
     if (context->tail == NULL) {
       RETURN_ERR(INTERNAL_ERR);
     }
-    if (fn_body->data.builtin_body.first_instruction != NULL) {
+
+    inner_statement_t *first_instruction =
+        fn_body->data.builtin_body.first_instruction;
+    if (first_instruction != NULL) {
       inner_statement_t *duplicated_tail = NULL;
-      inner_statement_t *body = duplicate_statement_list(
-          fn_body->data.builtin_body.first_instruction, &duplicated_tail);
+      inner_statement_t *body =
+          duplicate_statement_list(first_instruction, &duplicated_tail);
       if (body == NULL || duplicated_tail == NULL) {
         RETURN_ERR(INTERNAL_ERR);
       }
       context->tail->next_statement = body;
       context->tail = duplicated_tail;
     }
+
     RETURN_ERR(NO_ERR);
   }
 
+  // label
   inner_symbol_t empty_sym = create_empty_symbol();
   err_code_t err = append_statement(
       context, INNER_LABEL, empty_sym,
@@ -177,33 +187,36 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
   // Mark the end of the function prologue
   context->function_start = context->tail;
 
-  // saves pointer to first node from function body
-  ast_node_t *curr_node = node->data.function_declaration.body;
+  bool is_unit = return_type->type == DATA_TYPE_UNIT;
 
-  // goes through all body nodes and converts them to statements
-  while (context->tail->operation != INNER_RETURN) {
-    // adds return if the function doesn't have one
-    if (curr_node == NULL) {
-      err_code_t err = append_statement(context, INNER_POPFRAME, empty_sym,
-                                        empty_sym, empty_sym);
+  err = convert_statement_list(context, node->data.function_declaration.body,
+                               !is_unit);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  if (context->tail->operation != INNER_RETURN) {
+    if (is_unit) {
+      inner_value_t nil_val = {.inner_nil = NULL};
+      inner_symbol_t nil_sym = create_const_symbol(INNER_NIL, nil_val);
+      err =
+          append_statement(context, INNER_PUSHS, empty_sym, nil_sym, empty_sym);
       if (err != NO_ERR) {
         RETURN_ERR(err);
       }
-
-      err = append_statement(context, INNER_RETURN, empty_sym, empty_sym,
-                             empty_sym);
-      if (err != NO_ERR) {
-        RETURN_ERR(err);
-      }
-      break;
     }
 
-    err = convert_node(context, curr_node);
+    err = append_statement(context, INNER_POPFRAME, empty_sym, empty_sym,
+                           empty_sym);
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
 
-    curr_node = curr_node->next;
+    err = append_statement(context, INNER_RETURN, empty_sym, empty_sym,
+                           empty_sym);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
   }
 
   RETURN_ERR(NO_ERR);
@@ -230,15 +243,14 @@ err_code_t enqueue_function(context_t *context,
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  // Check if function is visited (already converted)
+  // Check if function is visited
   ast_node_t *table_node = NULL;
   err_code_t err = ht_get_item(context->table, name, (void **)&table_node);
   if (err != UNDEF_SYMBOL_ERR) {
     RETURN_ERR(err);
   }
 
-  // Mark function as visited (Needs to be done before actually processing the
-  //                           function - it is saved on stack)
+  // Mark function as visited
   err = ht_insert_item(context->table, name, function_declaration_node);
   if (err != NO_ERR) {
     RETURN_ERR(err);
