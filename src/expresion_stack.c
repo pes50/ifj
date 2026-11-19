@@ -47,6 +47,25 @@ err_code_t expresion_stack_push(expresion_stack_t *stack, bool ml_string) {
 
 bool expresion_stack_pop(expresion_stack_t *stack) {
   stack->size--;
+
+  // Halve the capacity when the stack is less than a quarter full.
+  if (stack->capacity > EXPRESION_STACK_DEPTH &&
+      stack->size < stack->capacity / 4) {
+    size_t new_capacity = stack->capacity / 2;
+
+    // Dont shrink below the initial capacity.
+    if (new_capacity < EXPRESION_STACK_DEPTH) {
+      new_capacity = EXPRESION_STACK_DEPTH;
+    }
+
+    bool *new_data = (bool *)realloc(stack->data, new_capacity * sizeof(bool));
+
+    if (new_data != NULL) {
+      stack->data = new_data;
+      stack->capacity = new_capacity;
+    }
+  }
+
   return stack->data[stack->size];
 }
 
