@@ -1133,7 +1133,8 @@ ast_node_t *build_control_program_ast() {
       create_dot_function_call_node(
           const_cast<char *>("to"), make_leaf(TOK_LIT_INT, "6"),
           create_argument_list_node(make_leaf(TOK_LIT_INT, "2"))),
-      create_argument_list_node(make_leaf(TOK_LIT_INT, "-2")));
+      create_argument_list_node(create_unary_operation_node(
+          TOK_UNARY_MINUS, make_leaf(TOK_LIT_INT, "2"))));
   ast_node_t *for2_body = create_block_node(chain_nodes({
       create_function_call_node(
           const_cast<char *>("print"),
