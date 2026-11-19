@@ -382,15 +382,80 @@ char *create_unique_label(context_t *context, const char *identifier) {
   return result;
 }
 
-// To traverse all nodes inside block
-err_code_t block_body_list_traversal(context_t *context, ast_node_t *node) {
+static bool is_expression_node(ast_node_t *node) {
+  if (node == NULL) {
+    return false;
+  }
+
+  switch (node->type) {
+  case AST_FUNCTION_CALL:
+  case AST_DOT_FUNCTION_CALL:
+  case AST_BINARY_OPERATION:
+  case AST_UNARY_OPERATION:
+  case AST_LITERAL:
+  case AST_IDENTIFIER:
+  case AST_INTERPOLATED_STRING:
+  case AST_LIST_CONSTRUCTOR:
+  case AST_LAMBDA_DECLARATION:
+  case AST_MATCH:
+    return true;
+  default:
+    return false;
+  }
+}
+
+err_code_t convert_statement_list(context_t *context, ast_node_t *node,
+                                  bool keep_last) {
+  if (context == NULL || node == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_symbol_t empty_sym = create_empty_symbol();
+
   while (node != NULL) {
-    err_code_t err = convert_node(context, node);
-    if (err != NO_ERR) {
-      RETURN_ERR(err);
+    bool keep_current = (node->next == NULL) && keep_last;
+    err_code_t err = NO_ERR;
+
+    if (node->type == AST_BLOCK) {
+      err = convert_statement_list(context, node->data.block.statement,
+                                   keep_current);
+      if (err != NO_ERR) {
+        RETURN_ERR(err);
+      }
+    } else if (is_expression_node(node)) {
+      err = convert_expression_on_stack(context, node);
+      if (err != NO_ERR) {
+        RETURN_ERR(err);
+      }
+      if (!keep_current) {
+        err = discard_stack_top(context);
+        if (err != NO_ERR) {
+          RETURN_ERR(err);
+        }
+      }
+    } else {
+      err = convert_node(context, node);
+      if (err != NO_ERR) {
+        RETURN_ERR(err);
+      }
+      if (keep_current && node->type != AST_RETURN) {
+        inner_value_t nil_val = {.inner_nil = NULL};
+        inner_symbol_t nil_sym = create_const_symbol(INNER_NIL, nil_val);
+        err = append_statement(context, INNER_PUSHS, empty_sym, nil_sym,
+                               empty_sym);
+        if (err != NO_ERR) {
+          RETURN_ERR(err);
+        }
+      }
     }
+
+    if (context->tail != NULL && context->tail->operation == INNER_RETURN) {
+      break;
+    }
+
     node = node->next;
   }
+
   RETURN_ERR(NO_ERR);
 }
 
@@ -643,6 +708,15 @@ err_code_t convert_expression_on_stack(context_t *context, ast_node_t *node) {
     RETURN_ERR(convert_interpolated_string_on_stack(context, node));
   }
 
+  if (node->type == AST_FUNCTION_CALL) {
+    err_code_t err =
+        enqueue_function(context, node->data.function_call.calling);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+    RETURN_ERR(convert_function_call(context, node));
+  }
+
   err_code_t err = NO_ERR;
   inner_symbol_t empty_sym = create_empty_symbol(),
                  operand = create_empty_symbol();
@@ -842,7 +916,8 @@ err_code_t convert_function_call(context_t *context, ast_node_t *node) {
 }
 
 err_code_t convert_block(context_t *context, ast_node_t *node) {
-  RETURN_ERR(block_body_list_traversal(context, node->data.block.statement));
+  RETURN_ERR(
+      convert_statement_list(context, node->data.block.statement, false));
 }
 
 err_code_t convert_var_declaration(context_t *context, ast_node_t *node) {
@@ -991,8 +1066,7 @@ err_code_t convert_node(context_t *context, ast_node_t *node) {
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
-    err = convert_function_call(context, node);
-    break;
+    RETURN_ERR(convert_function_call(context, node));
   case AST_DOT_FUNCTION_CALL:
     break;
   case AST_LAMBDA_DECLARATION:
