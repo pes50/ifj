@@ -145,7 +145,7 @@ err_code_t analyse_function_declaration(ast_node_t *node,
   }
 
   ast_node_t *body = node->data.function_declaration.body;
-  if (body == NULL || body->type != AST_BLOCK) {
+  if (body == NULL) {
     return OTHER_SEMANTIC_ERR;
   }
 
@@ -172,7 +172,11 @@ err_code_t analyse_function_declaration(ast_node_t *node,
   }
 
   node->_visited = true;
-  err = analyse_block(body, current_scope, return_type, true);
+  if (body->type == AST_BLOCK) {
+    err = analyse_block(body, current_scope, return_type, true);
+  } else {
+    err = analyse_expression(body, current_scope, return_type, true, true);
+  }
   if (err != NO_ERR) {
     goto fun_err;
   }
