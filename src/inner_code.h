@@ -120,7 +120,7 @@ typedef enum {
  * @brief Types of symbols in inner code
  */
 typedef enum {
-  INNER_SYM_EMPTY,
+  INNER_SYM_EMPTY = 0,
   INNER_SYM_CONST,
   INNER_SYM_VAR,
   INNER_SYM_ARR,
