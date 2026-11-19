@@ -5,12 +5,12 @@ DEBUG_EXECUTABLE = compiler_debug
 DEBUG_TEST_EXECUTABLE = run_tests_debug
 
 CC = gcc
-BASE_CFLAGS = -Wall -Wextra --std=c17
+BASE_CFLAGS = -Wall -Wextra -std=c17 -MMD -MP
 CFLAGS = $(BASE_CFLAGS) -O2
 DEBUG_CFLAGS = $(BASE_CFLAGS) -g -O0 -DDEBUG
 
 CXX = g++
-BASE_CXXFLAGS = -Wall -Wextra -std=c++17 -I$(SRC_DIR) -pthread
+BASE_CXXFLAGS = -Wall -Wextra -std=c++17 -I$(SRC_DIR) -pthread -MMD -MP
 CXXFLAGS = $(BASE_CXXFLAGS) -O2
 DEBUG_CXXFLAGS = $(BASE_CXXFLAGS) -g -O0 -DDEBUG
 GTEST_LIBS = -lgtest -lgtest_main -pthread
@@ -33,6 +33,7 @@ TEST_OBJS = $(patsubst $(TEST_DIR)/%.cpp, $(BUILD_DIR)/test_%.o, $(TEST_SRCS))
 DEBUG_OBJS = $(patsubst $(SRC_DIR)/%.c, $(DEBUG_BUILD_DIR)/%.o, $(wildcard $(SRC_DIR)/*.c))
 DEBUG_OBJS_NO_MAIN = $(filter-out $(DEBUG_BUILD_DIR)/main.o, $(DEBUG_OBJS))
 DEBUG_TEST_OBJS = $(patsubst $(TEST_DIR)/%.cpp, $(DEBUG_BUILD_DIR)/test_%.o, $(TEST_SRCS))
+DEPS = $(OBJS:.o=.d) $(TEST_OBJS:.o=.d) $(DEBUG_OBJS:.o=.d) $(DEBUG_TEST_OBJS:.o=.d)
 
 # Pack
 ARCHIVE = archive.zip
