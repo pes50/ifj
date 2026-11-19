@@ -36,7 +36,7 @@ DEBUG_TEST_OBJS = $(patsubst $(TEST_DIR)/%.cpp, $(DEBUG_BUILD_DIR)/test_%.o, $(T
 DEPS = $(OBJS:.o=.d) $(TEST_OBJS:.o=.d) $(DEBUG_OBJS:.o=.d) $(DEBUG_TEST_OBJS:.o=.d)
 
 # Pack
-ARCHIVE = archive.zip
+ARCHIVE = xskoupr00.zip
 EXTRA_FILES = rozdeleni rozsireni Makefile dokumentace.pdf
 
 .PHONY: all debug clean test test-debug pack
