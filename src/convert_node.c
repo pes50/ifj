@@ -38,7 +38,7 @@ err_code_t convert_var_declaration(context_t *context, ast_node_t *node);
 
 err_code_t convert_assignment(context_t *context, ast_node_t *node);
 
-err_code_t convert_if(context_t *context, ast_node_t *node);
+err_code_t convert_if(context_t *context, ast_node_t *node, bool push_result);
 
 err_code_t convert_while_do(context_t *context, ast_node_t *node);
 
@@ -398,6 +398,7 @@ static bool is_expression_node(ast_node_t *node) {
   case AST_LIST_CONSTRUCTOR:
   case AST_LAMBDA_DECLARATION:
   case AST_MATCH:
+  case AST_IF:
     return true;
   default:
     return false;
@@ -419,6 +420,11 @@ err_code_t convert_statement_list(context_t *context, ast_node_t *node,
     if (node->type == AST_BLOCK) {
       err = convert_statement_list(context, node->data.block.statement,
                                    keep_current);
+      if (err != NO_ERR) {
+        RETURN_ERR(err);
+      }
+    } else if (node->type == AST_IF) {
+      err = convert_if(context, node, keep_current);
       if (err != NO_ERR) {
         RETURN_ERR(err);
       }
@@ -457,6 +463,160 @@ err_code_t convert_statement_list(context_t *context, ast_node_t *node,
   }
 
   RETURN_ERR(NO_ERR);
+}
+
+err_code_t convert_if(context_t *context, ast_node_t *node, bool push_result) {
+  if (context == NULL || node == NULL || node->type != AST_IF ||
+      node->data_type == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  ast_node_t *condition = node->data.if_statement.condition;
+  ast_node_t *true_branch = node->data.if_statement.true_branch;
+  ast_node_t *false_branch = node->data.if_statement.false_branch;
+
+  if (condition == NULL || true_branch == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_symbol_t empty_sym = create_empty_symbol();
+  inner_value_t true_val = {.inner_bool = true};
+  inner_symbol_t true_sym = create_const_symbol(INNER_BOOL, true_val);
+
+  // condition
+  err_code_t err = convert_expression_on_stack(context, condition);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  err = append_statement(context, INNER_PUSHS, empty_sym, true_sym, empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // without else
+  if (false_branch == NULL && !push_result) {
+    char *end_label_name = create_unique_label(context, "if_end");
+    if (end_label_name == NULL) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+
+    inner_symbol_t end_label = create_label_symbol(end_label_name);
+    inner_symbol_t end_label_owned = end_label;
+    end_label_owned.owns_identifier = true;
+
+    err = append_statement(context, INNER_JUMPIFNEQS, end_label, empty_sym,
+                           empty_sym);
+    if (err != NO_ERR) {
+      free(end_label_name);
+      RETURN_ERR(err);
+    }
+
+    err = convert_statement_list(context, true_branch, false);
+    if (err != NO_ERR) {
+      free(end_label_name);
+      RETURN_ERR(err);
+    }
+
+    RETURN_ERR(append_statement(context, INNER_LABEL, empty_sym,
+                                end_label_owned, empty_sym));
+  }
+
+  // if as an expression
+  char *else_label_name = create_unique_label(context, "if_else");
+  char *end_label_name = create_unique_label(context, "if_end");
+  if (else_label_name == NULL || end_label_name == NULL) {
+    free(else_label_name);
+    free(end_label_name);
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_symbol_t else_label = create_label_symbol(else_label_name);
+  inner_symbol_t else_label_owned = else_label;
+  else_label_owned.owns_identifier = true;
+
+  inner_symbol_t end_label = create_label_symbol(end_label_name);
+  inner_symbol_t end_label_owned = end_label;
+  end_label_owned.owns_identifier = true;
+
+  bool target_is_double =
+      node->data_type != NULL &&
+      are_data_types_identical(&node_double, node->data_type);
+
+  err = append_statement(context, INNER_JUMPIFNEQS, else_label, empty_sym,
+                         empty_sym);
+  if (err != NO_ERR) {
+    free(else_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // true branch
+  err = convert_statement_list(context, true_branch, push_result);
+  if (err != NO_ERR) {
+    free(else_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  if (push_result && target_is_double &&
+      are_data_types_identical(&node_int, true_branch->data_type) &&
+      context->tail != NULL && context->tail->operation != INNER_RETURN) {
+    err = append_statement(context, INNER_INT2FLOATS, empty_sym, empty_sym,
+                           empty_sym);
+    if (err != NO_ERR) {
+      free(else_label_name);
+      free(end_label_name);
+      RETURN_ERR(err);
+    }
+  }
+
+  err = append_statement(context, INNER_JUMP, end_label, empty_sym, empty_sym);
+  if (err != NO_ERR) {
+    free(else_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // false branch
+  err = append_statement(context, INNER_LABEL, empty_sym, else_label_owned,
+                         empty_sym);
+  if (err != NO_ERR) {
+    free(else_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  if (false_branch != NULL) {
+    err = convert_statement_list(context, false_branch, push_result);
+    if (err != NO_ERR) {
+      free(end_label_name);
+      RETURN_ERR(err);
+    }
+
+    if (push_result && target_is_double &&
+        are_data_types_identical(&node_int, false_branch->data_type) &&
+        context->tail != NULL && context->tail->operation != INNER_RETURN) {
+      err = append_statement(context, INNER_INT2FLOATS, empty_sym, empty_sym,
+                             empty_sym);
+      if (err != NO_ERR) {
+        free(end_label_name);
+        RETURN_ERR(err);
+      }
+    }
+  } else if (push_result) {
+    inner_value_t nil_val = {.inner_nil = NULL};
+    inner_symbol_t nil_sym = create_const_symbol(INNER_NIL, nil_val);
+    err = append_statement(context, INNER_PUSHS, empty_sym, nil_sym, empty_sym);
+    if (err != NO_ERR) {
+      free(end_label_name);
+      RETURN_ERR(err);
+    }
+  }
+
+  // end label
+  RETURN_ERR(append_statement(context, INNER_LABEL, empty_sym, end_label_owned,
+                              empty_sym));
 }
 
 err_code_t create_operand(context_t *context, ast_node_t *node,
@@ -702,6 +862,10 @@ err_code_t convert_unary_op_expression(context_t *context, ast_node_t *node) {
 err_code_t convert_expression_on_stack(context_t *context, ast_node_t *node) {
   if (context == NULL || node == NULL) {
     RETURN_ERR(INTERNAL_ERR);
+  }
+
+  if (node->type == AST_IF) {
+    RETURN_ERR(convert_if(context, node, true));
   }
 
   if (node->type == AST_INTERPOLATED_STRING) {
@@ -1083,6 +1247,7 @@ err_code_t convert_node(context_t *context, ast_node_t *node) {
     err = convert_assignment(context, node);
     break;
   case AST_IF:
+    err = convert_if(context, node, false);
     break;
   case AST_WHILE_DO:
     err = convert_while_do(context, node);
