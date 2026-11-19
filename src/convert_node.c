@@ -621,6 +621,7 @@ err_code_t convert_if(context_t *context, ast_node_t *node, bool push_result) {
 
 err_code_t create_operand(context_t *context, ast_node_t *node,
                           inner_symbol_t *operand) {
+  (void)context;
   if (node->type == AST_LITERAL) {
     err_code_t err = create_literal_symbol(node, operand);
     RETURN_ERR(err);
