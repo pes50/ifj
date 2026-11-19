@@ -1102,13 +1102,13 @@ static inner_statement_t to_str_s44 = {
     .is_static = true,
 };
 
-// PUSHS LF@item
+// PUSHS LF@list_item
 static inner_statement_t to_str_s43 = {
     .operation = INNER_PUSHS,
     .destination =
         {
             .type = INNER_SYM_VAR,
-            .data.identificator = "LF@item",
+            .data.identificator = "LF@list_item",
         },
     .next_statement = &to_str_s44,
     .is_static = true,
