@@ -1366,10 +1366,8 @@ ast_node_t *test_ext_lambdas_basic() {
       create_parameter_node(const_cast<char *>("b"), &node_int),
   });
   ast_node_t *lam_add = create_lambda_declaration_node(
-      add_params,
-      create_block_node(
-          create_binary_operation_node(TOK_BINARY_PLUS, id("a"), id("b"))),
-      nullptr);
+      add_params, create_block_node(create_binary_operation_node(
+                      TOK_BINARY_PLUS, id("a"), id("b"))));
 
   ast_node_t *lam_block = create_lambda_declaration_node(
       create_parameter_node(const_cast<char *>("x"), &node_int),
@@ -1377,11 +1375,10 @@ ast_node_t *test_ext_lambdas_basic() {
           val_decl("y", create_binary_operation_node(TOK_MUL, id("x"),
                                                      lit_int("2"))),
           create_binary_operation_node(TOK_BINARY_PLUS, id("y"), lit_int("1")),
-      })),
-      nullptr);
+      })));
 
-  ast_node_t *lam_zero = create_lambda_declaration_node(
-      nullptr, create_block_node(lit_int("42")), nullptr);
+  ast_node_t *lam_zero =
+      create_lambda_declaration_node(nullptr, create_block_node(lit_int("42")));
 
   return wrap_main({
       val_decl("add", lam_add),
