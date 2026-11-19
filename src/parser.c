@@ -1553,7 +1553,7 @@ err_code_t gen(token_t *token, ast_node_t **iterator, ast_node_t **generator) {
     return SYNTAX_ERR;
   }
 
-  *iterator = create_leaf_node(token);
+  *iterator = create_parameter_node((char *)token->value, NULL);
   if (*iterator == NULL) {
     RETURN_ERR(INTERNAL_ERR);
   }
@@ -1623,7 +1623,7 @@ err_code_t gen_tail(token_t *token, ast_node_t *expression,
       destroy_node(expression);
       RETURN_ERR(INTERNAL_ERR);
     }
-    *generator = create_dot_function_call_node("to", expression, to);
+    *generator = create_dot_function_call_node("to", expression, arguments);
     if (*generator == NULL) {
       destroy_node(arguments);
       destroy_node(expression);
