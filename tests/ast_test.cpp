@@ -444,9 +444,9 @@ ast_node_t *build_strings_program_ast() {
   ast_node_t *half_params = create_parameter_list_node(
       create_parameter_node(const_cast<char *>("length"), &node_int));
 
-  ast_node_t *half_body =
+  ast_node_t *half_body = create_block_node(
       create_binary_operation_node(TOK_DIV, make_leaf(TOK_IDENTIFIER, "length"),
-                                   make_leaf(TOK_LIT_DOUBLE, "2.0"));
+                                   make_leaf(TOK_LIT_DOUBLE, "2.0")));
 
   ast_node_t *fn_half_length = create_function_declaration_node(
       const_cast<char *>("halfLength"), half_params, half_body, &node_double,

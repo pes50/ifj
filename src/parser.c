@@ -116,12 +116,18 @@ err_code_t start(token_t *token, ast_node_t **node) {
     RETURN_ERR(ret);
   }
 
-  *node = create_block_node(NULL);
-  if (*node == NULL) {
-    RETURN_ERR(INTERNAL_ERR);
+  ast_node_t *code;
+  ret = prog(token, &code);
+  if (ret != NO_ERR) {
+    RETURN_ERR(ret);
   }
 
-  return prog(token, &(*node)->data.block.statement);
+  *node = create_block_node(code);
+  if (*node == NULL) {
+    destroy_node(code);
+    RETURN_ERR(INTERNAL_ERR);
+  }
+  return NO_ERR;
 }
 
 err_code_t prolog(token_t *token) {
@@ -922,18 +928,30 @@ err_code_t param(token_t *token, ast_node_t **node) {
 err_code_t fun_body(token_t *token, ast_node_t **node) {
   // same line definition
   if (token->type != TOK_EOL) {
-    err_code_t ret = expr(token, node, false);
+    ast_node_t *body;
+    err_code_t ret = expr(token, &body, false);
     if (ret != NO_ERR) {
       RETURN_ERR(ret);
+    }
+
+    if (token->type != TOK_EOL) {
+      destroy_node(body);
+      RETURN_ERR(SYNTAX_ERR);
     }
 
     token_clear(token);
     ret = lexer_get_token(token, FORBIDDEN);
     if (ret != NO_ERR) {
-      destroy_node(*node);
-      *node = NULL;
+      destroy_node(body);
+      RETURN_ERR(ret);
     }
-    RETURN_ERR(ret);
+
+    *node = create_block_node(body);
+    if (*node == NULL) {
+      destroy_node(body);
+      RETURN_ERR(INTERNAL_ERR);
+    }
+    return NO_ERR;
   }
   // block definiton
 
@@ -1192,9 +1210,16 @@ err_code_t if_stmt_tail(token_t *token, ast_node_t **true_branch,
     RETURN_ERR(ret);
   }
 
-  ret = stmt(token, true_branch);
+  ast_node_t *body;
+  ret = stmt(token, &body);
   if (ret != NO_ERR) {
     RETURN_ERR(ret);
+  }
+
+  *true_branch = create_block_node(body);
+  if (*true_branch == NULL) {
+    destroy_node(body);
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   ret = else_stmt(token, false_branch);
@@ -1221,7 +1246,19 @@ err_code_t else_stmt(token_t *token, ast_node_t **node) {
 
 err_code_t else_stmt_tail(token_t *token, ast_node_t **node) {
   if (token->type != TOK_EOL) {
-    return stmt(token, node);
+    ast_node_t *body;
+    err_code_t ret = stmt(token, &body);
+
+    if (ret != NO_ERR) {
+      RETURN_ERR(ret);
+    }
+
+    *node = create_block_node(body);
+    if (*node == NULL) {
+      destroy_node(body);
+      RETURN_ERR(INTERNAL_ERR);
+    }
+    return NO_ERR;
   }
 
   token_clear(token);
@@ -2844,10 +2881,18 @@ err_code_t lambda(token_t *token, ast_node_t **node) {
   }
 
   ast_node_t *body = NULL;
-  ret = expr(token, &body, false);
+  ast_node_t *expression = NULL;
+  ret = expr(token, &expression, false);
   if (ret != NO_ERR) {
     destroy_node(parameters);
     RETURN_ERR(ret);
+  }
+
+  body = create_block_node(expression);
+  if (body == NULL) {
+    destroy_node(parameters);
+    destroy_node(expression);
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   *node = create_lambda_declaration_node(parameters, body);
