@@ -116,7 +116,12 @@ err_code_t start(token_t *token, ast_node_t **node) {
     RETURN_ERR(ret);
   }
 
-  return prog(token, node);
+  *node = create_block_node(NULL);
+  if (*node == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  return prog(token, &(*node)->data.block.statement);
 }
 
 err_code_t prolog(token_t *token) {

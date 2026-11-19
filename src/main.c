@@ -51,6 +51,7 @@ int main() {
   codegen_print_program(inner_code, stdout);
   ht_destruct(&symtable);
   destroy_node(ast_root);
+  destroy_statement_list(inner_code);
 
   return 0;
 }
