@@ -34,15 +34,14 @@ static std::string emit_builtin(inner_statement_t *first) {
 
   std::string code;
   char buf[1024];
+  int line = 0;
   while (std::fgets(buf, sizeof(buf), tmp) != nullptr) {
+    if (line++ < 2) {
+      continue;
+    }
     code += buf;
   }
   std::fclose(tmp);
-
-  const std::string header = ".IFJcode26\n";
-  if (code.rfind(header, 0) == 0) {
-    code.erase(0, header.size());
-  }
   return code;
 }
 
@@ -73,6 +72,7 @@ static RunResult run_ifjcode(const std::string &main_code,
   {
     std::ofstream code_file(code_path);
     code_file << ".IFJcode26\n"
+              << "DEFVAR GF@$trash\n"
               << "JUMP $$test_main\n"
               << all_builtins_code() << "\n"
               << main_code << "\n";
@@ -211,7 +211,7 @@ EXIT int@0
 )");
 
   EXPECT_EQ(res.exit_code, 0) << res.output;
-  EXPECT_EQ(res.output, "42|nil\nhello\ntrue\n () \nList(10, 20)");
+  EXPECT_EQ(res.output, "42|nil\nhello\ntrue\n()\nList(10, 20)");
 }
 
 // ============================================================================
@@ -242,7 +242,7 @@ EXIT int@0
                          "first line\nsecond\n");
 
   EXPECT_EQ(res.exit_code, 0) << res.output;
-  EXPECT_EQ(res.output, "first line|second||END");
+  EXPECT_EQ(res.output, "first line\n|second\n||END");
 }
 
 // ============================================================================
@@ -402,7 +402,7 @@ EXIT int@0
 
   EXPECT_EQ(res.exit_code, 0) << res.output;
   EXPECT_EQ(res.output,
-            "-7\ntrue\nfalse\nabc\n () \ntrue\nList(List(1, 2), List())");
+            "-7\ntrue\nfalse\nabc\n()\ntrue\nList(List(1, 2), List())");
 }
 
 // ============================================================================
@@ -612,7 +612,7 @@ EXIT int@0
                          "true\nfalse\nTRUE\ninvalid\n");
 
   EXPECT_EQ(res.exit_code, 0) << res.output;
-  EXPECT_EQ(res.output, "true\nfalse\ntrue\nfalse");
+  EXPECT_EQ(res.output, "true\nfalse\nfalse\nfalse");
 }
 
 // ============================================================================

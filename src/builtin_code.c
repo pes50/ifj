@@ -2898,26 +2898,105 @@ inner_statement_t chr_code = {
  */
 
 // RETURN
-static inner_statement_t readboolean_s7 = {
+static inner_statement_t readboolean_s12 = {
     .operation = INNER_RETURN,
     .next_statement = NULL,
     .is_static = true,
 };
 
 // POPFRAME
-static inner_statement_t readboolean_s6 = {
+static inner_statement_t readboolean_s11 = {
     .operation = INNER_POPFRAME,
-    .next_statement = &readboolean_s7,
+    .next_statement = &readboolean_s12,
     .is_static = true,
 };
 
 // PUSHS LF@readed_value
-static inner_statement_t readboolean_s5 = {
+static inner_statement_t readboolean_s10 = {
     .operation = INNER_PUSHS,
     .destination =
         {
             .type = INNER_SYM_VAR,
             .data.identificator = "LF@readed_value",
+        },
+    .next_statement = &readboolean_s11,
+    .is_static = true,
+};
+
+// LABEL $$read_boolean_end
+static inner_statement_t readboolean_s9 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$read_boolean_end",
+        },
+    .next_statement = &readboolean_s10,
+    .is_static = true,
+};
+
+// MOVE LF@readed_value bool@false
+static inner_statement_t readboolean_s8 = {
+    .operation = INNER_MOVE,
+    .destination =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@readed_value",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant =
+                {
+                    .datatype = INNER_BOOL,
+                    .value.inner_bool = false,
+                },
+        },
+    .next_statement = &readboolean_s9,
+    .is_static = true,
+};
+
+// LABEL $$read_boolean_nil
+static inner_statement_t readboolean_s7 = {
+    .operation = INNER_LABEL,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$read_boolean_nil",
+        },
+    .next_statement = &readboolean_s8,
+    .is_static = true,
+};
+
+// JUMP $$read_boolean_end
+static inner_statement_t readboolean_s6 = {
+    .operation = INNER_JUMP,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$read_boolean_end",
+        },
+    .next_statement = &readboolean_s7,
+    .is_static = true,
+};
+
+// JUMPIFEQ $$read_boolean_nil LF@readed_value nil@nil
+static inner_statement_t readboolean_s5 = {
+    .operation = INNER_JUMPIFEQ,
+    .destination =
+        {
+            .type = INNER_SYM_LABEL,
+            .data.identificator = "$$read_boolean_nil",
+        },
+    .first_op =
+        {
+            .type = INNER_SYM_VAR,
+            .data.identificator = "LF@readed_value",
+        },
+    .second_op =
+        {
+            .type = INNER_SYM_CONST,
+            .data.constant.datatype = INNER_NIL,
         },
     .next_statement = &readboolean_s6,
     .is_static = true,

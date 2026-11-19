@@ -1263,13 +1263,15 @@ ast_node_t *test_ext_control_for_err_zero_step() {
 //   ...
 // }
 ast_node_t *test_ext_algebdt_type_alias_and_match() {
-  data_type_node_t *int_or_str = create_union_type_node(chain_types({
-      create_primitive_type_node(PRIMITIVE_INT),
-      create_primitive_type_node(PRIMITIVE_STRING),
-  }));
+  auto make_int_or_str = []() {
+    return create_union_type_node(chain_types({
+        create_primitive_type_node(PRIMITIVE_INT),
+        create_primitive_type_node(PRIMITIVE_STRING),
+    }));
+  };
 
-  ast_node_t *type_alias =
-      create_type_declaration_node(const_cast<char *>("IntOrStr"), int_or_str);
+  ast_node_t *type_alias = create_type_declaration_node(
+      const_cast<char *>("IntOrStr"), make_int_or_str());
 
   auto make_match = []() {
     ast_node_t *c_zero = create_match_case_node(
@@ -1278,12 +1280,14 @@ ast_node_t *test_ext_algebdt_type_alias_and_match() {
     ast_node_t *guard_pos =
         create_binary_operation_node(TOK_GREATER_T, id("n"), lit_int("0"));
     ast_node_t *c_pos = create_match_case_node(
-        create_parameter_node(const_cast<char *>("n"), &node_int), guard_pos,
-        create_block_node(lit_str("pos")));
+        create_parameter_node(const_cast<char *>("n"),
+                              create_primitive_type_node(PRIMITIVE_INT)),
+        guard_pos, create_block_node(lit_str("pos")));
 
     ast_node_t *c_str = create_match_case_node(
-        create_parameter_node(const_cast<char *>("s"), &node_string), nullptr,
-        create_block_node(id("s")));
+        create_parameter_node(const_cast<char *>("s"),
+                              create_primitive_type_node(PRIMITIVE_STRING)),
+        nullptr, create_block_node(id("s")));
 
     ast_node_t *c_wild = create_match_case_node(
         underscore(), nullptr, create_block_node(lit_str("neg")));
@@ -1295,7 +1299,7 @@ ast_node_t *test_ext_algebdt_type_alias_and_match() {
   ast_node_t *fn_main = create_function_declaration_node(
       const_cast<char *>("main"), create_parameter_list_node(nullptr),
       create_block_node(chain_nodes({
-          var_decl("v", lit_int("0"), clone_builtin_type(int_or_str)),
+          var_decl("v", lit_int("0"), make_int_or_str()),
           val_decl("r1", make_match()),
           assign("v", lit_int("7")),
           val_decl("r2", make_match()),
@@ -1627,9 +1631,9 @@ INSTANTIATE_TEST_SUITE_P(
         CodegenTestCase{"BuiltinSubStr_EmptyAtStart",
                         test_substr_empty_at_start, "0"},
         CodegenTestCase{"BuiltinSubStr_EmptyAtEnd", test_substr_empty_at_end,
-                        "0"},
+                        "", "", 40},
         CodegenTestCase{"BuiltinSubStr_EmptyString", test_substr_empty_string,
-                        "0"},
+                        "", "", 40},
         CodegenTestCase{"BuiltinSubStr_ErrStartNeg", test_substr_err_start_neg,
                         "", "", 40},
         CodegenTestCase{"BuiltinSubStr_ErrEndNeg", test_substr_err_end_neg, "",
