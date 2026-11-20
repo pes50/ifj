@@ -16,11 +16,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef enum { TOKEN, NONTERMINAL } element_token_type_t;
-
 // Element that is pushed into stack
 typedef struct {
-  element_token_type_t type;
+  token_stack_element_type_t type;
 
   union {
     struct {
@@ -31,7 +29,7 @@ typedef struct {
       ast_node_t *node;
     } nonterminal;
   };
-} element_token_t;
+} token_stack_element_t;
 
 // Internal token stack representation
 struct token_stack_t {
@@ -57,7 +55,7 @@ bool push_nonterm(token_stack_t *stack, ast_node_t *node) {
     return false;
   }
 
-  element_token_t *elem = malloc(sizeof(element_token_t));
+  token_stack_element_t *elem = malloc(sizeof(token_stack_element_t));
   if (elem == NULL) {
     return false;
   }
@@ -94,7 +92,7 @@ void destroy_token_stack(token_stack_t *stack) {
   }
   // Pop and free all elements and their internal data
   while (stack_get_size(stack->top) > 0) {
-    element_token_t *elem = stack_pop(stack->top);
+    token_stack_element_t *elem = stack_pop(stack->top);
     switch (elem->type) {
     case NONTERMINAL:
       destroy_node(elem->nonterminal.node);
@@ -102,6 +100,8 @@ void destroy_token_stack(token_stack_t *stack) {
 
     case TOKEN:
       token_free(elem->token.token);
+      break;
+    default:
       break;
     }
     free(elem);
@@ -119,7 +119,7 @@ bool push_token(token_stack_t *stack, token_t *token) {
     return false;
   }
 
-  element_token_t *elem = malloc(sizeof(element_token_t));
+  token_stack_element_t *elem = malloc(sizeof(token_stack_element_t));
   if (elem == NULL) {
     return false;
   }
@@ -153,7 +153,7 @@ bool remove_paren(token_stack_t *stack) {
     return false;
   }
 
-  element_token_t *data = (element_token_t *)elem->data;
+  token_stack_element_t *data = (token_stack_element_t *)elem->data;
   if (data == NULL) {
     return false;
   }
@@ -167,7 +167,7 @@ bool remove_paren(token_stack_t *stack) {
     return false;
   }
 
-  data = (element_token_t *)elem->data;
+  data = (token_stack_element_t *)elem->data;
   if (data == NULL) {
     return false;
   }
@@ -213,7 +213,7 @@ bool reduce(token_stack_t *stack) {
     return false;
   }
 
-  element_token_t *data = (element_token_t *)elem->data;
+  token_stack_element_t *data = (token_stack_element_t *)elem->data;
   if (data == NULL) {
     return false;
   }
@@ -258,7 +258,7 @@ bool reduce(token_stack_t *stack) {
     return false;
   }
 
-  data = (element_token_t *)elem->data;
+  data = (token_stack_element_t *)elem->data;
   if (data == NULL) {
     return false;
   }
@@ -334,7 +334,7 @@ bool reduce(token_stack_t *stack) {
       return false;
     }
 
-    data = (element_token_t *)elem->data;
+    data = (token_stack_element_t *)elem->data;
     if (data == NULL) {
       return false;
     }
@@ -404,7 +404,7 @@ token_type_t get_top_token_type(token_stack_t *stack) {
   t_stack_element *elem = stack_get_top(stack->top);
 
   while (elem != NULL) {
-    element_token_t *data = (element_token_t *)elem->data;
+    token_stack_element_t *data = (token_stack_element_t *)elem->data;
     if (data->type == TOKEN) {
       return data->token.token->type;
     }
@@ -433,7 +433,7 @@ ast_node_t *return_final_node(token_stack_t *stack) {
     return NULL;
   }
 
-  element_token_t *data = stack_pop(stack->top);
+  token_stack_element_t *data = stack_pop(stack->top);
   if (data == NULL) {
     return NULL;
   }
@@ -443,4 +443,52 @@ ast_node_t *return_final_node(token_stack_t *stack) {
   free(data);
 
   return node;
+}
+
+token_stack_element_type_t peek_top_element_type(token_stack_t *stack) {
+  if (stack == NULL) {
+    return ERROR_OR_EMPTY;
+  }
+  if (stack_get_size(stack->top) == 0) {
+    return ERROR_OR_EMPTY;
+  }
+
+  t_stack_element *elem = stack_get_top(stack->top);
+  if (elem == NULL) {
+    return ERROR_OR_EMPTY;
+  }
+
+  token_stack_element_t *data = (token_stack_element_t *)elem->data;
+  if (data == NULL) {
+    return ERROR_OR_EMPTY;
+  }
+  return data->type;
+}
+
+bool get_top_element(token_stack_t *stack, ast_node_t **node, token_t **token) {
+  token_stack_element_t *data;
+  switch (peek_top_element_type(stack)) {
+  case ERROR_OR_EMPTY:
+    return false;
+
+  case TOKEN:
+    if (token == NULL) {
+      return false;
+    }
+    data = stack_pop(stack->top);
+    *token = data->token.token;
+    free(data);
+    stack->token_count--;
+    return true;
+
+  case NONTERMINAL:
+    if (node == NULL) {
+      return false;
+    }
+    data = stack_pop(stack->top);
+    *node = data->nonterminal.node;
+    free(data);
+    return true;
+  }
+  return false;
 }

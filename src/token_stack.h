@@ -19,6 +19,8 @@
  */
 typedef struct token_stack_t token_stack_t;
 
+typedef enum { TOKEN, NONTERMINAL, ERROR_OR_EMPTY } token_stack_element_type_t;
+
 /**
  * @brief Allocates and initializes a new empty token stack
  *
@@ -101,3 +103,7 @@ bool is_token_empty(token_stack_t *stack);
  * @return Pointer to the node
  */
 ast_node_t *return_final_node(token_stack_t *stack);
+
+token_stack_element_type_t peek_top_element_type(token_stack_t *stack);
+
+bool get_top_element(token_stack_t *stack, ast_node_t **node, token_t **token);
