@@ -26,7 +26,8 @@ err_code_t start(token_t *token, ast_node_t **node);
 err_code_t prolog(token_t *token);
 err_code_t prog(token_t *token, ast_node_t **node);
 err_code_t expr(token_t *token, ast_node_t **node, bool in_gen);
-err_code_t expr_pre_parse(token_t *token, ast_node_t **node);
+err_code_t expr_pre_parse(token_t *token, ast_node_t **node,
+                          token_stack_t *stack);
 err_code_t expr_tail(token_t *token, ast_node_t **node,
                      ast_node_t **expression);
 err_code_t fun_def(token_t *token, ast_node_t **node, bool is_main);
@@ -2174,6 +2175,7 @@ bool is_end(token_t *token, bool in_gen) {
   case TOK_OR:
   case TOK_R_PAREN:
   case TOK_KW_LIST:
+  case TOK_DOT:
     return false;
 
   default:
@@ -2192,7 +2194,7 @@ err_code_t expr(token_t *token, ast_node_t **node, bool in_gen) {
   while (!end) {
     ast_node_t *nonterm = NULL;
 
-    ret = expr_pre_parse(token, &nonterm);
+    ret = expr_pre_parse(token, &nonterm, stack);
 
     if (ret != NO_ERR) {
       destroy_token_stack(stack);
@@ -2329,7 +2331,8 @@ err_code_t expr_tail(token_t *token, ast_node_t **node,
 }
 
 // this handles funcall, dotcall, if stmt, unit
-err_code_t expr_pre_parse(token_t *token, ast_node_t **node) {
+err_code_t expr_pre_parse(token_t *token, ast_node_t **node,
+                          token_stack_t *stack) {
   token_t *tmp_token;
   err_code_t ret;
   tmp_token = token_create();
@@ -2342,11 +2345,6 @@ err_code_t expr_pre_parse(token_t *token, ast_node_t **node) {
     RETURN_ERR(ret);
   }
 
-  if (tmp_token->type == TOK_DOT) {
-    token_free(tmp_token);
-    return dot_call(token, node);
-  }
-
   switch (token->type) {
   case TOK_LIT_INTERP_STRING_PART:
     token_free(tmp_token);
@@ -2354,7 +2352,6 @@ err_code_t expr_pre_parse(token_t *token, ast_node_t **node) {
   case TOK_LIT_INTERP_M_STRING_PART:
     token_free(tmp_token);
     return interpol_m(token, node);
-    break;
 
   case TOK_IDENTIFIER:
     tmp_token = token_create();
@@ -2430,6 +2427,39 @@ err_code_t expr_pre_parse(token_t *token, ast_node_t **node) {
     }
     token_free(tmp_token);
     return list(token, node);
+
+  case TOK_DOT:
+    token_free(tmp_token);
+    ast_node_t *target;
+    switch (peek_top_element_type(stack)) {
+    case TOKEN:
+      if (!get_top_element(stack, NULL, &tmp_token)) {
+        return SYNTAX_ERR;
+      }
+      target = create_leaf_node(tmp_token);
+      token_free(tmp_token);
+      if (target == NULL) {
+        return SYNTAX_ERR;
+      }
+
+      ret = dot_call_tail(token, node, target);
+      if (ret != NO_ERR) {
+        destroy_node(target);
+      }
+      RETURN_ERR(ret);
+
+    case NONTERMINAL:
+      if (!get_top_element(stack, &target, NULL)) {
+        return SYNTAX_ERR;
+      }
+      ret = dot_call_tail(token, node, target);
+      if (ret != NO_ERR) {
+        destroy_node(target);
+      }
+      RETURN_ERR(ret);
+    default:
+      RETURN_ERR(SYNTAX_ERR);
+    }
 
   default:
     token_free(tmp_token);
