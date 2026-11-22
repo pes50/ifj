@@ -232,11 +232,17 @@ err_code_t ht_insert_item(hashtable_t *hashtable, const char *identificator,
       hashtable->capacity == 0) {
     return INTERNAL_ERR;
   }
+
   size_t item_idx_dumpster;
+  // Remove parent to search only in current scope
+  hashtable_t *parent = hashtable->parent;
+  hashtable->parent = NULL;
   // if symbol of same id is already in the table, then redefinition happened
   if (ht_find_item(hashtable, identificator, &item_idx_dumpster) == NO_ERR) {
+    hashtable->parent = parent;
     return REDEF_SYMBOL_ERR;
   }
+  hashtable->parent = parent;
 
   // project onto <0, table capacity>
   size_t hash_value = ht_hash_function(identificator) % hashtable->capacity;
