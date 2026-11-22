@@ -30,7 +30,7 @@ err_code_t analyse_argument_list(ast_node_t *parameter_list,
   }
 
   if (parameter_list != NULL && parameter_list->type != AST_PARAMETER_LIST) {
-    return OTHER_SEMANTIC_ERR;
+    return ARG_MISMATCH_ERR;
   }
 
   ast_node_t *current_argument_list = argument_list;
@@ -55,7 +55,7 @@ err_code_t analyse_argument_list(ast_node_t *parameter_list,
 
     if (is_generic_list) {
       if (target_type->type != DATA_TYPE_LIST) {
-        RETURN_ERR(TYPE_COMPAT_ERR);
+        RETURN_ERR(ARG_MISMATCH_ERR);
       }
     } else
       // Check $target type
@@ -91,13 +91,13 @@ err_code_t analyse_argument_list(ast_node_t *parameter_list,
       }
 
       if (current_argument->data_type->type != DATA_TYPE_LAMBDA) {
-        RETURN_ERR(TYPE_COMPAT_ERR);
+        RETURN_ERR(ARG_MISMATCH_ERR);
       }
 
       if (!are_data_types_compatible(
               current_argument->data_type->data.lambda_type.parameter_types,
               target_type->data.list_type.elements_type)) {
-        RETURN_ERR(TYPE_COMPAT_ERR);
+        RETURN_ERR(ARG_MISMATCH_ERR);
       }
 
       // Move pointers
@@ -513,7 +513,7 @@ err_code_t analyse_if(ast_node_t *node, hashtable_t *symtable,
 
   if (false_branch == NULL) {
     if (is_last && !are_data_types_identical(explicit_data_type, &node_unit)) {
-      return OTHER_SEMANTIC_ERR;
+      return TYPE_COMPAT_ERR;
     }
     node->data_type = &node_unit;
     return NO_ERR;
@@ -1049,7 +1049,7 @@ err_code_t analyse_expression(ast_node_t *node, hashtable_t *symtable,
     }
 
     if (table_node->data_type == NULL) {
-      RETURN_ERR(OTHER_SEMANTIC_ERR);
+      RETURN_ERR(INTERNAL_ERR);
     }
 
     if (table_node->type == AST_LIST_CONSTRUCTOR) {
