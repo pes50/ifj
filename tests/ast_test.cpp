@@ -2000,6 +2000,113 @@ ast_node_t *build_valmem_program_ast() {
 
 #pragma endregion
 
+#pragma region Build Shadowing Test ASTs
+
+// Test 1: Variable shadowing inside a nested block
+// @main def varShadowExample(): Unit = {
+//   val x = 10
+//   if (true) {
+//     val x = "shadowed" // Shadows outer Int with String in nested block
+//     print(x)
+//   }
+//   val check: Int = x + 1 // Outer x is still Int (10)
+// }
+ast_node_t *build_variable_shadowing_ast() {
+  ast_node_t *main_params = create_parameter_list_node(nullptr);
+
+  // val x = 10
+  ast_node_t *outer_x = create_variable_declaration_node(
+      const_cast<char *>("x"), nullptr, true, make_leaf(TOK_LIT_INT, "10"));
+
+  // Nested block: { val x = "shadowed"; print(x) }
+  ast_node_t *inner_x =
+      create_variable_declaration_node(const_cast<char *>("x"), nullptr, true,
+                                       make_leaf(TOK_LIT_STRING, "shadowed"));
+
+  ast_node_t *inner_print = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "x")));
+
+  ast_node_t *nested_block =
+      create_block_node(chain_nodes({inner_x, inner_print}));
+
+  ast_node_t *stmt_if =
+      create_if_node(make_leaf(TOK_LIT_TRUE, "true"), nested_block, nullptr);
+
+  // val check: Int = x + 1 (verifies outer x wasn't overwritten by String)
+  ast_node_t *stmt_check = create_variable_declaration_node(
+      const_cast<char *>("check"), &node_int, true,
+      create_binary_operation_node(TOK_BINARY_PLUS,
+                                   make_leaf(TOK_IDENTIFIER, "x"),
+                                   make_leaf(TOK_LIT_INT, "1")));
+
+  ast_node_t *main_body =
+      create_block_node(chain_nodes({outer_x, stmt_if, stmt_check}));
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("varShadowExample"), main_params, main_body,
+      &node_unit, true);
+
+  return create_block_node(fn_main);
+}
+
+// Test 2: Shadowing a function with a variable in a nested block
+// def helper(): Int = 1
+// @main def fnShadowExample(): Unit = {
+//   val before: Int = helper()
+//   if (true) {
+//     val helper = "shadowed" // Shadows function `helper` with a String
+//     variable print(helper)
+//   }
+//   val after: Int = helper() // Outer function `helper` is accessible again
+// }
+ast_node_t *build_function_shadowing_ast() {
+  // Top-level: def helper(): Int = 1
+  ast_node_t *outer_helper = create_function_declaration_node(
+      const_cast<char *>("helper"), create_parameter_list_node(nullptr),
+      create_block_node(make_leaf(TOK_LIT_INT, "1")), &node_int, false);
+
+  ast_node_t *main_params = create_parameter_list_node(nullptr);
+
+  // val before: Int = helper()
+  ast_node_t *stmt_before = create_variable_declaration_node(
+      const_cast<char *>("before"), &node_int, true,
+      create_function_call_node(const_cast<char *>("helper"),
+                                create_argument_list_node(nullptr)));
+
+  // Nested block: { val helper = "shadowed"; print(helper) }
+  ast_node_t *inner_helper_var = create_variable_declaration_node(
+      const_cast<char *>("helper"), nullptr, true,
+      make_leaf(TOK_LIT_STRING, "shadowed"));
+
+  ast_node_t *inner_print = create_function_call_node(
+      const_cast<char *>("print"),
+      create_argument_list_node(make_leaf(TOK_IDENTIFIER, "helper")));
+
+  ast_node_t *nested_block =
+      create_block_node(chain_nodes({inner_helper_var, inner_print}));
+
+  ast_node_t *stmt_if =
+      create_if_node(make_leaf(TOK_LIT_TRUE, "true"), nested_block, nullptr);
+
+  // val after: Int = helper()
+  ast_node_t *stmt_after = create_variable_declaration_node(
+      const_cast<char *>("after"), &node_int, true,
+      create_function_call_node(const_cast<char *>("helper"),
+                                create_argument_list_node(nullptr)));
+
+  ast_node_t *main_body =
+      create_block_node(chain_nodes({stmt_before, stmt_if, stmt_after}));
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("fnShadowExample"), main_params, main_body, &node_unit,
+      true);
+
+  return create_block_node(chain_nodes({outer_helper, fn_main}));
+}
+
+#pragma endregion
+
 #pragma region Generalized Test Runner & Registration
 
 TEST_P(SemanticAnalyserParamTest, DiffBeforeAndAfterAnalysis) {
@@ -2042,7 +2149,11 @@ INSTANTIATE_TEST_SUITE_P(
         SemanticTestCase{"Lists", build_lists_program_ast, NO_ERR, true},
         SemanticTestCase{"Paramlists", build_paramlists_program_ast, NO_ERR,
                          true},
-        SemanticTestCase{"Valmem", build_valmem_program_ast, NO_ERR, true}),
+        SemanticTestCase{"Valmem", build_valmem_program_ast, NO_ERR, true},
+        SemanticTestCase{"VarShadowing", build_variable_shadowing_ast, NO_ERR,
+                         true},
+        SemanticTestCase{"FnShadowing", build_function_shadowing_ast, NO_ERR,
+                         true}),
     [](const ::testing::TestParamInfo<SemanticTestCase> &info) {
       return info.param.name;
     });
