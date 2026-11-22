@@ -481,7 +481,7 @@ err_code_t type_to_string(data_type_node_t *data_type, char **result) {
     break;
   default:
     // Type is not supported
-    return OTHER_SEMANTIC_ERR;
+    return TYPE_COMPAT_ERR;
   }
 
   char *duplicated = string_duplicate(src);

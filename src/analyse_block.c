@@ -62,9 +62,12 @@ err_code_t analyse_variable_declaration(ast_node_t *node,
     return INTERNAL_ERR;
   }
 
-  ast_node_t *expression = node->data.variable_declaration.expression;
+  if (node->type != AST_VARIABLE_DECLARATION) {
+    return OTHER_SEMANTIC_ERR;
+  }
 
-  if (node->type != AST_VARIABLE_DECLARATION || expression == NULL) {
+  ast_node_t *expression = node->data.variable_declaration.expression;
+  if (expression == NULL) {
     return OTHER_SEMANTIC_ERR;
   }
 
@@ -83,7 +86,7 @@ err_code_t analyse_variable_declaration(ast_node_t *node,
     }
 
     if (!are_data_types_compatible(expression->data_type, data_type)) {
-      return OTHER_SEMANTIC_ERR;
+      return TYPE_COMPAT_ERR;
     }
   }
 
@@ -205,9 +208,12 @@ err_code_t analyse_for_do(ast_node_t *node, hashtable_t *symtable,
     return OTHER_SEMANTIC_ERR;
   }
 
-  if (iterator->type != AST_PARAMETER ||
-      iterator->data.parameter.name == NULL) {
+  if (iterator->type != AST_PARAMETER) {
     return OTHER_SEMANTIC_ERR;
+  }
+
+  if (iterator->data.parameter.name == NULL) {
+    return INTERNAL_ERR;
   }
 
   err_code_t err = NO_ERR;

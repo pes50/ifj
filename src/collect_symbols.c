@@ -153,7 +153,7 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
     }
 
     if (current->data.function_declaration.is_main) {
-      return OTHER_SEMANTIC_ERR;
+      return REDEF_SYMBOL_ERR;
     }
 
     char *symbol =
@@ -252,7 +252,7 @@ err_code_t collect_type(ast_node_t *node, hashtable_t *symtable) {
 
   // Type must be defined
   if (node->data.type_declaration.data_type == NULL) {
-    return OTHER_SEMANTIC_ERR;
+    return INTERNAL_ERR;
   }
 
   // Define symbol
