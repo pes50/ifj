@@ -650,8 +650,12 @@ ast_node_t *test_ext_bool_print_and_tostr() {
 #pragma region Extension ALGEBDT: readIntMaybe & readDoubleMaybe
 
 // val x: Int | Unit = readIntMaybe()
-// val msg = x match { case n: Int => val s = toStr(n); "int:" + s; case u: Unit
-// => "unit" } print(msg)
+// val msg = x match {
+//   case n: Int => val s = toStr(n); "int:" + s
+//   case u: Unit => "unit"
+//   case _ => "other"
+// }
+// print(msg)
 ast_node_t *test_ext_readintmaybe() {
   data_type_node_t *int_or_unit = create_union_type_node(chain_types({
       create_primitive_type_node(PRIMITIVE_INT),
@@ -670,7 +674,11 @@ ast_node_t *test_ext_readintmaybe() {
       create_parameter_node(const_cast<char *>("u"), &node_unit), nullptr,
       create_block_node(lit_str("unit")));
 
-  ast_node_t *m = create_match_node(id("x"), chain_nodes({c_int, c_unit}));
+  ast_node_t *c_default = create_match_case_node(
+      underscore(), nullptr, create_block_node(lit_str("other")));
+
+  ast_node_t *m =
+      create_match_node(id("x"), chain_nodes({c_int, c_unit, c_default}));
 
   return wrap_main({
       val_decl("x", call("readIntMaybe"), int_or_unit),
@@ -680,8 +688,12 @@ ast_node_t *test_ext_readintmaybe() {
 }
 
 // val x: Double | Unit = readDoubleMaybe()
-// val msg = x match { case d: Double => val s = toStr(d); "dbl:" + s; case u:
-// Unit => "unit" } print(msg)
+// val msg = x match {
+//   case d: Double => val s = toStr(d); "dbl:" + s
+//   case u: Unit => "unit"
+//   case _ => "other"
+// }
+// print(msg)
 ast_node_t *test_ext_readdoublemaybe() {
   data_type_node_t *dbl_or_unit = create_union_type_node(chain_types({
       create_primitive_type_node(PRIMITIVE_DOUBLE),
@@ -700,7 +712,11 @@ ast_node_t *test_ext_readdoublemaybe() {
       create_parameter_node(const_cast<char *>("u"), &node_unit), nullptr,
       create_block_node(lit_str("unit")));
 
-  ast_node_t *m = create_match_node(id("x"), chain_nodes({c_dbl, c_unit}));
+  ast_node_t *c_default = create_match_case_node(
+      underscore(), nullptr, create_block_node(lit_str("other")));
+
+  ast_node_t *m =
+      create_match_node(id("x"), chain_nodes({c_dbl, c_unit, c_default}));
 
   return wrap_main({
       val_decl("x", call("readDoubleMaybe"), dbl_or_unit),
@@ -1323,7 +1339,7 @@ ast_node_t *test_ext_algebdt_type_alias_and_match() {
 // case class Point(x: Int, y: Int)
 // @main def main(): Unit = {
 //   val p = Point(10, 20)
-//   val sum = p match { case Point(a, b) => a + b }
+//   val sum = p match { case Point(a, b) => a + b; case _ => 0 }
 //   print(p.x); print("|"); print(sum) -> "10|30"
 // }
 ast_node_t *test_ext_algebdt_case_class() {
@@ -1335,11 +1351,14 @@ ast_node_t *test_ext_algebdt_case_class() {
       }));
 
   ast_node_t *cc_pat = call("Point", {id("a"), id("b")});
-  ast_node_t *m = create_match_node(
-      id("p"),
+  ast_node_t *c_point =
       create_match_case_node(cc_pat, nullptr,
                              create_block_node(create_binary_operation_node(
-                                 TOK_BINARY_PLUS, id("a"), id("b")))));
+                                 TOK_BINARY_PLUS, id("a"), id("b"))));
+  ast_node_t *c_default = create_match_case_node(
+      underscore(), nullptr, create_block_node(lit_int("0")));
+
+  ast_node_t *m = create_match_node(id("p"), chain_nodes({c_point, c_default}));
 
   ast_node_t *fn_main = create_function_declaration_node(
       const_cast<char *>("main"), create_parameter_list_node(nullptr),
