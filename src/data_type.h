@@ -13,6 +13,8 @@
 #include "err_codes.h"
 #include <stdbool.h>
 
+typedef struct ast_node_t ast_node_t;
+
 /**
  * @brief Enumeration of all node types
  */
@@ -48,6 +50,7 @@ typedef struct data_type_node_t {
   union {
     struct {
       char *name;
+      struct ast_node_t *declaration;
     } class_type;
 
     struct {
@@ -105,10 +108,12 @@ void destroy_type_node(data_type_node_t *node);
  * @brief Creates a data type node for class
  *
  * @param name Class name
+ * @param declaration A pointer to the AST class declaration node
  *
  * @return A pointer to created node or NULL if failed
  */
-data_type_node_t *create_class_type_node(const char *name);
+data_type_node_t *create_class_type_node(const char *name,
+                                         ast_node_t *declaration);
 
 /**
  * @brief Creates a data type node for lambda function

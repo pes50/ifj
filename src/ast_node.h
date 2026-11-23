@@ -100,6 +100,7 @@ typedef struct ast_node_t {
     struct {
       char *name;
       struct ast_node_t *attribute_list;
+      size_t unique_class_id;
     } class_declaration;
 
     struct {

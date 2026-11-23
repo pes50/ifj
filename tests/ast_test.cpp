@@ -594,7 +594,7 @@ ast_node_t *build_algebdt_program_ast() {
   data_type_node_t *type_input = create_union_type_node(chain_types({
       create_primitive_type_node(PRIMITIVE_INT),
       clone_builtin_type(&node_unit),
-      create_class_type_node(const_cast<char *>("Point")),
+      create_class_type_node(const_cast<char *>("Point"), nullptr),
   }));
   ast_node_t *decl_type_input =
       create_type_declaration_node(const_cast<char *>("Input"), type_input);
@@ -614,7 +614,7 @@ ast_node_t *build_algebdt_program_ast() {
   // -------------------------------------------------------------------------
   ast_node_t *desc_params = create_parameter_list_node(create_parameter_node(
       const_cast<char *>("value"),
-      create_class_type_node(const_cast<char *>("Input"))));
+      create_class_type_node(const_cast<char *>("Input"), nullptr)));
 
   // Case 1: case n: Int if n > 0 => "positive integer"
   ast_node_t *case1_pattern =
@@ -699,7 +699,7 @@ ast_node_t *build_algebdt_program_ast() {
   ast_node_t *desc_amt_params =
       create_parameter_list_node(create_parameter_node(
           const_cast<char *>("value"),
-          create_class_type_node(const_cast<char *>("Amount"))));
+          create_class_type_node(const_cast<char *>("Amount"), nullptr)));
 
   // Case 1: case n: Double => val text = toStr(n); "amount: " + text
   ast_node_t *amt_c1_pattern =
@@ -744,7 +744,7 @@ ast_node_t *build_algebdt_program_ast() {
 
   ast_node_t *stmt_val_input = create_variable_declaration_node(
       const_cast<char *>("input"),
-      create_class_type_node(const_cast<char *>("Input")), true,
+      create_class_type_node(const_cast<char *>("Input"), nullptr), true,
       create_function_call_node(const_cast<char *>("readIntMaybe"),
                                 create_argument_list_node(nullptr)));
 
@@ -770,7 +770,7 @@ ast_node_t *build_algebdt_program_ast() {
 
   ast_node_t *stmt_val_amount = create_variable_declaration_node(
       const_cast<char *>("amount"),
-      create_class_type_node(const_cast<char *>("Amount")), true,
+      create_class_type_node(const_cast<char *>("Amount"), nullptr), true,
       create_function_call_node(const_cast<char *>("readDoubleMaybe"),
                                 create_argument_list_node(nullptr)));
 

@@ -686,7 +686,7 @@ err_code_t type(token_t *token, data_type_node_t **node) {
     *node = create_primitive_type_node(PRIMITIVE_STRING);
     break;
   case TOK_IDENTIFIER:
-    *node = create_class_type_node(token->value);
+    *node = create_class_type_node(token->value, NULL);
     break;
   case TOK_KW_LIST:
     token_clear(token);

@@ -91,7 +91,7 @@ err_code_t analyse_class_declaration(ast_node_t *node, hashtable_t *symtable) {
   }
 
   data_type_node_t *data_type =
-      create_class_type_node(node->data.class_declaration.name);
+      create_class_type_node(node->data.class_declaration.name, node);
   if (data_type == NULL) {
     return INTERNAL_ERR;
   }

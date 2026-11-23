@@ -26,6 +26,7 @@
 typedef struct {
   size_t unique_label_counter;
   size_t unique_var_counter;
+  size_t unique_class_counter;
   t_stack *stack;
   hashtable_t *table;
   inner_statement_t *head;
