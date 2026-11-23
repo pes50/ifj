@@ -140,3 +140,95 @@ TEST_F(ParserTest, readBoolean) {
   ASSERT_EQ(result, NO_ERR);
   destroy_node(node);
 }
+
+TEST_F(ParserTest, ifExpr) {
+  const char *program = R"(import ifj26.*
+
+@main def main(): Unit =
+    val x = -5
+    val absolute = if x < 0 then 0 - x else x
+    print(absolute)
+)";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
+
+TEST_F(ParserTest, ifExprBlock) {
+  const char *program = R"(import ifj26.*
+
+@main def main(): Unit =
+    val x = 10
+    
+    val abs2 = if x < 0 then
+        0 - x
+    else
+        x
+        
+    val abs3 = if x < 0 then 0 - x else
+        x
+)";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
+
+TEST_F(ParserTest, inlineFor) {
+  const char *program = R"(import ifj26.*
+
+@main def main(): Unit =
+    for i <- 1 to 10 do
+        print(i)
+        
+    for j <- 0 until 5 do print(j)
+    
+    for k <- 1 to 10 by 2 do
+        print(k)
+)";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
+
+TEST_F(ParserTest, multipleForGuards) {
+  const char *program = R"(import ifj26.*
+
+@main def main(): Unit =
+    val limit = 10
+    
+    for
+        i <- 0 until limit
+        if i != 3
+        if i < 8
+    do
+        print(i)
+        
+    for
+        j <- 1 to 100 by 5
+        if j > 10
+    do print(j)
+)";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
