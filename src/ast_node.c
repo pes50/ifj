@@ -569,12 +569,12 @@ ast_node_t *create_leaf_node(token_t *token) {
   case TOK_LIT_TRUE:
     node->type = AST_LITERAL;
     node->data.literal.data_type = &node_boolean;
-    node->data.literal.raw = string_duplicate(token->value);
+    node->data.literal.raw = string_duplicate("true");
     break;
   case TOK_LIT_FALSE:
     node->type = AST_LITERAL;
     node->data.literal.data_type = &node_boolean;
-    node->data.literal.raw = string_duplicate(token->value);
+    node->data.literal.raw = string_duplicate("false");
     break;
   case TOK_UNDERSCORE:
     node->type = AST_LITERAL;
