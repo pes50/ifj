@@ -36,3 +36,107 @@ TEST_F(ParserTest, Prolog) {
   ASSERT_EQ(result, NO_ERR);
   destroy_node(node);
 }
+
+TEST_F(ParserTest, PrologErr) {
+  SetUpStream("import ifj.*");
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, SYNTAX_ERR);
+  destroy_node(node);
+}
+
+TEST_F(ParserTest, FunDef) {
+  std::string program = "import ifj26.*\n"
+                        "def fun : Int = x * y";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
+
+TEST_F(ParserTest, boolOperators) {
+  const char *program = R"(import ifj26.*
+
+@main def main(): Unit =
+    val a: Boolean = true
+    var b = false
+    val c = !a || b && true
+    val d = (a == b) != false
+)";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
+
+TEST_F(ParserTest, noElse) {
+  const char *program = R"(import ifj26.*
+
+@main def main(): Unit =
+    val flag = true
+    if flag then
+        print("Pravda")
+)";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
+
+TEST_F(ParserTest, elseIfChain) {
+  const char *program = R"(import ifj26.*
+
+@main def main(): Unit =
+    val x = 5
+    if x < 0 then
+        print("Zaporne")
+    else if x == 0 then
+        print("Nula")
+    else if x == 1 then
+        print("Jedna")
+    else
+        print("Jine")
+)";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
+
+TEST_F(ParserTest, readBoolean) {
+  const char *program = R"(import ifj26.*
+
+@main def main(): Unit =
+    val input = readBoolean()
+    val isTrue = input == true
+    
+    while !isTrue || false do
+        print("Cyklus")
+)";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
