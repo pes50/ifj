@@ -95,56 +95,57 @@ err_code_t analyse_variable_declaration(ast_node_t *node,
     return err;
   }
 
-  err = duplicate_type_node(expression->data_type, &node->data_type);
+  err = duplicate_type_node(
+      data_type != NULL ? data_type : expression->data_type, &node->data_type);
 
   return err;
 }
 
 err_code_t analyse_assignment(ast_node_t *node, hashtable_t *symtable) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   if (node->type != AST_ASSIGNMENT ||
       node->data.assignment.expression == NULL) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   ast_node_t *table_node;
   err_code_t err =
       ht_get_item(symtable, node->data.assignment.name, (void **)&table_node);
   if (err != NO_ERR) {
-    return err;
+    RETURN_ERR(err);
   }
 
   if (table_node->type == AST_PARAMETER) {
-    return ASSIGN_CONST_ERR;
+    RETURN_ERR(ASSIGN_CONST_ERR);
   }
 
   if (table_node->type != AST_VARIABLE_DECLARATION) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   node->data.assignment.calling = table_node;
 
   if (table_node->data.variable_declaration.is_const) {
-    return ASSIGN_CONST_ERR;
+    RETURN_ERR(ASSIGN_CONST_ERR);
   }
 
   err = analyse_expression(node->data.assignment.expression, symtable, NULL,
                            true, false);
   if (err != NO_ERR) {
-    return err;
+    RETURN_ERR(err);
   }
 
   if (!are_data_types_compatible(node->data.assignment.expression->data_type,
                                  table_node->data_type)) {
-    return TYPE_COMPAT_ERR;
+    RETURN_ERR(TYPE_COMPAT_ERR);
   }
 
   err = duplicate_type_node(&node_unit, &node->data_type);
 
-  return err;
+  RETURN_ERR(err);
 }
 
 err_code_t analyse_return(ast_node_t *node, hashtable_t *symtable,
