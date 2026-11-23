@@ -5,7 +5,7 @@
  * @author Roman Skoupý     (xskoupr00)
  * @author Tomáš Peňás      (xpenast00)
  *
- * @brief Implementation whole of AST to 3AC conversion
+ * @brief Implementation of AST to 3AC conversion entrypoint
  *
  \*****************************************************************************/
 
@@ -14,9 +14,31 @@
 #include <stdio.h>
 #include <string.h>
 
-/********************\
- * Helper functions *
-\********************/
+#pragma region Helper functions
+
+#pragma region Pop parameter lists
+
+/**
+ * @brief Creates variable identifier with LF@ (local frame) prefix
+ *
+ * @param identifier Identifier of the variable
+ *
+ * @return Allocated string with the prefix
+ */
+static char *alloc_lf_var_name(const char *identifier) {
+  if (identifier == NULL) {
+    return NULL;
+  }
+
+  size_t len = strlen("LF@") + strlen(identifier);
+  char *result = malloc(len + 1);
+  if (result == NULL) {
+    return NULL;
+  }
+
+  snprintf(result, len + 1, "LF@%s", identifier);
+  return result;
+}
 
 /**
  * @brief Defines LF parameter variables and pops incoming arguments in reverse
@@ -71,6 +93,8 @@ err_code_t pop_parameter_lists_reverse(context_t *context,
   RETURN_ERR(pop_parameter_list_reverse(
       context, param_list->data.parameter_list.parameters));
 }
+
+#pragma endregion
 
 /**
  * @brief Adds call main and exit 0 statements to the program
@@ -222,9 +246,9 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
   RETURN_ERR(NO_ERR);
 }
 
-/****************************\
- * Interface implementation *
-\****************************/
+#pragma endregion
+
+#pragma region Interface implementation
 
 err_code_t enqueue_function(context_t *context,
                             ast_node_t *function_declaration_node) {
@@ -336,3 +360,5 @@ cleanup:
 
   RETURN_ERR(err);
 }
+
+#pragma endregion
