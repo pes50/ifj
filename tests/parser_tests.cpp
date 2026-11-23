@@ -232,3 +232,98 @@ TEST_F(ParserTest, multipleForGuards) {
   ASSERT_EQ(result, NO_ERR);
   destroy_node(node);
 }
+
+TEST_F(ParserTest, lambdasBasic) {
+  const char *program = R"(import ifj26.*
+
+def executeOp(a: Int, b: Int, op: (Int, Int) => Int): Int =
+    op(a, b) // volani prijate funkce
+
+@main def main(): Unit =
+    // explicitne otypovana promenna s lambda funkci (jednořádkové tělo)
+    val add: (Int, Int) => Int = (x: Int, y: Int) => x + y
+    
+    val result = executeOp(10, 20, add)
+    print(result)
+)";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
+
+TEST_F(ParserTest, lambdasBlock) {
+  const char *program = R"(import ifj26.*
+
+@main def main(): Unit =
+    val formatNumber: (Int) => String = (n: Int) =>
+        val prefix = "Number is: "
+        val str = toStr(n)
+        prefix + str // posledni vyraz urcuje navratovou hodnotu (nesmi tu byt return)
+
+    print(formatNumber(42))
+)";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
+
+TEST_F(ParserTest, lambdasReturnFunc) {
+  const char *program = R"(import ifj26.*
+
+def doubleValue(x: Int): Int =
+    x * 2
+
+// Funkce vraci jinou (anonymni) funkci
+def getMultiplier(): (Int) => Int =
+    return (v: Int) => v * 10
+
+@main def main(): Unit =
+    // prirazeni bezne funkce vyzaduje explicitni uvedeni typu
+    val f1: (Int) => Int = doubleValue
+    val f2 = getMultiplier()
+    
+    print(f1(5))
+    print(f2(5))
+)";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
+
+TEST_F(ParserTest, lambdasParameterless) {
+  const char *program = R"(import ifj26.*
+
+def runTask(task: () => Unit): Unit =
+    task()
+
+@main def main(): Unit =
+    val sayHello: () => Unit = () =>
+        print("Hello from parameterless lambda!\n")
+        () // vracime Unit
+        
+    runTask(sayHello)
+)";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
