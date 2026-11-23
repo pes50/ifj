@@ -5,7 +5,7 @@
  * @author Roman Skoupý     (xskoupr00)
  * @author Tomáš Peňás      (xpenast00)
  *
- * @brief Interface of whole AST to 3AC conversion
+ * @brief Interface of AST to 3AC conversion entrypoint
  *
  \*****************************************************************************/
 
