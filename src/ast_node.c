@@ -277,6 +277,7 @@ ast_node_t *create_class_declaration_node(char *name, ast_node_t *attributes) {
   node->type = AST_CLASS_DECLARATION;
   node->data.class_declaration.name = string_duplicate(name);
   node->data.class_declaration.attribute_list = attributes;
+  node->data.class_declaration.unique_class_id = 0;
 
   // Check if string_duplicate failed
   if (node->data.class_declaration.name == NULL) {

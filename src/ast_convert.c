@@ -276,6 +276,7 @@ err_code_t ast_convert(ast_node_t *main_node, inner_statement_t **code) {
   context_t context = {
       .unique_label_counter = 0,
       .unique_var_counter = 0,
+      .unique_class_counter = 0,
       .head = NULL,
       .stack = NULL,
       .table = NULL,

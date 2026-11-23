@@ -107,7 +107,8 @@ void destroy_type_node(data_type_node_t *node) {
   free(node);
 }
 
-data_type_node_t *create_class_type_node(const char *name) {
+data_type_node_t *create_class_type_node(const char *name,
+                                         ast_node_t *declaration) {
   // Create node
   data_type_node_t *node = create_type_node();
   if (node == NULL) {
@@ -117,6 +118,7 @@ data_type_node_t *create_class_type_node(const char *name) {
   // Initialize
   node->type = DATA_TYPE_CLASS;
   node->data.class_type.name = string_duplicate(name);
+  node->data.class_type.declaration = declaration;
 
   // Check if string_duplicate failed
   if (node->data.class_type.name == NULL) {
@@ -223,6 +225,7 @@ err_code_t duplicate_type_node(data_type_node_t *original,
       destroy_type_node(node);
       return INTERNAL_ERR;
     }
+    node->data.class_type.declaration = original->data.class_type.declaration;
     break;
   case DATA_TYPE_LAMBDA:
     if (duplicate_type_node(original->data.lambda_type.parameter_types,
