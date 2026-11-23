@@ -889,14 +889,14 @@ err_code_t analyse_match(ast_node_t *node, hashtable_t *symtable,
                          data_type_node_t *explicit_data_type,
                          bool allow_return) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   ast_node_t *cases = node->data.match.cases;
   ast_node_t *expression = node->data.match.expression;
 
   if (node->type != AST_MATCH || cases == NULL || expression == NULL) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   err_code_t err = analyse_expression(expression, symtable, NULL, true, false);
@@ -938,10 +938,10 @@ err_code_t analyse_match(ast_node_t *node, hashtable_t *symtable,
   }
 
   if (default_count != 1) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 #pragma endregion

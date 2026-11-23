@@ -326,6 +326,9 @@ bool are_unions_equivalent(data_type_node_t *union_a,
 bool is_union_unnecessary(data_type_node_t *union_node,
                           data_type_node_t *target_type) {
   data_type_node_t *current = union_node->data.union_type.types;
+  if (current == NULL) {
+    return false;
+  }
 
   // Remove .next to ignore following nodes
   data_type_node_t target_no_next = *target_type;
@@ -359,11 +362,13 @@ bool are_data_types_identical(data_type_node_t *data_type_a,
   if (data_type_a->type != data_type_b->type) {
     // A | A == A
     if (data_type_a->type == DATA_TYPE_UNION) {
-      return is_union_unnecessary(data_type_a, data_type_b);
+      return is_union_unnecessary(data_type_a, data_type_b) &&
+             are_data_types_identical(data_type_a->next, data_type_b->next);
     }
     // A == A | A
     if (data_type_b->type == DATA_TYPE_UNION) {
-      return is_union_unnecessary(data_type_b, data_type_a);
+      return is_union_unnecessary(data_type_b, data_type_a) &&
+             are_data_types_identical(data_type_a->next, data_type_b->next);
     }
     return false;
   }
@@ -433,12 +438,30 @@ bool are_data_types_compatible(data_type_node_t *data_type_a,
     return false;
   }
 
-  // at least one of the types is union
+  // target type is union
   if (data_type_b->type == DATA_TYPE_UNION) {
     if (data_type_a->type == DATA_TYPE_UNION) {
       return is_union_subset(data_type_a, data_type_b);
     }
     return union_contains_type(data_type_a, data_type_b);
+  }
+
+  // source type is union
+  if (data_type_a->type == DATA_TYPE_UNION) {
+    data_type_node_t *current = data_type_a->data.union_type.types;
+    if (current == NULL) {
+      return false;
+    }
+
+    while (current != NULL) {
+      data_type_node_t current_no_next = *current;
+      current_no_next.next = NULL;
+      if (!are_data_types_compatible(&current_no_next, data_type_b)) {
+        return false;
+      }
+      current = current->next;
+    }
+    return true;
   }
 
   // only other valid conversion is int->float

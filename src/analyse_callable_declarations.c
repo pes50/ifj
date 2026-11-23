@@ -207,11 +207,11 @@ err_code_t analyse_function_declaration(ast_node_t *node,
 
   node->_visited = false;
   ht_destruct(&current_scope);
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 fun_err:
   node->_visited = false;
   ht_destruct(&current_scope);
-  return err;
+  RETURN_ERR(err);
 }
 
 err_code_t analyse_lambda_declaration(ast_node_t *node, hashtable_t *symtable) {
