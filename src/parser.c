@@ -26,6 +26,7 @@ err_code_t start(token_t *token, ast_node_t **node);
 err_code_t prolog(token_t *token);
 err_code_t prog(token_t *token, ast_node_t **node);
 err_code_t expr(token_t *token, ast_node_t **node, bool in_gen);
+err_code_t check_lambda(token_t *token, ast_node_t **node, bool *end);
 err_code_t expr_pre_parse(token_t *token, ast_node_t **node,
                           token_stack_t *stack);
 err_code_t expr_tail(token_t *token, ast_node_t **node,
@@ -43,7 +44,7 @@ err_code_t lambda_type_tail(token_t *token, data_type_node_t **node);
 err_code_t params(token_t *token, ast_node_t **node);
 err_code_t params_tail(token_t *token, ast_node_t **node);
 err_code_t param(token_t *token, ast_node_t **node);
-err_code_t fun_body(token_t *token, ast_node_t **node);
+err_code_t fun_body(token_t *token, ast_node_t **node, bool is_lambda);
 err_code_t block(token_t *token, ast_node_t **node);
 err_code_t stmt_tail(token_t *token, ast_node_t **node);
 err_code_t stmt(token_t *token, ast_node_t **node);
@@ -291,7 +292,7 @@ err_code_t fun_def(token_t *token, ast_node_t **node, bool is_main) {
   }
 
   ast_node_t *body;
-  ret = fun_body(token, &body);
+  ret = fun_body(token, &body, false);
   if (ret != NO_ERR) {
     free(name);
     destroy_node(parameter_lists);
@@ -725,6 +726,9 @@ err_code_t type(token_t *token, data_type_node_t **node) {
   case TOK_L_PAREN:
     return lambda_type(token, node);
 
+  case TOK_R_PAREN:
+    return NO_ERR;
+
   default:
     return SYNTAX_ERR;
   }
@@ -939,7 +943,7 @@ err_code_t param(token_t *token, ast_node_t **node) {
 
 #pragma region BLOCK BODY
 
-err_code_t fun_body(token_t *token, ast_node_t **node) {
+err_code_t fun_body(token_t *token, ast_node_t **node, bool is_lambda) {
   // same line definition
   if (token->type != TOK_EOL) {
     ast_node_t *body;
@@ -953,11 +957,13 @@ err_code_t fun_body(token_t *token, ast_node_t **node) {
       RETURN_ERR(SYNTAX_ERR);
     }
 
-    token_clear(token);
-    ret = lexer_get_token(token, FORBIDDEN);
-    if (ret != NO_ERR) {
-      destroy_node(body);
-      RETURN_ERR(ret);
+    if (!is_lambda) {
+      token_clear(token);
+      ret = lexer_get_token(token, FORBIDDEN);
+      if (ret != NO_ERR) {
+        destroy_node(body);
+        RETURN_ERR(ret);
+      }
     }
 
     *node = create_block_node(body);
@@ -1941,7 +1947,7 @@ err_code_t case_tail(token_t *token, ast_node_t **guard,
     RETURN_ERR(ret);
   }
 
-  ret = fun_body(token, expression);
+  ret = fun_body(token, expression, false);
   if (ret != NO_ERR) {
     destroy_node(*guard);
   }
@@ -2184,11 +2190,20 @@ bool is_end(token_t *token, bool in_gen) {
 }
 
 err_code_t expr(token_t *token, ast_node_t **node, bool in_gen) {
+  bool is_lambda = false;
+  err_code_t ret = check_lambda(token, node, &is_lambda);
+  if (ret != NO_ERR) {
+    RETURN_ERR(ret);
+  }
+  if (is_lambda) {
+    return NO_ERR;
+  }
+
   token_stack_t *stack = create_token_stack();
   if (stack == NULL) {
     RETURN_ERR(INTERNAL_ERR);
   }
-  err_code_t ret = NO_ERR;
+
   bool end = false;
 
   while (!end) {
@@ -2328,6 +2343,57 @@ err_code_t expr_tail(token_t *token, ast_node_t **node,
     RETURN_ERR(INTERNAL_ERR);
   }
   return NO_ERR;
+}
+
+err_code_t check_lambda(token_t *token, ast_node_t **node, bool *end) {
+  *end = false;
+  if (token->type != TOK_L_PAREN) {
+    return NO_ERR;
+  }
+
+  token_t *tmp_token;
+  err_code_t ret;
+  tmp_token = token_create();
+  if (tmp_token == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+  ret = lexer_peek_token(tmp_token, ALLOWED, 0);
+  if (ret != NO_ERR) {
+    token_free(tmp_token);
+    RETURN_ERR(ret);
+  }
+
+  if (tmp_token->type != TOK_IDENTIFIER) {
+    token_clear(tmp_token);
+    ret = lexer_peek_token(tmp_token, ALLOWED, 1);
+    if (ret != NO_ERR) {
+      token_free(tmp_token);
+      RETURN_ERR(ret);
+    }
+
+    if (tmp_token->type != TOK_ARROW_RIGHT) {
+      token_free(tmp_token);
+      return NO_ERR;
+    }
+    token_free(tmp_token);
+    *end = true;
+    return lambda(token, node);
+  }
+
+  token_clear(tmp_token);
+  ret = lexer_peek_token(tmp_token, ALLOWED, 1);
+  if (ret != NO_ERR) {
+    token_free(tmp_token);
+    RETURN_ERR(ret);
+  }
+
+  if (tmp_token->type != TOK_COLON) {
+    token_free(tmp_token);
+    return NO_ERR;
+  }
+  token_free(tmp_token);
+  *end = true;
+  return lambda(token, node);
 }
 
 // this handles funcall, dotcall, if stmt, unit
@@ -2924,18 +2990,10 @@ err_code_t lambda(token_t *token, ast_node_t **node) {
   }
 
   ast_node_t *body = NULL;
-  ast_node_t *expression = NULL;
-  ret = expr(token, &expression, false);
+  ret = fun_body(token, &body, true);
   if (ret != NO_ERR) {
     destroy_node(parameters);
     RETURN_ERR(ret);
-  }
-
-  body = create_block_node(expression);
-  if (body == NULL) {
-    destroy_node(parameters);
-    destroy_node(expression);
-    RETURN_ERR(INTERNAL_ERR);
   }
 
   *node = create_lambda_declaration_node(parameters, body);
