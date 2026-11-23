@@ -11,7 +11,7 @@ extern "C" {
 
 namespace fs = std::filesystem;
 
-TEST(ParserTest, ParsesAllScalaExamples) {
+TEST(ParserExampleTest, ParsesAllScalaExamples) {
   const std::string examples_dir = "examples";
 
   ASSERT_TRUE(fs::exists(examples_dir) && fs::is_directory(examples_dir))
