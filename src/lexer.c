@@ -136,6 +136,11 @@ static bool token_prev_for_kw = false;
 // Set true when block comment containing LF ended.
 static bool lf_inside_ml_com = false;
 
+// Tracks open parentheses and brackets and indentation of line where the
+// expression started.
+static size_t bracket_depth = 0;
+static size_t bracket_start_indent = 0;
+
 /**
  * @brief Determine whether the token should have value.
  *
@@ -386,28 +391,41 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
           return LEXICAL_ERR;
         }
 
+        indent_level = 0;
+        if (bracket_depth > 0) {
+          state = S_LINE_START;
+          break;
+        }
+
         *type = TOK_EOL;
         next_state = S_LINE_START;
-        indent_level = 0;
         lexer_run = false;
         break;
 
       case '(':
+        bracket_depth++;
         *type = TOK_L_PAREN;
         lexer_run = false;
         break;
 
       case ')':
+        if (bracket_depth > 0) {
+          bracket_depth--;
+        }
         *type = TOK_R_PAREN;
         lexer_run = false;
         break;
 
       case '[':
+        bracket_depth++;
         *type = TOK_L_BRACKET;
         lexer_run = false;
         break;
 
       case ']':
+        if (bracket_depth > 0) {
+          bracket_depth--;
+        }
         *type = TOK_R_BRACKET;
         lexer_run = false;
         break;
@@ -897,10 +915,16 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         if (character == EOF) {
           ungetc(character, input_stream);
         }
-        *type = TOK_EOL;
+
         indent_level = 0;
-        next_state = S_LINE_START;
-        lexer_run = false;
+
+        if (bracket_depth > 0 && character == '\n') {
+          state = S_LINE_START;
+        } else {
+          *type = TOK_EOL;
+          next_state = S_LINE_START;
+          lexer_run = false;
+        }
       } else {
         state = S_LINE_COMMENT;
       }
@@ -948,10 +972,15 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else if (comment_depth_cnt == 0 && has_newline) {
         // Top-level comment closed.
         lf_inside_ml_com = true;
-        *type = TOK_EOL;
         indent_level = 0;
-        next_state = S_LINE_START;
-        lexer_run = false;
+
+        if (bracket_depth > 0) {
+          state = S_LINE_START;
+        } else {
+          *type = TOK_EOL;
+          next_state = S_LINE_START;
+          lexer_run = false;
+        }
       } else {
         // Single-line block comment closed.
         state = S_START;
@@ -1364,6 +1393,21 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       // Return the first non-whitespace character back to the stream.
       ungetc(character, input_stream);
 
+      if (bracket_depth > 0) {
+        bool is_closing = (character == ')' || character == ']');
+        size_t min_indent =
+            is_closing ? bracket_start_indent : bracket_start_indent + 1;
+
+        if (character == EOF || indent_level < min_indent) {
+          return LEXICAL_ERR;
+        }
+        state = S_START;
+        continue;
+      }
+
+      // Start of a new logical line.
+      bracket_start_indent = indent_level;
+
       // Indentation increased.
       if (indent_level > indent_stack_top(&indent_stack)) {
         if (indent_stack_push(&indent_stack, indent_level) != NO_ERR) {
@@ -1514,6 +1558,8 @@ void lexer_destroy(void) {
   inside_for_loop = false;
   token_prev_for_kw = false;
   indent_level = 0;
+  bracket_depth = 0;
+  bracket_start_indent = 0;
   in_interpolated_str = false;
   interpolated_ml_str = false;
   lf_inside_ml_com = false;
