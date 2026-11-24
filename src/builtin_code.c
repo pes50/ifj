@@ -6,6 +6,9 @@
  *
  * @brief Implementation of built in functions.
  *
+ * @note Written by the author. AI was used to verify instruction chaining
+*        (next_statement).
+ *
 \*****************************************************************************/
 
 #include "builtin_code.h"
