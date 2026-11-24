@@ -327,3 +327,75 @@ def runTask(task: () => Unit): Unit =
   ASSERT_EQ(result, NO_ERR);
   destroy_node(node);
 }
+
+TEST_F(ParserTest, listsBasic) {
+  const char *program = R"(import ifj26.*
+
+@main def main(): Unit =
+    val empty: List[Int] = List()
+    val a = List(1, 2, 3)
+    val b: List[Int] = List(4, 5)
+    val combined = a ++ b ++ empty
+    val first = combined(0)
+    print(first)
+)";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
+
+TEST_F(ParserTest, listsMember) {
+  const char *program = R"(import ifj26.*
+
+@main def main(): Unit =
+    val r1 = List.range(1, 10)
+    val r2 = List.range(0, 20, 2)
+    
+    val h = r1.head
+    val t = r1.tail
+    val taken = r2.take(3)
+    val dropped = r2.drop(2)
+    val sliced = r1.slice(1, 4)
+    val s = sliced.toString
+    
+    print(h)
+    print(s)
+)";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
+
+TEST_F(ParserTest, listsLambdas) {
+  const char *program = R"(import ifj26.*
+
+@main def main(): Unit =
+    val nums = List(1, 2, 6, 89, 20, 1)
+    
+    val filtered = nums.filter((x: Int) => x > 5)
+    val taken = nums.takeWhile((x: Int) => x < 10)
+    val dropped = nums.dropWhile((x: Int) => x < 10)
+    
+    print(filtered)
+    print(taken)
+    print(dropped)
+)";
+
+  SetUpStream(program);
+
+  ast_node_t *node = nullptr;
+  err_code_t result = parse(&node, stream);
+
+  ASSERT_EQ(result, NO_ERR);
+  destroy_node(node);
+}
