@@ -3459,7 +3459,7 @@ inner_statement_t floor_code = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "floor",
+            .data.identificator = "Double$floor",
         },
     .next_statement = &floor_s1,
     .is_static = true,
@@ -3577,7 +3577,7 @@ inner_statement_t head_code = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "head",
+            .data.identificator = "List$$head",
         },
     .next_statement = &head_s0,
     .is_static = true,
@@ -4426,7 +4426,7 @@ inner_statement_t slice_code = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "slice",
+            .data.identificator = "List$$slice",
         },
     .next_statement = &slice_s1,
     .is_static = true,
@@ -4442,7 +4442,7 @@ static inner_statement_t drop_s14 = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "slice",
+            .data.identificator = "List$$slice",
         },
     .next_statement = NULL,
     .is_static = true,
@@ -4623,7 +4623,7 @@ inner_statement_t drop_code = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "drop",
+            .data.identificator = "List$$drop",
         },
     .next_statement = &drop_s1,
     .is_static = true,
@@ -4639,7 +4639,7 @@ static inner_statement_t take_s11 = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "slice",
+            .data.identificator = "List$$slice",
         },
     .next_statement = NULL,
     .is_static = true,
@@ -4760,7 +4760,7 @@ inner_statement_t take_code = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "take",
+            .data.identificator = "List$$take",
         },
     .next_statement = &take_s1,
     .is_static = true,
@@ -4776,7 +4776,7 @@ static inner_statement_t tail_s14 = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "slice",
+            .data.identificator = "List$$slice",
         },
     .next_statement = NULL,
     .is_static = true,
@@ -4975,7 +4975,7 @@ inner_statement_t tail_code = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "tail",
+            .data.identificator = "List$$tail",
         },
     .next_statement = &tail_s1,
     .is_static = true,
@@ -5732,7 +5732,7 @@ inner_statement_t filter_code = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "filter",
+            .data.identificator = "List$$filter",
         },
     .next_statement = &filter_s1,
     .is_static = true,
@@ -5748,7 +5748,7 @@ static inner_statement_t take_while_s28 = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "slice",
+            .data.identificator = "List$$slice",
         },
     .next_statement = NULL,
     .is_static = true,
@@ -6158,7 +6158,7 @@ inner_statement_t take_while_code = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "takeWhile",
+            .data.identificator = "List$$takeWhile",
         },
     .next_statement = &take_while_s1,
     .is_static = true,
@@ -6174,7 +6174,7 @@ static inner_statement_t drop_while_s28 = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "slice",
+            .data.identificator = "List$$slice",
         },
     .next_statement = NULL,
     .is_static = true,
@@ -6580,7 +6580,7 @@ inner_statement_t drop_while_code = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "dropWhile",
+            .data.identificator = "List$$dropWhile",
         },
     .next_statement = &drop_while_s1,
     .is_static = true,
@@ -7408,7 +7408,7 @@ inner_statement_t range_code = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "range",
+            .data.identificator = "List$$range",
         },
     .next_statement = &range_s1,
     .is_static = true,
@@ -7424,7 +7424,7 @@ static inner_statement_t to_list_s26 = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "range",
+            .data.identificator = "List$$range",
         },
     .next_statement = NULL,
     .is_static = true,
@@ -7847,7 +7847,7 @@ inner_statement_t to_list_code = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "toList",
+            .data.identificator = "$Range$toList",
         },
     .next_statement = &to_list_s1,
     .is_static = true,
@@ -8096,7 +8096,7 @@ inner_statement_t until_code = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "until",
+            .data.identificator = "Int$until",
         },
     .next_statement = &until_s1,
     .is_static = true,
@@ -8345,7 +8345,7 @@ inner_statement_t to_code = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "to",
+            .data.identificator = "Int$to",
         },
     .next_statement = &to_s1,
     .is_static = true,
@@ -8529,7 +8529,7 @@ inner_statement_t by_code = {
     .destination =
         {
             .type = INNER_SYM_LABEL,
-            .data.identificator = "by",
+            .data.identificator = "$Range$by",
         },
     .next_statement = &by_s1,
     .is_static = true,

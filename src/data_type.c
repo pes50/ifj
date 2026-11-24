@@ -500,7 +500,7 @@ err_code_t type_to_string(data_type_node_t *data_type, char **result) {
     src = data_type->data.class_type.name;
     break;
   case DATA_TYPE_LIST:
-    src = "List[T]";
+    src = "List$";
     break;
   case DATA_TYPE_RANGE:
     src = "$Range";

@@ -101,7 +101,11 @@ static ast_node_t parameter_list_empty = {
 
 static ast_node_t print_body = {
     .type = AST_BUILTIN_BODY,
-    .data.builtin_body = {.first_instruction = &print_code},
+    .data.builtin_body =
+        {
+            .first_instruction = &print_code,
+            .dependencies = &to_str_function_declaration,
+        },
     .next = NULL,
 };
 
@@ -660,47 +664,6 @@ static ast_node_t read_boolean_function_declaration = {
 
 #pragma endregion
 
-#pragma region Any.toString: String
-
-static ast_node_t target_any_parameter_node = {
-    .type = AST_PARAMETER,
-    .data.parameter =
-        {
-            .name = "$target",
-            .data_type = &node_any,
-        },
-    .data_type = &node_unit,
-    .next = NULL,
-};
-
-static ast_node_t target_any_parameter_list_node = {
-    .type = AST_PARAMETER_LIST,
-    .data.parameter_list =
-        {
-            .parameters = &target_any_parameter_node,
-        },
-    .data_type = &node_unit,
-    .next = NULL,
-};
-
-static ast_node_t any_to_string_function_declaration = {
-    .type = AST_FUNCTION_DECLARATION,
-    .data.function_declaration =
-        {
-            .body = &to_str_body,
-            .is_main = false,
-            .name = "Any.toString",
-            .return_type = &node_string,
-            .parameter_lists = &target_any_parameter_list_node,
-        },
-    .data_type = &node_curried_function,
-    .next = NULL,
-};
-
-#pragma endregion
-
-#pragma region Double.toInt: Int
-
 static ast_node_t target_double_parameter_node = {
     .type = AST_PARAMETER,
     .data.parameter =
@@ -722,22 +685,6 @@ static ast_node_t target_double_parameter_list_node = {
     .next = NULL,
 };
 
-static ast_node_t double_to_int_function_declaration = {
-    .type = AST_FUNCTION_DECLARATION,
-    .data.function_declaration =
-        {
-            .body = &to_int_body,
-            .is_main = false,
-            .name = "Double.toInt",
-            .return_type = &node_int,
-            .parameter_lists = &target_double_parameter_list_node,
-        },
-    .data_type = &node_curried_function,
-    .next = NULL,
-};
-
-#pragma endregion
-
 #pragma region Double.floor: Double
 
 static ast_node_t floor_body = {
@@ -752,48 +699,9 @@ static ast_node_t double_floor_function_declaration = {
         {
             .body = &floor_body,
             .is_main = false,
-            .name = "Double.floor",
+            .name = "Double$floor",
             .return_type = &node_double,
             .parameter_lists = &target_double_parameter_list_node,
-        },
-    .data_type = &node_curried_function,
-    .next = NULL,
-};
-
-#pragma endregion
-
-#pragma region String.length: Int
-
-static ast_node_t target_string_parameter_node = {
-    .type = AST_PARAMETER,
-    .data.parameter =
-        {
-            .name = "$target",
-            .data_type = &node_string,
-        },
-    .data_type = &node_unit,
-    .next = NULL,
-};
-
-static ast_node_t target_string_parameter_list_node = {
-    .type = AST_PARAMETER_LIST,
-    .data.parameter_list =
-        {
-            .parameters = &target_string_parameter_node,
-        },
-    .data_type = &node_unit,
-    .next = NULL,
-};
-
-static ast_node_t string_length_function_declaration = {
-    .type = AST_FUNCTION_DECLARATION,
-    .data.function_declaration =
-        {
-            .body = &str_length_body,
-            .is_main = false,
-            .name = "String.length",
-            .return_type = &node_int,
-            .parameter_lists = &target_string_parameter_list_node,
         },
     .data_type = &node_curried_function,
     .next = NULL,
@@ -960,7 +868,7 @@ static ast_node_t to_function_declaration = {
         {
             .body = &to_body,
             .is_main = false,
-            .name = "Int.to",
+            .name = "Int$to",
             .return_type = &node_range,
             .parameter_lists = &target_int_parameter_list_node,
         },
@@ -984,7 +892,7 @@ static ast_node_t until_function_declaration = {
         {
             .body = &until_body,
             .is_main = false,
-            .name = "Int.until",
+            .name = "Int$until",
             .return_type = &node_range,
             .parameter_lists = &target_int_parameter_list_node,
         },
@@ -1029,7 +937,7 @@ static ast_node_t by_function_declaration = {
         {
             .body = &by_body,
             .is_main = false,
-            .name = "$Range.by",
+            .name = "$Range$by",
             .return_type = &node_range,
             .parameter_lists = &target_range_parameter_list_node,
         },
@@ -1069,54 +977,6 @@ static ast_node_t target_list_n_parameter_list_node = {
     .data_type = &node_unit,
     .next = &n_int_parameter_list_node,
 };
-
-#pragma region drop(n): List[T]
-
-static ast_node_t drop_body = {
-    .type = AST_BUILTIN_BODY,
-    .data.builtin_body = {.first_instruction = &drop_code},
-    .next = NULL,
-};
-
-static ast_node_t drop_function_declaration = {
-    .type = AST_FUNCTION_DECLARATION,
-    .data.function_declaration =
-        {
-            .body = &drop_body,
-            .is_main = false,
-            .name = "List[T].drop",
-            .return_type = &generic_list_node,
-            .parameter_lists = &target_list_n_parameter_list_node,
-        },
-    .data_type = &node_curried_function,
-    .next = NULL,
-};
-
-#pragma endregion
-
-#pragma region take(n): List[T]
-
-static ast_node_t take_body = {
-    .type = AST_BUILTIN_BODY,
-    .data.builtin_body = {.first_instruction = &take_code},
-    .next = NULL,
-};
-
-static ast_node_t take_function_declaration = {
-    .type = AST_FUNCTION_DECLARATION,
-    .data.function_declaration =
-        {
-            .body = &take_body,
-            .is_main = false,
-            .name = "List[T].take",
-            .return_type = &generic_list_node,
-            .parameter_lists = &target_list_n_parameter_list_node,
-        },
-    .data_type = &node_curried_function,
-    .next = NULL,
-};
-
-#pragma endregion
 
 #pragma region slice(from, until): List[T]
 
@@ -1174,9 +1034,62 @@ static ast_node_t slice_function_declaration = {
         {
             .body = &slice_body,
             .is_main = false,
-            .name = "List[T].slice",
+            .name = "List$$slice",
             .return_type = &generic_list_node,
             .parameter_lists = &from_until_target_list_parameter_list_node,
+        },
+    .data_type = &node_curried_function,
+    .next = NULL,
+};
+
+#pragma endregion
+
+#pragma region drop(n): List[T]
+
+static ast_node_t drop_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body =
+        {
+            .first_instruction = &drop_code,
+            .dependencies = &slice_function_declaration,
+        },
+    .next = NULL,
+};
+
+static ast_node_t drop_function_declaration = {
+    .type = AST_FUNCTION_DECLARATION,
+    .data.function_declaration =
+        {
+            .body = &drop_body,
+            .is_main = false,
+            .name = "List$$drop",
+            .return_type = &generic_list_node,
+            .parameter_lists = &target_list_n_parameter_list_node,
+        },
+    .data_type = &node_curried_function,
+    .next = NULL,
+};
+
+#pragma endregion
+
+#pragma region take(n): List[T]
+
+static ast_node_t take_body = {
+    .type = AST_BUILTIN_BODY,
+    .data.builtin_body = {.first_instruction = &take_code,
+                          .dependencies = &slice_function_declaration},
+    .next = NULL,
+};
+
+static ast_node_t take_function_declaration = {
+    .type = AST_FUNCTION_DECLARATION,
+    .data.function_declaration =
+        {
+            .body = &take_body,
+            .is_main = false,
+            .name = "List$$take",
+            .return_type = &generic_list_node,
+            .parameter_lists = &target_list_n_parameter_list_node,
         },
     .data_type = &node_curried_function,
     .next = NULL,
@@ -1208,7 +1121,7 @@ static ast_node_t head_function_declaration = {
         {
             .body = &head_body,
             .is_main = false,
-            .name = "List[T].head",
+            .name = "List$$head",
             .return_type = &node_generic_t,
             .parameter_lists = &target_list_parameter_list_node,
         },
@@ -1222,7 +1135,11 @@ static ast_node_t head_function_declaration = {
 
 static ast_node_t tail_body = {
     .type = AST_BUILTIN_BODY,
-    .data.builtin_body = {.first_instruction = &tail_code},
+    .data.builtin_body =
+        {
+            .first_instruction = &tail_code,
+            .dependencies = &slice_function_declaration,
+        },
     .next = NULL,
 };
 
@@ -1232,7 +1149,7 @@ static ast_node_t tail_function_declaration = {
         {
             .body = &tail_body,
             .is_main = false,
-            .name = "List[T].tail",
+            .name = "List$$tail",
             .return_type = &generic_list_node,
             .parameter_lists = &target_list_parameter_list_node,
         },
@@ -1337,7 +1254,7 @@ static ast_node_t range_function_declaration = {
         {
             .body = &range_body,
             .is_main = false,
-            .name = "List[T].range",
+            .name = "List$$range",
             .return_type = &list_int_node,
             .parameter_lists = &start_end_step_parameter_list_node,
             .is_static = true,
@@ -1403,7 +1320,7 @@ static ast_node_t filter_function_declaration = {
         {
             .body = &filter_body,
             .is_main = false,
-            .name = "List[T].filter",
+            .name = "List$$filter",
             .return_type = &generic_list_node,
             .parameter_lists = &target_list_func_parameter_list_node,
         },
@@ -1417,7 +1334,11 @@ static ast_node_t filter_function_declaration = {
 
 static ast_node_t take_while_body = {
     .type = AST_BUILTIN_BODY,
-    .data.builtin_body = {.first_instruction = &take_while_code},
+    .data.builtin_body =
+        {
+            .first_instruction = &take_while_code,
+            .dependencies = &slice_function_declaration,
+        },
     .next = NULL,
 };
 
@@ -1427,7 +1348,7 @@ static ast_node_t take_while_function_declaration = {
         {
             .body = &take_while_body,
             .is_main = false,
-            .name = "List[T].takeWhile",
+            .name = "List$$takeWhile",
             .return_type = &generic_list_node,
             .parameter_lists = &target_list_func_parameter_list_node,
         },
@@ -1441,7 +1362,11 @@ static ast_node_t take_while_function_declaration = {
 
 static ast_node_t drop_while_body = {
     .type = AST_BUILTIN_BODY,
-    .data.builtin_body = {.first_instruction = &drop_while_code},
+    .data.builtin_body =
+        {
+            .first_instruction = &drop_while_code,
+            .dependencies = &slice_function_declaration,
+        },
     .next = NULL,
 };
 
@@ -1451,7 +1376,7 @@ static ast_node_t drop_while_function_declaration = {
         {
             .body = &drop_while_body,
             .is_main = false,
-            .name = "List[T].dropWhile",
+            .name = "List$$dropWhile",
             .return_type = &generic_list_node,
             .parameter_lists = &target_list_func_parameter_list_node,
         },
@@ -1465,7 +1390,11 @@ static ast_node_t drop_while_function_declaration = {
 
 static ast_node_t to_list_body = {
     .type = AST_BUILTIN_BODY,
-    .data.builtin_body = {.first_instruction = &to_list_code},
+    .data.builtin_body =
+        {
+            .first_instruction = &to_list_code,
+            .dependencies = &range_function_declaration,
+        },
     .next = NULL,
 };
 
@@ -1485,7 +1414,7 @@ static ast_node_t to_list_function_declaration = {
         {
             .body = &to_list_body,
             .is_main = false,
-            .name = "$Range.toList",
+            .name = "$Range$toList",
             .return_type = &list_int_node,
             .parameter_lists = &target_range_empty_parameter_list_node,
         },
@@ -1516,10 +1445,7 @@ hashtable_t *create_builtin_symtable() {
       &ord_function_declaration,
       &chr_function_declaration,
       &read_boolean_function_declaration,
-      &any_to_string_function_declaration,
-      &double_to_int_function_declaration,
       &double_floor_function_declaration,
-      &string_length_function_declaration,
       &read_int_maybe_function_declaration,
       &read_double_maybe_function_declaration,
       &to_function_declaration,
@@ -1546,6 +1472,24 @@ hashtable_t *create_builtin_symtable() {
       ht_destruct(&table);
       return NULL;
     }
+  }
+
+  if (ht_insert_item(table, "Double$toInt", &to_int_function_declaration) !=
+      NO_ERR) {
+    ht_destruct(&table);
+    return NULL;
+  }
+
+  if (ht_insert_item(table, "Any$toString", &to_str_function_declaration) !=
+      NO_ERR) {
+    ht_destruct(&table);
+    return NULL;
+  }
+
+  if (ht_insert_item(table, "String$length",
+                     &str_length_function_declaration) != NO_ERR) {
+    ht_destruct(&table);
+    return NULL;
   }
 
   ast_node_t *types[] = {

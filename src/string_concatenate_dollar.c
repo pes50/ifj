@@ -1,17 +1,17 @@
 /**************************** IFJ/IAL-Compiler-2026 ***************************\
  *
- * @file string_concatenate_dot.c
+ * @file string_concatenate_dollar.c
  *
  * @author Roman Skoupý      (xskoupr00)
  *
- * @brief Implementation of string_concatenate_dot function
+ * @brief Implementation of string_concatenate_dollar function
  *
 \*****************************************************************************/
 
 #include <stdlib.h>
 #include <string.h>
 
-char *string_concatenate_dot(const char *first, const char *second) {
+char *string_concatenate_dollar(const char *first, const char *second) {
   if (first == NULL || second == NULL) {
     return NULL;
   }
@@ -25,7 +25,7 @@ char *string_concatenate_dot(const char *first, const char *second) {
   }
 
   memcpy(concatenated, first, length_a);
-  concatenated[length_a] = '.';
+  concatenated[length_a] = '$';
   memcpy(concatenated + length_a + 1, second, length_b);
   concatenated[length_a + length_b + 1] = '\0';
 

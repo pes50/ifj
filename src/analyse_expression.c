@@ -12,7 +12,7 @@
 #include "analyse_block.h"
 #include "analyse_callable_declarations.h"
 #include "analyse_types.h"
-#include "string_concatenate_dot.h"
+#include "string_concatenate_dollar.h"
 #include <string.h>
 
 #pragma region Function call
@@ -1035,7 +1035,7 @@ err_code_t analyse_expression(ast_node_t *node, hashtable_t *symtable,
       RETURN_ERR(err);
     }
     char *identifier =
-        string_concatenate_dot(first, node->data.dot_function_call.name);
+        string_concatenate_dollar(first, node->data.dot_function_call.name);
     free(first);
     if (identifier == NULL) {
       RETURN_ERR(INTERNAL_ERR);
@@ -1051,7 +1051,7 @@ err_code_t analyse_expression(ast_node_t *node, hashtable_t *symtable,
 
     // Try once more with Any
     identifier =
-        string_concatenate_dot("Any", node->data.dot_function_call.name);
+        string_concatenate_dollar("Any", node->data.dot_function_call.name);
     if (identifier == NULL) {
       RETURN_ERR(INTERNAL_ERR);
     }
