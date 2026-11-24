@@ -13,6 +13,7 @@
 #include "analyse_callable_declarations.h"
 #include "analyse_types.h"
 #include "string_concatenate_dot.h"
+#include <string.h>
 
 #pragma region Function call
 
@@ -424,6 +425,8 @@ err_code_t analyse_function_call(char *identifier, ast_node_t *node,
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
+
+    node->data.function_call.calling = table_node;
   } else {
     // Handle functions
     err = analyse_function_declaration(table_node, ht_get_root(symtable));
@@ -752,6 +755,8 @@ err_code_t analyse_match_case_class_constructor(ast_node_t *node,
     RETURN_ERR(err);
   }
 
+  node->data.function_call.calling = table_node;
+
   return duplicate_type_node(table_node->data_type, &node->data_type);
 }
 
@@ -983,16 +988,49 @@ err_code_t analyse_expression(ast_node_t *node, hashtable_t *symtable,
   case AST_FUNCTION_CALL:
     RETURN_ERR(analyse_function_call(node->data.function_call.name, node,
                                      symtable, explicit_data_type));
-  case AST_DOT_FUNCTION_CALL:
-    err = analyse_expression(node->data.dot_function_call.target, symtable,
-                             NULL, true, false);
+  case AST_DOT_FUNCTION_CALL: {
+    ast_node_t *target = node->data.dot_function_call.target;
+    err = analyse_expression(target, symtable, NULL, true, false);
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
 
-    char *first;
-    err =
-        type_to_string(node->data.dot_function_call.target->data_type, &first);
+    // Attribute access
+    if (target->type == AST_IDENTIFIER) {
+      ast_node_t *calling = target->data.identifier.calling;
+      if (calling != NULL && calling->data_type != NULL &&
+          calling->data_type->type == DATA_TYPE_CLASS) {
+        ast_node_t *class_declaration =
+            calling->data_type->data.class_type.declaration;
+        if (class_declaration != NULL &&
+            class_declaration->type == AST_CLASS_DECLARATION) {
+          ast_node_t *attribute =
+              class_declaration->data.class_declaration.attribute_list->data
+                  .parameter_list.parameters;
+          // Search for the attribute
+          size_t attribute_index = 0;
+          while (attribute != NULL) {
+            if (strcmp(attribute->data.parameter.name,
+                       node->data.dot_function_call.name) == 0) {
+              // Found
+              node->data.dot_function_call.attribute_index =
+                  attribute_index + 1;
+
+              RETURN_ERR(duplicate_type_node(
+                  attribute->data.parameter.data_type, &node->data_type));
+            }
+
+            attribute_index++;
+            attribute = attribute->next;
+          }
+          // Unknown attribute
+          RETURN_ERR(OTHER_SEMANTIC_ERR);
+        }
+      }
+    }
+
+    char *first = NULL;
+    err = type_to_string(target->data_type, &first);
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
@@ -1002,14 +1040,11 @@ err_code_t analyse_expression(ast_node_t *node, hashtable_t *symtable,
     if (identifier == NULL) {
       RETURN_ERR(INTERNAL_ERR);
     }
-    err = analyse_function_call(identifier, node, symtable,
-                                node->data.dot_function_call.target->data_type);
+    err = analyse_function_call(identifier, node, symtable, target->data_type);
     free(identifier);
     if (err != UNDEF_SYMBOL_ERR) {
       if (err == NO_ERR) {
-        RETURN_ERR(replace_generic_type(
-            &(node->data.dot_function_call.target->data_type),
-            &node->data_type));
+        RETURN_ERR(replace_generic_type(&target->data_type, &node->data_type));
       }
       RETURN_ERR(err);
     }
@@ -1024,6 +1059,7 @@ err_code_t analyse_expression(ast_node_t *node, hashtable_t *symtable,
                                 node->data.dot_function_call.target->data_type);
     free(identifier);
     RETURN_ERR(err);
+  }
   case AST_IF:
     err = analyse_if(node, symtable, explicit_data_type, is_last, allow_return);
     break;

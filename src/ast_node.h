@@ -76,6 +76,7 @@ typedef struct ast_node_t {
       struct ast_node_t *target;
       struct ast_node_t *argument_lists;
       struct ast_node_t *calling;
+      size_t attribute_index;
     } dot_function_call;
 
     struct {
@@ -101,6 +102,7 @@ typedef struct ast_node_t {
       char *name;
       struct ast_node_t *attribute_list;
       size_t unique_class_id;
+      size_t attribute_count;
     } class_declaration;
 
     struct {

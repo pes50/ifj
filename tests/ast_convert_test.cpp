@@ -1345,10 +1345,10 @@ ast_node_t *test_ext_algebdt_type_alias_and_match() {
 ast_node_t *test_ext_algebdt_case_class() {
   ast_node_t *cc_decl = create_class_declaration_node(
       const_cast<char *>("Point"),
-      chain_nodes({
+      create_parameter_list_node(chain_nodes({
           create_parameter_node(const_cast<char *>("x"), &node_int),
           create_parameter_node(const_cast<char *>("y"), &node_int),
-      }));
+      })));
 
   ast_node_t *cc_pat = call("Point", {id("a"), id("b")});
   ast_node_t *c_point =

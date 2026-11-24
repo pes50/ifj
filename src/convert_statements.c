@@ -40,14 +40,6 @@ static bool is_expression_node(ast_node_t *node) {
   }
 }
 
-err_code_t discard_stack_top(context_t *context) {
-  inner_symbol_t trash_var = create_var_symbol(TRASH);
-  inner_symbol_t empty_sym = create_empty_symbol();
-
-  RETURN_ERR(
-      append_statement(context, INNER_POPS, trash_var, empty_sym, empty_sym));
-}
-
 #pragma endregion
 
 err_code_t convert_statement_list(context_t *context, ast_node_t *node,

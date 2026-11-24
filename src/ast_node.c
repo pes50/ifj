@@ -191,6 +191,7 @@ ast_node_t *create_dot_function_call_node(char *name, ast_node_t *target,
   node->data.dot_function_call.name = string_duplicate(name);
   node->data.dot_function_call.target = target;
   node->data.dot_function_call.argument_lists = argument_lists;
+  node->data.dot_function_call.attribute_index = 0;
 
   // Check if string_duplicate failed
   if (node->data.dot_function_call.name == NULL) {
@@ -278,6 +279,7 @@ ast_node_t *create_class_declaration_node(char *name, ast_node_t *attributes) {
   node->data.class_declaration.name = string_duplicate(name);
   node->data.class_declaration.attribute_list = attributes;
   node->data.class_declaration.unique_class_id = 0;
+  node->data.class_declaration.attribute_count = 0;
 
   // Check if string_duplicate failed
   if (node->data.class_declaration.name == NULL) {

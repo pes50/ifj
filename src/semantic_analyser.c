@@ -26,7 +26,7 @@ err_code_t analyse(ast_node_t *root, hashtable_t *symtable,
   }
 
   if (*main_node == NULL) {
-    return UNDEF_SYMBOL_ERR;
+    RETURN_ERR(UNDEF_SYMBOL_ERR);
   }
 
   ast_node_t *current = root->data.block.statement;
