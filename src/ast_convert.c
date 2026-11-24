@@ -379,11 +379,19 @@ err_code_t enqueue_function(context_t *context, ast_node_t *declaration_node) {
   }
 
   char *name = NULL;
-  if (declaration_node->type == AST_FUNCTION_DECLARATION) {
+  switch (declaration_node->type) {
+  case AST_FUNCTION_DECLARATION:
     name = declaration_node->data.function_declaration.name;
-  } else if (declaration_node->type == AST_CLASS_DECLARATION) {
+    break;
+  case AST_CLASS_DECLARATION:
     name = declaration_node->data.class_declaration.name;
-  } else {
+    break;
+  case AST_LIST_CONSTRUCTOR:
+  case AST_VARIABLE_DECLARATION:
+  case AST_PARAMETER:
+    RETURN_ERR(NO_ERR);
+    break;
+  default:
     RETURN_ERR(INTERNAL_ERR);
   }
 
