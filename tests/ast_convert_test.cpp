@@ -1415,6 +1415,196 @@ ast_node_t *test_ext_lambdas_basic() {
   });
 }
 
+// Reuse pattern variable `v` across arms and across multiple `match` blocks:
+// var x: Int | String = 5
+// val r1 = x match { case v: Int => v + 1; case v: String => strLength(v); case
+// _ => 0 } x = "abcd" val r2 = x match { case v: Int => v + 1; case v: String
+// => strLength(v); case _ => 0 } print(r1); print("|"); print(r2) -> "6|4"
+ast_node_t *test_ext_algebdt_match_reused_pattern_var() {
+  auto make_int_or_str = []() {
+    return create_union_type_node(chain_types({
+        create_primitive_type_node(PRIMITIVE_INT),
+        create_primitive_type_node(PRIMITIVE_STRING),
+    }));
+  };
+
+  auto make_match = []() {
+    ast_node_t *c_int = create_match_case_node(
+        create_parameter_node(const_cast<char *>("v"),
+                              create_primitive_type_node(PRIMITIVE_INT)),
+        nullptr,
+        create_block_node(create_binary_operation_node(TOK_BINARY_PLUS, id("v"),
+                                                       lit_int("1"))));
+
+    ast_node_t *c_str = create_match_case_node(
+        create_parameter_node(const_cast<char *>("v"),
+                              create_primitive_type_node(PRIMITIVE_STRING)),
+        nullptr, create_block_node(call("strLength", {id("v")})));
+
+    ast_node_t *c_wild = create_match_case_node(
+        underscore(), nullptr, create_block_node(lit_int("0")));
+
+    return create_match_node(id("x"), chain_nodes({c_int, c_str, c_wild}));
+  };
+
+  return wrap_main({
+      var_decl("x", lit_int("5"), make_int_or_str()),
+      val_decl("r1", make_match()),
+      assign("x", lit_str("abcd")),
+      val_decl("r2", make_match()),
+      print_call(id("r1")),
+      print_call(lit_str("|")),
+      print_call(id("r2")),
+  });
+}
+
+// Pattern binding `x` shadows function parameter `x: Int | String` without
+// colliding on DEFVAR or clobbering the parameter value:
+// def shadowParam(x: Int | String): String = {
+//   val inner = x match {
+//     case x: Int => toStr(x + 10)
+//     case x: String => x + "!"
+//     case _ => "?"
+//   }
+//   val orig = x match {
+//     case n: Int => toStr(n)
+//     case s: String => s
+//     case _ => "?"
+//   }
+//   inner + ":" + orig
+// }
+// @main def main(): Unit = {
+//   print(shadowParam(5)); print("|"); print(shadowParam("hi")) ->
+//   "15:5|hi!:hi"
+// }
+ast_node_t *test_ext_algebdt_match_shadow_param() {
+  data_type_node_t *param_type = create_union_type_node(chain_types({
+      create_primitive_type_node(PRIMITIVE_INT),
+      create_primitive_type_node(PRIMITIVE_STRING),
+  }));
+
+  ast_node_t *c_shadow_int = create_match_case_node(
+      create_parameter_node(const_cast<char *>("x"),
+                            create_primitive_type_node(PRIMITIVE_INT)),
+      nullptr,
+      create_block_node(
+          call("toStr", {create_binary_operation_node(TOK_BINARY_PLUS, id("x"),
+                                                      lit_int("10"))})));
+
+  ast_node_t *c_shadow_str = create_match_case_node(
+      create_parameter_node(const_cast<char *>("x"),
+                            create_primitive_type_node(PRIMITIVE_STRING)),
+      nullptr,
+      create_block_node(create_binary_operation_node(TOK_BINARY_PLUS, id("x"),
+                                                     lit_str("!"))));
+
+  ast_node_t *c_shadow_wild = create_match_case_node(
+      underscore(), nullptr, create_block_node(lit_str("?")));
+
+  ast_node_t *match_shadow = create_match_node(
+      id("x"), chain_nodes({c_shadow_int, c_shadow_str, c_shadow_wild}));
+
+  ast_node_t *c_orig_int = create_match_case_node(
+      create_parameter_node(const_cast<char *>("n"),
+                            create_primitive_type_node(PRIMITIVE_INT)),
+      nullptr, create_block_node(call("toStr", {id("n")})));
+
+  ast_node_t *c_orig_str = create_match_case_node(
+      create_parameter_node(const_cast<char *>("s"),
+                            create_primitive_type_node(PRIMITIVE_STRING)),
+      nullptr, create_block_node(id("s")));
+
+  ast_node_t *c_orig_wild = create_match_case_node(
+      underscore(), nullptr, create_block_node(lit_str("?")));
+
+  ast_node_t *match_orig = create_match_node(
+      id("x"), chain_nodes({c_orig_int, c_orig_str, c_orig_wild}));
+
+  ast_node_t *ret_expr = create_binary_operation_node(
+      TOK_BINARY_PLUS,
+      create_binary_operation_node(TOK_BINARY_PLUS, id("inner"), lit_str(":")),
+      id("orig"));
+
+  ast_node_t *fn_shadow = create_function_declaration_node(
+      const_cast<char *>("shadowParam"),
+      create_parameter_list_node(
+          create_parameter_node(const_cast<char *>("x"), param_type)),
+      create_block_node(chain_nodes({
+          val_decl("inner", match_shadow),
+          val_decl("orig", match_orig),
+          ret_expr,
+      })),
+      &node_string, false);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          print_call(call("shadowParam", {lit_int("5")})),
+          print_call(lit_str("|")),
+          print_call(call("shadowParam", {lit_str("hi")})),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_shadow, fn_main}));
+}
+
+// Case class destructuring shadows parameters `x`, `y` and reuses those
+// bindings across two matches in the same function:
+// case class Point(x: Int, y: Int)
+// def extractPoint(x: Int, y: Int): Int = {
+//   val p = Point(x, y)
+//   val first = p match { case Point(x, y) => x + y; case _ => 0 }
+//   val second = p match { case Point(x, y) => x * y; case _ => 0 }
+//   first + second + x
+// }
+// @main def main(): Unit = print(extractPoint(3, 4)) -> "22"
+ast_node_t *test_ext_algebdt_match_case_class_shadow_and_reuse() {
+  ast_node_t *cc_decl = create_class_declaration_node(
+      const_cast<char *>("Point"),
+      create_parameter_list_node(chain_nodes({
+          create_parameter_node(const_cast<char *>("x"), &node_int),
+          create_parameter_node(const_cast<char *>("y"), &node_int),
+      })));
+
+  auto make_point_match = [](token_type_t op) {
+    ast_node_t *cc_pat = call("Point", {id("x"), id("y")});
+    ast_node_t *c_point = create_match_case_node(
+        cc_pat, nullptr,
+        create_block_node(create_binary_operation_node(op, id("x"), id("y"))));
+    ast_node_t *c_default = create_match_case_node(
+        underscore(), nullptr, create_block_node(lit_int("0")));
+    return create_match_node(id("p"), chain_nodes({c_point, c_default}));
+  };
+
+  ast_node_t *params = create_parameter_list_node(chain_nodes({
+      create_parameter_node(const_cast<char *>("x"), &node_int),
+      create_parameter_node(const_cast<char *>("y"), &node_int),
+  }));
+
+  ast_node_t *sum_expr = create_binary_operation_node(
+      TOK_BINARY_PLUS,
+      create_binary_operation_node(TOK_BINARY_PLUS, id("first"), id("second")),
+      id("x"));
+
+  ast_node_t *fn_extract = create_function_declaration_node(
+      const_cast<char *>("extractPoint"), params,
+      create_block_node(chain_nodes({
+          val_decl("p", call("Point", {id("x"), id("y")})),
+          val_decl("first", make_point_match(TOK_BINARY_PLUS)),
+          val_decl("second", make_point_match(TOK_MUL)),
+          sum_expr,
+      })),
+      &node_int, false);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(
+          print_call(call("extractPoint", {lit_int("3"), lit_int("4")}))),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({cc_decl, fn_extract, fn_main}));
+}
+
 #pragma endregion
 
 #pragma region Extension EXTKW: User Extension Methods
@@ -1798,6 +1988,13 @@ INSTANTIATE_TEST_SUITE_P(
                         "zero|pos|neg|hi"},
         CodegenTestCase{"ExtAlgebdt_CaseClass", test_ext_algebdt_case_class,
                         "10|30"},
+        CodegenTestCase{"ExtAlgebdt_MatchReusedPatternVar",
+                        test_ext_algebdt_match_reused_pattern_var, "6|4"},
+        CodegenTestCase{"ExtAlgebdt_MatchShadowParam",
+                        test_ext_algebdt_match_shadow_param, "15:5|hi!:hi"},
+        CodegenTestCase{"ExtAlgebdt_MatchCaseClassShadowAndReuse",
+                        test_ext_algebdt_match_case_class_shadow_and_reuse,
+                        "22"},
 
         // Extension LAMBDAS: Anonymous Functions
         CodegenTestCase{"ExtLambdas_Basic", test_ext_lambdas_basic, "18|11|42"},

@@ -3,7 +3,6 @@
  * @file convert_match.c
  *
  * @author Roman Skoupý     (xskoupr00)
- * @author Tomáš Peňás      (xpenast00)
  *
  * @brief Implementation of AST to 3AC conversion of match expressions
  *

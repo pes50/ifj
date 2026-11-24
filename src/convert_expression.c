@@ -11,9 +11,11 @@
 
 #include "convert_expression.h"
 #include "builtin.h"
+#include "convert_list.h"
 #include "convert_match.h"
 #include "convert_node.h"
 #include "convert_utils.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -93,6 +95,21 @@ static err_code_t convert_interpolated_string_on_stack(context_t *context,
 }
 
 err_code_t convert_function_call(context_t *context, ast_node_t *node) {
+  if (context == NULL || node == NULL || node->type != AST_FUNCTION_CALL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  ast_node_t *calling = node->data.function_call.calling;
+  if (calling != NULL) {
+    if (calling->type == AST_LIST_CONSTRUCTOR) {
+      RETURN_ERR(convert_list_constructor_inline(context, node));
+    }
+    if (calling->type == AST_VARIABLE_DECLARATION ||
+        calling->type == AST_PARAMETER) {
+      RETURN_ERR(convert_list_access(context, node));
+    }
+  }
+
   inner_symbol_t empty_sym = create_empty_symbol();
   inner_symbol_t label = create_label_symbol(node->data.function_call.name);
 
@@ -290,16 +307,12 @@ err_code_t create_operation(ast_node_t *node,
     *operation = INNER_EQS;
     *out_append_not = true;
     break;
-
   case TOK_AND:
     *operation = INNER_ANDS;
     break;
   case TOK_OR:
     *operation = INNER_ORS;
     break;
-
-    // TODO TOK_CONCAT_LIST
-
   default:
     RETURN_ERR(INTERNAL_ERR);
   }
@@ -438,6 +451,11 @@ err_code_t convert_binary_op_expression(context_t *context, ast_node_t *node) {
   if (node->data.binary_operation.op == TOK_BINARY_PLUS &&
       are_data_types_identical(&node_string, left_operand->data_type)) {
     RETURN_ERR(convert_string_expression(context, node));
+  }
+
+  // concat lists
+  if (node->data.binary_operation.op == TOK_CONCAT_LIST) {
+    RETURN_ERR(convert_list_concat_expression(context, node));
   }
 
   // left child recursion

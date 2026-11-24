@@ -304,6 +304,8 @@ err_code_t analyse_function_call(char *identifier, ast_node_t *node,
         RETURN_ERR(ARG_MISMATCH_ERR);
       }
 
+      node->data.function_call.calling = table_node;
+
       err_code_t err =
           analyse_expression(argument, symtable, NULL, true, false);
       if (err != NO_ERR) {
@@ -337,6 +339,7 @@ err_code_t analyse_function_call(char *identifier, ast_node_t *node,
     }
 
     ast_node_t *current = argument_list->data.argument_list.arguments;
+    node->data.function_call.calling = table_node;
 
     // No arguments, type of elements is unknown
     if (current == NULL) {
