@@ -602,8 +602,15 @@ TEST_F(LexerFixture, NestedBlockComment) {
   expect_eof();
 }
 
-TEST_F(LexerFixture, BlockCommentWithNewlineGivesEol) {
+TEST_F(LexerFixture, TokenAfterMultilineBlockCommentOnSameLineIsError) {
   feed("a /* x\ny */ b\n");
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_EOL);
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, BlockCommentWithNewlineGivesEol) {
+  feed("a /* x\ny */\n  b\n");
   expect_get(TOK_IDENTIFIER, "a");
   expect_get(TOK_EOL);
   expect_get(TOK_INDENT);
@@ -986,6 +993,7 @@ TEST_F(LexerFixture, MultilineBlockCommentFollowedByStatement) {
   expect_get(TOK_IDENTIFIER, "x");
   expect_get(TOK_ASSIGN);
   expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EOL);
 
   // Lexical error expected
   expect_get_err(LEXICAL_ERR);
@@ -1018,6 +1026,7 @@ TEST_F(LexerFixture, MultilineBlockCommentFollowedByCall) {
   expect_get(TOK_L_PAREN);
   expect_get(TOK_LIT_STRING, "a");
   expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
 
   // Lexical error expected
   expect_get_err(LEXICAL_ERR);
