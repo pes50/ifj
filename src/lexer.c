@@ -133,6 +133,9 @@ static FILE *input_stream = NULL;
 static bool inside_for_loop = false;
 static bool token_prev_for_kw = false;
 
+// Set true when block comment containing LF ended.
+static bool lf_inside_ml_com = false;
+
 /**
  * @brief Determine whether the token should have value.
  *
@@ -944,6 +947,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         state = S_BLOCK_COMMENT;
       } else if (comment_depth_cnt == 0 && has_newline) {
         // Top-level comment closed.
+        lf_inside_ml_com = true;
         *type = TOK_EOL;
         indent_level = 0;
         next_state = S_LINE_START;
@@ -1286,11 +1290,16 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         indent_level = 0;
         tab_on_line = false;
         comment_seen = false;
+
+        if (character == '\n') {
+          lf_inside_ml_com = false;
+        }
       } else if (character == '\t') {
         tab_on_line = true;
       } else if (character == EOF) {
         indent_level = 0;
         tab_on_line = false;
+        lf_inside_ml_com = false;
         ungetc(character, input_stream);
         state = S_LINE;
       } else if (character == '/') {
@@ -1300,6 +1309,12 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         if (tab_on_line) {
           return LEXICAL_ERR;
         }
+
+        // Multi line comment followed by code is forbidden.
+        if (lf_inside_ml_com) {
+          return LEXICAL_ERR;
+        }
+
         ungetc(character, input_stream);
         state = S_LINE;
       }
@@ -1320,6 +1335,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         indent_level = 0;
         tab_on_line = false;
         comment_seen = false;
+        lf_inside_ml_com = false;
         state = S_LINE_START;
       } else if (character == '*') {
         // Block comment at the beginning of a line.
@@ -1334,6 +1350,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
           indent_level = 0;
           tab_on_line = false;
           comment_seen = false;
+          lf_inside_ml_com = true;
         } else {
           comment_seen = true;
         }
@@ -1499,6 +1516,7 @@ void lexer_destroy(void) {
   indent_level = 0;
   in_interpolated_str = false;
   interpolated_ml_str = false;
+  lf_inside_ml_com = false;
   if (indent_stack_initialized) {
     indent_stack_free(&indent_stack);
     indent_stack_initialized = false;
