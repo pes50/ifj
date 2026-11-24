@@ -697,7 +697,7 @@ DEFVAR GF@ok
 
 # floor(3.75) == 3.0
 PUSHS float@0x1.ep+1
-CALL floor
+CALL Double$floor
 POPS GF@r
 EQ GF@ok GF@r float@0x1.8p+1
 WRITE GF@ok
@@ -705,7 +705,7 @@ WRITE string@\010
 
 # floor(3.0) == 3.0
 PUSHS float@0x1.8p+1
-CALL floor
+CALL Double$floor
 POPS GF@r
 EQ GF@ok GF@r float@0x1.8p+1
 WRITE GF@ok
@@ -713,7 +713,7 @@ WRITE string@\010
 
 # floor(-3.25) == -4.0
 PUSHS float@-0x1.ap+1
-CALL floor
+CALL Double$floor
 POPS GF@r
 EQ GF@ok GF@r float@-0x1p+2
 WRITE GF@ok
@@ -721,7 +721,7 @@ WRITE string@\010
 
 # floor(-3.0) == -3.0
 PUSHS float@-0x1.8p+1
-CALL floor
+CALL Double$floor
 POPS GF@r
 EQ GF@ok GF@r float@-0x1.8p+1
 WRITE GF@ok
@@ -729,7 +729,7 @@ WRITE string@\010
 
 # floor(0.0) == 0.0
 PUSHS float@0x0p+0
-CALL floor
+CALL Double$floor
 POPS GF@r
 EQ GF@ok GF@r float@0x0p+0
 WRITE GF@ok
@@ -757,7 +757,7 @@ ARRAYSET GF@lst int@3 int@20
 ARRAYSET GF@lst int@4 int@30
 
 PUSHS GF@lst
-CALL head
+CALL List$$head
 POPS GF@h
 WRITE GF@h
 EXIT int@0
@@ -774,7 +774,7 @@ NEWARRAY GF@lst int@2
 ARRAYSET GF@lst int@0 string@list
 ARRAYSET GF@lst int@1 int@2
 PUSHS GF@lst
-CALL head
+CALL List$$head
 EXIT int@0
 )");
   EXPECT_NE(empty_res.exit_code, 0);
@@ -803,7 +803,7 @@ ARRAYSET GF@lst int@6 int@50
 PUSHS GF@lst
 PUSHS int@1
 PUSHS int@4
-CALL slice
+CALL List$$slice
 CALL print
 POPS GF@trash
 WRITE string@\010
@@ -812,7 +812,7 @@ WRITE string@\010
 PUSHS GF@lst
 PUSHS int@-5
 PUSHS int@2
-CALL slice
+CALL List$$slice
 CALL print
 POPS GF@trash
 WRITE string@\010
@@ -821,7 +821,7 @@ WRITE string@\010
 PUSHS GF@lst
 PUSHS int@3
 PUSHS int@100
-CALL slice
+CALL List$$slice
 CALL print
 POPS GF@trash
 WRITE string@\010
@@ -830,7 +830,7 @@ WRITE string@\010
 PUSHS GF@lst
 PUSHS int@4
 PUSHS int@2
-CALL slice
+CALL List$$slice
 CALL print
 POPS GF@trash
 EXIT int@0
@@ -860,28 +860,28 @@ ARRAYSET GF@lst int@5 int@4
 
 PUSHS GF@lst
 PUSHS int@2
-CALL drop
+CALL List$$drop
 CALL print
 POPS GF@trash
 WRITE string@\010
 
 PUSHS GF@lst
 PUSHS int@0
-CALL drop
+CALL List$$drop
 CALL print
 POPS GF@trash
 WRITE string@\010
 
 PUSHS GF@lst
 PUSHS int@10
-CALL drop
+CALL List$$drop
 CALL print
 POPS GF@trash
 WRITE string@\010
 
 PUSHS GF@lst
 PUSHS int@-2
-CALL drop
+CALL List$$drop
 CALL print
 POPS GF@trash
 EXIT int@0
@@ -912,28 +912,28 @@ ARRAYSET GF@lst int@5 int@4
 
 PUSHS GF@lst
 PUSHS int@2
-CALL take
+CALL List$$take
 CALL print
 POPS GF@trash
 WRITE string@\010
 
 PUSHS GF@lst
 PUSHS int@0
-CALL take
+CALL List$$take
 CALL print
 POPS GF@trash
 WRITE string@\010
 
 PUSHS GF@lst
 PUSHS int@10
-CALL take
+CALL List$$take
 CALL print
 POPS GF@trash
 WRITE string@\010
 
 PUSHS GF@lst
 PUSHS int@-2
-CALL take
+CALL List$$take
 CALL print
 POPS GF@trash
 EXIT int@0
@@ -961,7 +961,7 @@ ARRAYSET GF@lst int@3 int@20
 ARRAYSET GF@lst int@4 int@30
 
 PUSHS GF@lst
-CALL tail
+CALL List$$tail
 CALL print
 POPS GF@trash
 WRITE string@\010
@@ -972,7 +972,7 @@ ARRAYSET GF@one int@1 int@3
 ARRAYSET GF@one int@2 int@99
 
 PUSHS GF@one
-CALL tail
+CALL List$$tail
 CALL print
 POPS GF@trash
 EXIT int@0
@@ -989,7 +989,7 @@ NEWARRAY GF@lst int@2
 ARRAYSET GF@lst int@0 string@list
 ARRAYSET GF@lst int@1 int@2
 PUSHS GF@lst
-CALL tail
+CALL List$$tail
 EXIT int@0
 )");
   EXPECT_NE(empty_res.exit_code, 0);
@@ -1044,21 +1044,21 @@ ARRAYSET GF@empty int@1 int@2
 
 PUSHS GF@lst
 PUSHS string@$$lt_4
-CALL filter
+CALL List$$filter
 CALL print
 POPS GF@trash
 WRITE string@\010
 
 PUSHS GF@lst
 PUSHS string@$$gt_100
-CALL filter
+CALL List$$filter
 CALL print
 POPS GF@trash
 WRITE string@\010
 
 PUSHS GF@empty
 PUSHS string@$$lt_4
-CALL filter
+CALL List$$filter
 CALL print
 POPS GF@trash
 EXIT int@0
@@ -1126,28 +1126,28 @@ ARRAYSET GF@empty int@1 int@2
 
 PUSHS GF@lst
 PUSHS string@$$lt_4
-CALL takeWhile
+CALL List$$takeWhile
 CALL print
 POPS GF@trash
 WRITE string@\010
 
 PUSHS GF@lst
 PUSHS string@$$lt_100
-CALL takeWhile
+CALL List$$takeWhile
 CALL print
 POPS GF@trash
 WRITE string@\010
 
 PUSHS GF@lst
 PUSHS string@$$gt_100
-CALL takeWhile
+CALL List$$takeWhile
 CALL print
 POPS GF@trash
 WRITE string@\010
 
 PUSHS GF@empty
 PUSHS string@$$lt_4
-CALL takeWhile
+CALL List$$takeWhile
 CALL print
 POPS GF@trash
 EXIT int@0
@@ -1215,28 +1215,28 @@ ARRAYSET GF@empty int@1 int@2
 
 PUSHS GF@lst
 PUSHS string@$$lt_4
-CALL dropWhile
+CALL List$$dropWhile
 CALL print
 POPS GF@trash
 WRITE string@\010
 
 PUSHS GF@lst
 PUSHS string@$$lt_100
-CALL dropWhile
+CALL List$$dropWhile
 CALL print
 POPS GF@trash
 WRITE string@\010
 
 PUSHS GF@lst
 PUSHS string@$$gt_100
-CALL dropWhile
+CALL List$$dropWhile
 CALL print
 POPS GF@trash
 WRITE string@\010
 
 PUSHS GF@empty
 PUSHS string@$$lt_4
-CALL dropWhile
+CALL List$$dropWhile
 CALL print
 POPS GF@trash
 EXIT int@0
@@ -1257,7 +1257,7 @@ DEFVAR GF@trash
 PUSHS int@0
 PUSHS int@10
 PUSHS int@3
-CALL range
+CALL List$$range
 CALL print
 POPS GF@trash
 WRITE string@\010
@@ -1265,7 +1265,7 @@ WRITE string@\010
 PUSHS int@5
 PUSHS int@0
 PUSHS int@-1
-CALL range
+CALL List$$range
 CALL print
 POPS GF@trash
 WRITE string@\010
@@ -1273,7 +1273,7 @@ WRITE string@\010
 PUSHS int@10
 PUSHS int@0
 PUSHS int@-3
-CALL range
+CALL List$$range
 CALL print
 POPS GF@trash
 WRITE string@\010
@@ -1281,7 +1281,7 @@ WRITE string@\010
 PUSHS int@1
 PUSHS int@5
 PUSHS int@-1
-CALL range
+CALL List$$range
 CALL print
 POPS GF@trash
 WRITE string@\010
@@ -1289,7 +1289,7 @@ WRITE string@\010
 PUSHS int@5
 PUSHS int@5
 PUSHS int@1
-CALL range
+CALL List$$range
 CALL print
 POPS GF@trash
 EXIT int@0
@@ -1308,7 +1308,7 @@ LABEL $$test_main
 PUSHS int@1
 PUSHS int@5
 PUSHS int@0
-CALL range
+CALL List$$range
 EXIT int@0
 )");
   EXPECT_EQ(zero_res.exit_code, 40) << zero_res.output;
@@ -1325,7 +1325,7 @@ DEFVAR GF@v
 
 PUSHS int@2
 PUSHS int@7
-CALL to
+CALL Int$to
 POPS GF@rng
 
 ARRAYGET GF@v GF@rng int@0
@@ -1357,7 +1357,7 @@ DEFVAR GF@v
 
 PUSHS int@2
 PUSHS int@7
-CALL until
+CALL Int$until
 POPS GF@rng
 
 ARRAYGET GF@v GF@rng int@0
@@ -1389,9 +1389,9 @@ DEFVAR GF@v
 
 PUSHS int@10
 PUSHS int@1
-CALL to
+CALL Int$to
 PUSHS int@-3
-CALL by
+CALL $Range$by
 POPS GF@rng
 
 ARRAYGET GF@v GF@rng int@0
@@ -1416,9 +1416,9 @@ EXIT int@0
 LABEL $$test_main
 PUSHS int@1
 PUSHS int@5
-CALL to
+CALL Int$to
 PUSHS int@0
-CALL by
+CALL $Range$by
 EXIT int@0
 )");
   EXPECT_EQ(zero_res.exit_code, 40) << zero_res.output;
@@ -1435,8 +1435,8 @@ DEFVAR GF@trash
 # (1 to 5).toList -> List(1, 2, 3, 4, 5)
 PUSHS int@1
 PUSHS int@5
-CALL to
-CALL toList
+CALL Int$to
+CALL $Range$toList
 CALL print
 POPS GF@trash
 WRITE string@\010
@@ -1444,8 +1444,8 @@ WRITE string@\010
 # (1 until 5).toList -> List(1, 2, 3, 4)
 PUSHS int@1
 PUSHS int@5
-CALL until
-CALL toList
+CALL Int$until
+CALL $Range$toList
 CALL print
 POPS GF@trash
 WRITE string@\010
@@ -1453,10 +1453,10 @@ WRITE string@\010
 # (5 to 1 by -2).toList -> List(5, 3, 1)
 PUSHS int@5
 PUSHS int@1
-CALL to
+CALL Int$to
 PUSHS int@-2
-CALL by
-CALL toList
+CALL $Range$by
+CALL $Range$toList
 CALL print
 POPS GF@trash
 WRITE string@\010
@@ -1464,10 +1464,10 @@ WRITE string@\010
 # (5 until 1 by -2).toList -> List(5, 3)
 PUSHS int@5
 PUSHS int@1
-CALL until
+CALL Int$until
 PUSHS int@-2
-CALL by
-CALL toList
+CALL $Range$by
+CALL $Range$toList
 CALL print
 POPS GF@trash
 WRITE string@\010
@@ -1475,8 +1475,8 @@ WRITE string@\010
 # (5 to 5).toList -> List(5)
 PUSHS int@5
 PUSHS int@5
-CALL to
-CALL toList
+CALL Int$to
+CALL $Range$toList
 CALL print
 POPS GF@trash
 WRITE string@\010
@@ -1484,8 +1484,8 @@ WRITE string@\010
 # (5 until 5).toList -> List()
 PUSHS int@5
 PUSHS int@5
-CALL until
-CALL toList
+CALL Int$until
+CALL $Range$toList
 CALL print
 POPS GF@trash
 WRITE string@\010
@@ -1493,10 +1493,10 @@ WRITE string@\010
 # (1 to 5 by -1).toList -> List()
 PUSHS int@1
 PUSHS int@5
-CALL to
+CALL Int$to
 PUSHS int@-1
-CALL by
-CALL toList
+CALL $Range$by
+CALL $Range$toList
 CALL print
 POPS GF@trash
 EXIT int@0

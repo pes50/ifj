@@ -176,6 +176,12 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
       context->tail = duplicated_tail;
     }
 
+    ast_node_t *dependency = fn_body->data.builtin_body.dependencies;
+    while (dependency != NULL) {
+      enqueue_function(context, dependency);
+      dependency = dependency->next;
+    }
+
     RETURN_ERR(NO_ERR);
   }
 

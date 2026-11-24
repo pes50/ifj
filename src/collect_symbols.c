@@ -9,7 +9,7 @@
 \*****************************************************************************/
 
 #include "collect_symbols.h"
-#include "string_concatenate_dot.h"
+#include "string_concatenate_dollar.h"
 
 #pragma region Helpers
 
@@ -156,8 +156,8 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
       return REDEF_SYMBOL_ERR;
     }
 
-    char *symbol =
-        string_concatenate_dot(first, current->data.function_declaration.name);
+    char *symbol = string_concatenate_dollar(
+        first, current->data.function_declaration.name);
     if (symbol == NULL) {
       free(first);
       return INTERNAL_ERR;

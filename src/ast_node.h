@@ -194,6 +194,7 @@ typedef struct ast_node_t {
 
     struct {
       struct inner_statement *first_instruction;
+      struct ast_node_t *dependencies;
     } builtin_body;
   } data;
 } ast_node_t;
