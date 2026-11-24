@@ -952,18 +952,24 @@ err_code_t fun_body(token_t *token, ast_node_t **node, bool is_lambda) {
       RETURN_ERR(ret);
     }
 
+    if (is_lambda) {
+      if (token->type != TOK_EOL && token->type != TOK_R_PAREN) {
+        destroy_node(body);
+        RETURN_ERR(SYNTAX_ERR);
+      }
+      return NO_ERR;
+    }
+
     if (token->type != TOK_EOL) {
       destroy_node(body);
       RETURN_ERR(SYNTAX_ERR);
     }
 
-    if (!is_lambda) {
-      token_clear(token);
-      ret = lexer_get_token(token, FORBIDDEN);
-      if (ret != NO_ERR) {
-        destroy_node(body);
-        RETURN_ERR(ret);
-      }
+    token_clear(token);
+    ret = lexer_get_token(token, FORBIDDEN);
+    if (ret != NO_ERR) {
+      destroy_node(body);
+      RETURN_ERR(ret);
     }
 
     *node = create_block_node(body);
@@ -1557,7 +1563,7 @@ err_code_t for_loop(token_t *token, ast_node_t **node) {
 
 err_code_t gen(token_t *token, ast_node_t **iterator, ast_node_t **generator) {
   if (token->type != TOK_IDENTIFIER) {
-    return SYNTAX_ERR;
+    return TYPE_COMPAT_ERR;
   }
 
   *iterator = create_parameter_node((char *)token->value, NULL);
