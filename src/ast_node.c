@@ -586,6 +586,10 @@ ast_node_t *create_leaf_node(token_t *token) {
     node->data.literal.data_type = &node_any;
     node->data.literal.raw = string_duplicate("_");
     break;
+  case TOK_KW_LIST:
+    node->type = AST_IDENTIFIER;
+    node->data.identifier.name = string_duplicate("List");
+    break;
   default:
     // Invalid token for leaf node
     destroy_node(node);
