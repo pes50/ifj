@@ -63,7 +63,6 @@ typedef enum {
   S_NOT,
   S_VERTICAL_BAR,
   S_AMPERSAND,
-  S_S,
   S_TOK_DOT,
   S_NUM,
   S_ZERO,
