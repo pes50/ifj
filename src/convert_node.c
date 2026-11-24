@@ -13,6 +13,7 @@
 #include "ast_node.h"
 #include "builtin.h"
 #include "convert_expression.h"
+#include "convert_match.h"
 #include "convert_statements.h"
 #include "convert_utils.h"
 #include "token.h"
@@ -78,6 +79,10 @@ err_code_t convert_node(context_t *context, ast_node_t *node) {
     err = convert_return(context, node);
     break;
   case AST_MATCH:
+    err = convert_match(context, node);
+    if (err == NO_ERR) {
+      err = discard_stack_top(context);
+    }
     break;
   case AST_MATCH_CASE:
     break;

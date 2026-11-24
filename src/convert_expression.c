@@ -11,177 +11,11 @@
 
 #include "convert_expression.h"
 #include "builtin.h"
+#include "convert_match.h"
 #include "convert_node.h"
 #include "convert_utils.h"
 #include <stdlib.h>
 #include <string.h>
-
-#pragma region Helpers
-
-static err_code_t retype_if_needed(context_t *context,
-                                   ast_node_t *examined_operand,
-                                   ast_node_t *other_operand) {
-  err_code_t err = NO_ERR;
-  inner_symbol_t empty_sym = create_empty_symbol();
-
-  if (are_data_types_identical(&node_int, examined_operand->data_type) &&
-      are_data_types_identical(&node_double, other_operand->data_type)) {
-    err = append_statement(context, INNER_INT2FLOATS, empty_sym, empty_sym,
-                           empty_sym);
-  }
-  RETURN_ERR(err);
-}
-
-static err_code_t create_helper_variable(context_t *context, ast_node_t *node,
-                                         inner_symbol_t *out_identifier) {
-  (void)node;
-  inner_symbol_t empty_sym = create_empty_symbol();
-
-  char *helper_var_identifier = create_unique_variable(context, "helper");
-  if (helper_var_identifier == NULL) {
-    RETURN_ERR(INTERNAL_ERR);
-  }
-
-  inner_symbol_t non_owning_sym = create_var_symbol(helper_var_identifier);
-  inner_symbol_t owning_sym = non_owning_sym;
-  owning_sym.owns_identifier = true;
-
-  err_code_t err = insert_at_function_start(context, INNER_DEFVAR, empty_sym,
-                                            owning_sym, empty_sym);
-  if (err != NO_ERR) {
-    free(helper_var_identifier);
-    *out_identifier = create_empty_symbol();
-    RETURN_ERR(err);
-  }
-
-  *out_identifier = non_owning_sym;
-  RETURN_ERR(NO_ERR);
-}
-
-/**
- * @brief Removes '_', 'd' and 'D' characters from numeric literals
- *
- * @param raw String form of the literal
- * @param strip_d_suffix Bool to inform that the type is double -> 'd' or 'D'
- *                       should be removed from the end of the literal
- *
- * @return A pointer to a sanitized literal or NULL if failed
- */
-static char *clean_numeric_literal(const char *raw, bool strip_d_suffix) {
-  if (raw == NULL) {
-    return NULL;
-  }
-
-  size_t len = strlen(raw);
-  char *clean = malloc(len + 1);
-  if (clean == NULL) {
-    return NULL;
-  }
-
-  size_t j = 0;
-  for (size_t i = 0; i < len; i++) {
-    // Skip underscores
-    if (raw[i] == '_') {
-      continue;
-    }
-
-    if (strip_d_suffix && i == len - 1 &&   // Is last
-        (raw[i] == 'd' || raw[i] == 'D')) { // Suffix 'd' or 'D'
-      break;
-    }
-
-    clean[j++] = raw[i];
-  }
-
-  // Add terminator
-  clean[j] = '\0';
-
-  return clean;
-}
-
-static err_code_t create_literal_symbol(ast_node_t *node,
-                                        inner_symbol_t *out_identifier) {
-  if (node == NULL || node->type != AST_LITERAL || out_identifier == NULL) {
-    RETURN_ERR(INTERNAL_ERR);
-  }
-
-  data_type_node_t *dtype = node->data.literal.data_type;
-  if (dtype == NULL) {
-    RETURN_ERR(INTERNAL_ERR);
-  }
-
-  inner_value_t val = {0};
-
-  // Convert unit to nil
-  if (dtype->type == DATA_TYPE_UNIT) {
-    val.inner_nil = NULL;
-    *out_identifier = create_const_symbol(INNER_NIL, val);
-    RETURN_ERR(NO_ERR);
-  }
-
-  if (dtype->type != DATA_TYPE_PRIMITIVE) {
-    RETURN_ERR(INTERNAL_ERR);
-  }
-
-  char *raw = node->data.literal.raw;
-  if (raw == NULL) {
-    RETURN_ERR(INTERNAL_ERR);
-  }
-
-  switch (dtype->data.primitive_type) {
-  case PRIMITIVE_INT: {
-    char *clean = clean_numeric_literal(raw, false);
-    if (clean == NULL) {
-      RETURN_ERR(INTERNAL_ERR);
-    }
-
-    char *endptr = NULL;
-    val.inner_int = strtoll(clean, &endptr, 10);
-    bool invalid = clean[0] == '\0' // is empty string
-                   || *endptr != '\0';
-    free(clean);
-    if (invalid) {
-      RETURN_ERR(INTERNAL_ERR);
-    }
-
-    *out_identifier = create_const_symbol(INNER_INT, val);
-    RETURN_ERR(NO_ERR);
-  }
-
-  case PRIMITIVE_DOUBLE: {
-    char *clean = clean_numeric_literal(raw, true);
-    if (clean == NULL) {
-      RETURN_ERR(INTERNAL_ERR);
-    }
-
-    char *endptr = NULL;
-    val.inner_float = strtod(clean, &endptr);
-    bool invalid = clean[0] == '\0' // is empty string
-                   || *endptr != '\0';
-    free(clean);
-    if (invalid) {
-      RETURN_ERR(INTERNAL_ERR);
-    }
-
-    *out_identifier = create_const_symbol(INNER_FLOAT, val);
-    RETURN_ERR(NO_ERR);
-  }
-
-  case PRIMITIVE_BOOLEAN:
-    val.inner_bool = strcmp(raw, "true") == 0;
-    *out_identifier = create_const_symbol(INNER_BOOL, val);
-    RETURN_ERR(NO_ERR);
-
-  case PRIMITIVE_STRING:
-    val.inner_string = raw;
-    *out_identifier = create_const_symbol(INNER_STRING, val);
-    RETURN_ERR(NO_ERR);
-  }
-
-  RETURN_ERR(INTERNAL_ERR);
-}
-
-#pragma endregion
 
 static err_code_t convert_interpolated_string_on_stack(context_t *context,
                                                        ast_node_t *node) {
@@ -195,12 +29,12 @@ static err_code_t convert_interpolated_string_on_stack(context_t *context,
   inner_symbol_t part_var;
 
   // create helper variables for the accumulated string and current segment
-  err_code_t err = create_helper_variable(context, node, &acc_var);
+  err_code_t err = create_helper_variable(context, &acc_var);
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
-  err = create_helper_variable(context, node, &part_var);
+  err = create_helper_variable(context, &part_var);
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -263,25 +97,115 @@ err_code_t convert_function_call(context_t *context, ast_node_t *node) {
   inner_symbol_t label = create_label_symbol(node->data.function_call.name);
 
   // Push all arguments left-to-right onto the data stack
-  ast_node_t *arg_list = node->data.function_call.argument_lists;
-  while (arg_list != NULL) {
-    if (arg_list->type != AST_ARGUMENT_LIST) {
+  ast_node_t *argument_list = node->data.function_call.argument_lists;
+  while (argument_list != NULL) {
+    if (argument_list->type != AST_ARGUMENT_LIST) {
       RETURN_ERR(INTERNAL_ERR);
     }
 
-    ast_node_t *arg = arg_list->data.argument_list.arguments;
-    while (arg != NULL) {
-      err_code_t err = convert_expression_on_stack(context, arg);
+    ast_node_t *argument = argument_list->data.argument_list.arguments;
+    while (argument != NULL) {
+      err_code_t err = convert_expression_on_stack(context, argument);
       if (err != NO_ERR) {
         RETURN_ERR(err);
       }
-      arg = arg->next;
+      argument = argument->next;
     }
 
-    arg_list = arg_list->next;
+    argument_list = argument_list->next;
   }
 
   // call
+  RETURN_ERR(
+      append_statement(context, INNER_CALL, empty_sym, label, empty_sym));
+}
+
+static err_code_t convert_dot_function_call(context_t *context,
+                                            ast_node_t *node) {
+  if (context == NULL || node == NULL || node->type != AST_DOT_FUNCTION_CALL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  ast_node_t *target = node->data.dot_function_call.target;
+  if (target == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_symbol_t empty_sym = create_empty_symbol();
+
+  // Evaluate target
+  err_code_t err = convert_expression_on_stack(context, target);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // Attribute access
+  if (node->data.dot_function_call.attribute_index > 0) {
+    inner_symbol_t instance_variable;
+    inner_symbol_t attribute_val_variable;
+    err = create_helper_variable(context, &instance_variable);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+    err = create_helper_variable(context, &attribute_val_variable);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+
+    // Pop the class array reference
+    err = append_statement(context, INNER_POPS, instance_variable, empty_sym,
+                           empty_sym);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+
+    inner_value_t idx_val = {
+        .inner_int = (long long)node->data.dot_function_call.attribute_index,
+    };
+    inner_symbol_t idx_sym = create_const_symbol(INNER_INT, idx_val);
+    // Save the attribute in a variable
+    err = append_statement(context, INNER_ARRAYGET, attribute_val_variable,
+                           instance_variable, idx_sym);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+
+    // Push the attribute to the stack
+    RETURN_ERR(append_statement(context, INNER_PUSHS, empty_sym,
+                                attribute_val_variable, empty_sym));
+  }
+
+  // Function call
+  ast_node_t *calling = node->data.dot_function_call.calling;
+  if (calling == NULL || calling->type != AST_FUNCTION_DECLARATION) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  err = enqueue_function(context, calling);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  ast_node_t *argument_list = node->data.dot_function_call.argument_lists;
+  while (argument_list != NULL) {
+    if (argument_list->type != AST_ARGUMENT_LIST) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+
+    ast_node_t *argument = argument_list->data.argument_list.arguments;
+    while (argument != NULL) {
+      err = convert_expression_on_stack(context, argument);
+      if (err != NO_ERR) {
+        RETURN_ERR(err);
+      }
+      argument = argument->next;
+    }
+
+    argument_list = argument_list->next;
+  }
+
+  inner_symbol_t label =
+      create_label_symbol(calling->data.function_declaration.name);
   RETURN_ERR(
       append_statement(context, INNER_CALL, empty_sym, label, empty_sym));
 }
@@ -383,6 +307,10 @@ err_code_t create_operation(ast_node_t *node,
 }
 
 err_code_t convert_unary_op_expression(context_t *context, ast_node_t *node) {
+  if (context == NULL || node == NULL || node->type != AST_UNARY_OPERATION) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
   err_code_t err = NO_ERR;
   inner_symbol_t empty_sym = create_empty_symbol();
 
@@ -460,15 +388,15 @@ err_code_t convert_string_expression(context_t *context, ast_node_t *node) {
   inner_symbol_t right_var;
   inner_symbol_t dst_var;
 
-  err = create_helper_variable(context, node, &left_var);
+  err = create_helper_variable(context, &left_var);
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
-  err = create_helper_variable(context, node, &right_var);
+  err = create_helper_variable(context, &right_var);
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
-  err = create_helper_variable(context, node, &dst_var);
+  err = create_helper_variable(context, &dst_var);
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -490,6 +418,68 @@ err_code_t convert_string_expression(context_t *context, ast_node_t *node) {
 
   RETURN_ERR(
       append_statement(context, INNER_PUSHS, empty_sym, dst_var, empty_sym));
+}
+
+err_code_t convert_binary_op_expression(context_t *context, ast_node_t *node) {
+  if (context == NULL || node == NULL || node->type != AST_BINARY_OPERATION) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  err_code_t err = NO_ERR;
+  inner_symbol_t empty_sym = create_empty_symbol();
+
+  ast_node_t *left_operand = node->data.binary_operation.left;
+  ast_node_t *right_operand = node->data.binary_operation.right;
+  if (right_operand == NULL || left_operand == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  // concat strings
+  if (node->data.binary_operation.op == TOK_BINARY_PLUS &&
+      are_data_types_identical(&node_string, left_operand->data_type)) {
+    RETURN_ERR(convert_string_expression(context, node));
+  }
+
+  // left child recursion
+  err = convert_expression_on_stack(context, left_operand);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  err = retype_if_needed(context, left_operand, right_operand);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // right child recursion
+  err = convert_expression_on_stack(context, right_operand);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  err = retype_if_needed(context, right_operand, left_operand);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // choose what operation to convert
+  inner_statement_operation_t operation = INNER_NOP_CUSTOM;
+  bool should_append_not = false;
+  if (create_operation(node, &operation, &should_append_not) == INTERNAL_ERR) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  err = append_statement(context, operation, empty_sym, empty_sym, empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  if (should_append_not) {
+    err =
+        append_statement(context, INNER_NOTS, empty_sym, empty_sym, empty_sym);
+  }
+
+  RETURN_ERR(err);
 }
 
 err_code_t convert_if(context_t *context, ast_node_t *node, bool push_result) {
@@ -672,15 +662,14 @@ err_code_t convert_expression_on_stack(context_t *context, ast_node_t *node) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  if (node->type == AST_IF) {
+  switch (node->type) {
+  case AST_IF:
     RETURN_ERR(convert_if(context, node, true));
-  }
-
-  if (node->type == AST_INTERPOLATED_STRING) {
+  case AST_INTERPOLATED_STRING:
     RETURN_ERR(convert_interpolated_string_on_stack(context, node));
-  }
-
-  if (node->type == AST_FUNCTION_CALL) {
+  case AST_MATCH:
+    RETURN_ERR(convert_match(context, node));
+  case AST_FUNCTION_CALL: {
     err_code_t err =
         enqueue_function(context, node->data.function_call.calling);
     if (err != NO_ERR) {
@@ -688,78 +677,21 @@ err_code_t convert_expression_on_stack(context_t *context, ast_node_t *node) {
     }
     RETURN_ERR(convert_function_call(context, node));
   }
-
-  err_code_t err = NO_ERR;
-  inner_symbol_t empty_sym = create_empty_symbol(),
-                 operand = create_empty_symbol();
-
-  // if recursion ends in this call
-  if (node->type != AST_BINARY_OPERATION && node->type != AST_UNARY_OPERATION) {
-    err = create_operand(context, node, &operand);
+  case AST_DOT_FUNCTION_CALL:
+    RETURN_ERR(convert_dot_function_call(context, node));
+  case AST_UNARY_OPERATION:
+    RETURN_ERR(convert_unary_op_expression(context, node));
+  case AST_BINARY_OPERATION:
+    RETURN_ERR(convert_binary_op_expression(context, node));
+  default: {
+    inner_symbol_t empty_sym = create_empty_symbol();
+    inner_symbol_t operand = create_empty_symbol();
+    err_code_t err = create_operand(context, node, &operand);
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
     RETURN_ERR(
         append_statement(context, INNER_PUSHS, empty_sym, operand, empty_sym));
   }
-
-  // if node is unary operation
-  if (node->type == AST_UNARY_OPERATION) {
-    RETURN_ERR(convert_unary_op_expression(context, node));
   }
-
-  // if node is binary operation
-  ast_node_t *left_operand = node->data.binary_operation.left;
-  ast_node_t *right_operand = node->data.binary_operation.right;
-
-  if (right_operand == NULL || left_operand == NULL) {
-    RETURN_ERR(INTERNAL_ERR);
-  }
-
-  // concat strings
-  if (node->data.binary_operation.op == TOK_BINARY_PLUS &&
-      are_data_types_identical(&node_string, left_operand->data_type)) {
-    RETURN_ERR(convert_string_expression(context, node));
-  }
-
-  // left child recursion
-  err = convert_expression_on_stack(context, left_operand);
-  if (err != NO_ERR) {
-    RETURN_ERR(err);
-  }
-
-  err = retype_if_needed(context, left_operand, right_operand);
-  if (err != NO_ERR) {
-    RETURN_ERR(err);
-  }
-
-  // right child recursion
-  err = convert_expression_on_stack(context, right_operand);
-  if (err != NO_ERR) {
-    RETURN_ERR(err);
-  }
-
-  err = retype_if_needed(context, right_operand, left_operand);
-  if (err != NO_ERR) {
-    RETURN_ERR(err);
-  }
-
-  // choose what operation to convert
-  inner_statement_operation_t operation = INNER_NOP_CUSTOM;
-  bool should_append_not = false;
-  if (create_operation(node, &operation, &should_append_not) == INTERNAL_ERR) {
-    RETURN_ERR(INTERNAL_ERR);
-  }
-
-  err = append_statement(context, operation, empty_sym, empty_sym, empty_sym);
-  if (err != NO_ERR) {
-    RETURN_ERR(err);
-  }
-
-  if (should_append_not) {
-    err =
-        append_statement(context, INNER_NOTS, empty_sym, empty_sym, empty_sym);
-  }
-
-  RETURN_ERR(err);
 }

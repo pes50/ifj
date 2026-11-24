@@ -11,6 +11,7 @@
 
 #include "ast_convert.h"
 #include "convert_node.h"
+#include "convert_utils.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -246,42 +247,159 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
   RETURN_ERR(NO_ERR);
 }
 
+err_code_t convert_class_constructor(context_t *context, ast_node_t *node) {
+  if (context == NULL || node == NULL || node->type != AST_CLASS_DECLARATION) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  char *class_name = node->data.class_declaration.name;
+  if (class_name == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  size_t class_id = 0;
+  err_code_t err = get_or_assign_class_id(context, node, &class_id);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  size_t attr_count = node->data.class_declaration.attribute_count;
+  inner_symbol_t empty_sym = create_empty_symbol();
+
+  // LABEL {class_name}
+  err = append_statement(context, INNER_LABEL, empty_sym,
+                         create_label_symbol(class_name), empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // CREATEFRAME
+  err = append_statement(context, INNER_CREATEFRAME, empty_sym, empty_sym,
+                         empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // PUSHFRAME
+  err = append_statement(context, INNER_PUSHFRAME, empty_sym, empty_sym,
+                         empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  context->function_start = context->tail;
+
+  inner_symbol_t instance_variable;
+  err = create_helper_variable(context, &instance_variable);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  inner_symbol_t temp_variable = create_empty_symbol();
+  if (attr_count > 0) {
+    err = create_helper_variable(context, &temp_variable);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+  }
+
+  // NEWARRAY {instance_variable} int@{attr_count + 1}
+  inner_value_t size_val = {.inner_int = (long long)(attr_count + 1)};
+  inner_symbol_t size_sym = create_const_symbol(INNER_INT, size_val);
+  err = append_statement(context, INNER_NEWARRAY, instance_variable, size_sym,
+                         empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // ARRAYSET {instance_variable} int@0 int@{class_id}
+  inner_value_t zero_val = {.inner_int = 0};
+  inner_symbol_t zero_sym = create_const_symbol(INNER_INT, zero_val);
+  inner_value_t id_val = {.inner_int = (long long)class_id};
+  inner_symbol_t id_sym = create_const_symbol(INNER_INT, id_val);
+
+  err = append_statement(context, INNER_ARRAYSET, instance_variable, zero_sym,
+                         id_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // Pop arguments to class
+  for (size_t i = attr_count; i >= 1; i--) {
+    // Get value from stack
+    err = append_statement(context, INNER_POPS, temp_variable, empty_sym,
+                           empty_sym);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+
+    inner_value_t idx_value = {.inner_int = (long long)i};
+    inner_symbol_t idx_sym = create_const_symbol(INNER_INT, idx_value);
+
+    err = append_statement(context, INNER_ARRAYSET, instance_variable, idx_sym,
+                           temp_variable);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+  }
+
+  // PUSHS {instance_variable}
+  err = append_statement(context, INNER_PUSHS, empty_sym, instance_variable,
+                         empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // POPFRAME
+  err = append_statement(context, INNER_POPFRAME, empty_sym, empty_sym,
+                         empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // RETURN
+  err =
+      append_statement(context, INNER_RETURN, empty_sym, empty_sym, empty_sym);
+  RETURN_ERR(err);
+}
 #pragma endregion
 
 #pragma region Interface implementation
 
-err_code_t enqueue_function(context_t *context,
-                            ast_node_t *function_declaration_node) {
-  // Check if arguments are valid
+err_code_t enqueue_function(context_t *context, ast_node_t *declaration_node) {
   if (context == NULL || context->stack == NULL || context->table == NULL ||
-      function_declaration_node == NULL) {
+      declaration_node == NULL) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  if (function_declaration_node->type != AST_FUNCTION_DECLARATION) {
+  char *name = NULL;
+  if (declaration_node->type == AST_FUNCTION_DECLARATION) {
+    name = declaration_node->data.function_declaration.name;
+  } else if (declaration_node->type == AST_CLASS_DECLARATION) {
+    name = declaration_node->data.class_declaration.name;
+  } else {
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  char *name = function_declaration_node->data.function_declaration.name;
   if (name == NULL) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  // Check if function is visited
+  // Check if node is already visited
   ast_node_t *table_node = NULL;
   err_code_t err = ht_get_item(context->table, name, (void **)&table_node);
   if (err != UNDEF_SYMBOL_ERR) {
     RETURN_ERR(err);
   }
 
-  // Mark function as visited
-  err = ht_insert_item(context->table, name, function_declaration_node);
+  // Mark as visited
+  err = ht_insert_item(context->table, name, declaration_node);
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
-  // Add function to stack to wait for processing
-  if (!stack_push(context->stack, function_declaration_node)) {
+  // Add to stack to wait for processing
+  if (!stack_push(context->stack, declaration_node)) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
@@ -334,7 +452,14 @@ err_code_t ast_convert(ast_node_t *main_node, inner_statement_t **code) {
     ast_node_t *current = current_element->data;
     stack_pop(context.stack);
 
-    err = convert_function_declaration(&context, current);
+    if (current->type == AST_FUNCTION_DECLARATION) {
+      err = convert_function_declaration(&context, current);
+    } else if (current->type == AST_CLASS_DECLARATION) {
+      err = convert_class_constructor(&context, current);
+    } else {
+      err = INTERNAL_ERR;
+    }
+
     if (err != NO_ERR) {
       goto cleanup;
     }

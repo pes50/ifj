@@ -46,6 +46,10 @@ err_code_t analyse_class_declaration(ast_node_t *node, hashtable_t *symtable) {
     return INTERNAL_ERR;
   }
 
+  if (node->data_type != NULL) {
+    RETURN_ERR(NO_ERR);
+  }
+
   if (node->type != AST_CLASS_DECLARATION) {
     return OTHER_SEMANTIC_ERR;
   }
@@ -68,6 +72,7 @@ err_code_t analyse_class_declaration(ast_node_t *node, hashtable_t *symtable) {
   node->_visited = true;
   err_code_t err = NO_ERR;
   ast_node_t *attribute = attribute_list->data.parameter_list.parameters;
+  size_t attribute_count = 0;
   while (attribute != NULL && err == NO_ERR) {
     err = analyse_type(attribute->data.parameter.data_type, symtable);
     if (err != NO_ERR) {
@@ -81,7 +86,9 @@ err_code_t analyse_class_declaration(ast_node_t *node, hashtable_t *symtable) {
     }
 
     attribute = attribute->next;
+    attribute_count++;
   }
+  node->data.class_declaration.attribute_count = attribute_count;
   node->_visited = false;
 
   err = duplicate_type_node(&node_unit, &attribute_list->data_type);
