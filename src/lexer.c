@@ -1270,6 +1270,9 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         state = S_START_S_ML;
       } else if (character == '$') {
+        if (dynstr_append_char(output_val, '"') != NO_ERR) {
+          return INTERNAL_ERR;
+        }
         state = S_DOLAR_STATE;
       } else if (character == '"') {
         state = S_END_S_ML_2;
