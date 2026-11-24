@@ -936,3 +936,142 @@ TEST_F(LexerFixture, ForLoopNegativeBoundsAndStep) {
   expect_get(TOK_KW_DO);
   expect_get(TOK_EOL);
 }
+
+/********************************************************************\
+ * Multi line comment, that includes LF followed not followed by EOL*
+\********************************************************************/
+
+TEST_F(LexerFixture, MultilineBlockCommentFollowedByTokensAtLineStart) {
+  feed("import ifj26.*\n"
+       "/* comment\n"
+       "continues */def foo(): Int = 1\n"
+       "@main def main(): Unit =\n"
+       "  print(foo())\n");
+
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  // Lexical error expected
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, MultilineBlockCommentFollowedByStatement) {
+  feed("import ifj26.*\n"
+       "@main def main(): Unit =\n"
+       "  val x = 1 /* start\n"
+       "  end */  val y = 2\n"
+       "  print(x)\n");
+
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "main");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  expect_get(TOK_INDENT);
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "1");
+
+  // Lexical error expected
+  expect_get_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, MultilineBlockCommentFollowedByCall) {
+  feed("import ifj26.*\n"
+       "@main def main(): Unit =\n"
+       "  print(\"a\") /* x\n"
+       "  */  print(\"b\")\n");
+
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "main");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  expect_get(TOK_INDENT);
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_STRING, "a");
+  expect_get(TOK_R_PAREN);
+
+  // Lexical error expected
+  expect_get_err(LEXICAL_ERR);
+}
+
+/***************************************\
+ * Wrong indentation inside parentheses*
+\***************************************/
+
+TEST_F(LexerFixture, ParenthesesContinuationNotIndentedMoreThanLogicalLine) {
+  feed("import ifj26.*\n"
+       "@main def main(): Unit =\n"
+       "  print(\n"
+       "  \"x\"\n"
+       "  )\n");
+
+  expect_get(TOK_KW_IMPORT);
+  expect_get(TOK_IDENTIFIER, "ifj26");
+  expect_get(TOK_DOT);
+  expect_get(TOK_MUL);
+  expect_get(TOK_EOL);
+
+  expect_get(TOK_AT_MAIN);
+  expect_get(TOK_KW_DEF);
+  expect_get(TOK_IDENTIFIER, "main");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_COLON);
+  expect_get(TOK_KW_UNIT);
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_EOL);
+
+  expect_get(TOK_INDENT);
+  expect_get(TOK_IDENTIFIER, "print");
+  expect_get(TOK_L_PAREN);
+
+  // Lexical error expected
+  expect_get_err(LEXICAL_ERR);
+}
+
+/********************************************************************\
+ * Interpolated sting contains '"' before '$' sign*
+\********************************************************************/
+
+TEST_F(LexerFixture,
+       InterpolatedMultilineStringWithQuoteAndTrailingIdentifier) {
+  feed(R"(val a = s"""x"$b""")");
+
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INTERP_M_STRING_PART, "x\"");
+  expect_get(TOK_IDENTIFIER, "b");
+  expect_get(TOK_LIT_INTERP_M_STRING_END, "");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
