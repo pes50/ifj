@@ -483,6 +483,18 @@ err_code_t analyse_function_call(char *identifier, ast_node_t *node,
             ? target_type
             : NULL);
     if (err != NO_ERR) {
+      // Range functions use TYPE_COMPAT_ERR instead of ARG_MISMATCH_ERR
+      if (err == ARG_MISMATCH_ERR && node->type == AST_DOT_FUNCTION_CALL &&
+          table_node->data.function_declaration.is_range_method) {
+        ast_node_t *argument_list = node->data.dot_function_call.argument_lists;
+        ast_node_t *argument =
+            (argument_list != NULL && argument_list->type == AST_ARGUMENT_LIST)
+                ? argument_list->data.argument_list.arguments
+                : NULL;
+        if (argument != NULL && argument->data_type != NULL) {
+          RETURN_ERR(TYPE_COMPAT_ERR);
+        }
+      }
       RETURN_ERR(err);
     }
 
@@ -1134,6 +1146,28 @@ err_code_t analyse_expression(ast_node_t *node, hashtable_t *symtable,
     err = analyse_function_call(identifier, node, symtable,
                                 node->data.dot_function_call.target->data_type);
     free(identifier);
+
+    // Check if this is a range method
+    if (err == UNDEF_SYMBOL_ERR) {
+      char *range_receivers[] = {"Int", "$Range"};
+      for (size_t i = 0; i < 2; i++) {
+        char *range_id = string_concatenate_dollar(
+            range_receivers[i], node->data.dot_function_call.name);
+        if (range_id == NULL) {
+          RETURN_ERR(INTERNAL_ERR);
+        }
+
+        ast_node_t *function = NULL;
+        if (ht_get_item(symtable, range_id, (void **)&function) == NO_ERR &&
+            function != NULL && function->type == AST_FUNCTION_DECLARATION &&
+            function->data.function_declaration.is_range_method) {
+          free(range_id);
+          RETURN_ERR(TYPE_COMPAT_ERR);
+        }
+        free(range_id);
+      }
+    }
+
     RETURN_ERR(err);
   }
   case AST_IF:

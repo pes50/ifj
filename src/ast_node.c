@@ -148,6 +148,7 @@ ast_node_t *create_function_declaration_node(char *name,
   node->data.function_declaration.body = body;
   node->data.function_declaration.return_type = return_type;
   node->data.function_declaration.is_main = is_main;
+  node->data.function_declaration.is_range_method = false;
 
   // Check if string_duplicate failed
   if (node->data.function_declaration.name == NULL) {

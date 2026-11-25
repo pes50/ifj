@@ -1505,13 +1505,13 @@ def factRec(n: Int): Int =
             "720|720", "6\n"),
 
       // Built-in functions
-      E2EOk("BaseBuiltin_StringOpsAndConversions",
+      E2EOk("BaseBuiltin_StringAndConversionFunctions",
             R"(import ifj26.*
 @main def main(): Unit =
   val raw = "Hello, IFJ26!"
   val len = strLength(raw)
   val sub = subStr(raw, 7, 12)
-  val emptySub = subStr(raw, 13, 13)
+  val emptySub = subStr(raw, 7, 7)
   val code = ord(sub, 0)
   val ch = chr(code)
   val oobOrd = ord(sub, 99)

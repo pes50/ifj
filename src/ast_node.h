@@ -63,6 +63,7 @@ typedef struct ast_node_t {
       data_type_node_t *return_type;
       bool is_main;
       bool is_static;
+      bool is_range_method;
     } function_declaration;
 
     struct {
