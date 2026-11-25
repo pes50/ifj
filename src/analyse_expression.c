@@ -719,11 +719,11 @@ err_code_t analyse_match_case_class_constructor(ast_node_t *node,
                                                 hashtable_t *symtable,
                                                 data_type_node_t *match_type) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   if (node->type != AST_FUNCTION_CALL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   err_code_t err = NO_ERR;
@@ -735,22 +735,22 @@ err_code_t analyse_match_case_class_constructor(ast_node_t *node,
   }
 
   if (table_node->type != AST_CLASS_DECLARATION) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   if (!are_data_types_compatible(table_node->data_type, match_type)) {
-    return TYPE_COMPAT_ERR;
+    RETURN_ERR(TYPE_COMPAT_ERR);
   }
 
   ast_node_t *attribute_list =
       table_node->data.class_declaration.attribute_list;
   if (attribute_list == NULL || attribute_list->type != AST_PARAMETER_LIST) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   ast_node_t *argument_list = node->data.function_call.argument_lists;
   if (argument_list == NULL || argument_list->type != AST_ARGUMENT_LIST) {
-    return ARG_MISMATCH_ERR;
+    RETURN_ERR(ARG_MISMATCH_ERR);
   }
 
   ast_node_t *attribute = attribute_list->data.parameter_list.parameters;
@@ -758,7 +758,7 @@ err_code_t analyse_match_case_class_constructor(ast_node_t *node,
   while (attribute != NULL && argument != NULL) {
     char *argument_name = argument->data.identifier.name;
     if (argument->type != AST_IDENTIFIER || argument_name == NULL) {
-      return OTHER_SEMANTIC_ERR;
+      RETURN_ERR(OTHER_SEMANTIC_ERR);
     }
 
     data_type_node_t *attribute_type = NULL;
@@ -786,7 +786,7 @@ err_code_t analyse_match_case_class_constructor(ast_node_t *node,
     argument = argument->next;
   }
   if (attribute != NULL || argument != NULL) {
-    return ARG_MISMATCH_ERR;
+    RETURN_ERR(ARG_MISMATCH_ERR);
   }
 
   err = duplicate_type_node(&node_unit, &argument_list->data_type);
@@ -834,18 +834,18 @@ err_code_t analyse_match_case(ast_node_t *node, hashtable_t *symtable,
                               bool allow_return, int *default_count,
                               data_type_node_t *match_type) {
   if (node == NULL || symtable == NULL || match_type == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   if (node->type != AST_MATCH_CASE) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   ast_node_t *pattern = node->data.match_case.pattern;
   ast_node_t *guard = node->data.match_case.guard;
   ast_node_t *block = node->data.match_case.block;
   if (pattern == NULL || block == NULL) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   err_code_t err = NO_ERR;
@@ -860,11 +860,11 @@ err_code_t analyse_match_case(ast_node_t *node, hashtable_t *symtable,
   if (pattern->type == AST_LITERAL &&
       are_data_types_identical(pattern->data.literal.data_type, &node_any)) {
     if (*default_count > 0) {
-      return OTHER_SEMANTIC_ERR;
+      RETURN_ERR(OTHER_SEMANTIC_ERR);
     }
 
     if (guard != NULL) {
-      return OTHER_SEMANTIC_ERR;
+      RETURN_ERR(OTHER_SEMANTIC_ERR);
     }
 
     err = duplicate_type_node(&node_any, &pattern->data_type);

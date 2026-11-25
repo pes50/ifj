@@ -253,17 +253,32 @@ err_code_t convert_assignment(context_t *context, ast_node_t *node) {
                               empty_sym, empty_sym));
 }
 
+static bool is_current_function_unit(context_t *context) {
+  return context != NULL && context->current_return_type != NULL &&
+         context->current_return_type->type == DATA_TYPE_UNIT;
+}
+
 err_code_t convert_return(context_t *context, ast_node_t *node) {
   inner_symbol_t empty_sym = create_empty_symbol();
+  bool push_nil = (node->data.return_statement.expression == NULL);
 
-  // Push return value onto the data stack (nil@nil if bare return / Unit)
   if (node->data.return_statement.expression != NULL) {
     err_code_t err = convert_expression_on_stack(
         context, node->data.return_statement.expression);
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
-  } else {
+
+    if (is_current_function_unit(context)) {
+      err = discard_stack_top(context);
+      if (err != NO_ERR) {
+        RETURN_ERR(err);
+      }
+      push_nil = true;
+    }
+  }
+
+  if (push_nil) {
     inner_value_t nil_val = {.inner_nil = NULL};
     inner_symbol_t nil_sym = create_const_symbol(INNER_NIL, nil_val);
     err_code_t err =

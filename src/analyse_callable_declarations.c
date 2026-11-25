@@ -217,16 +217,16 @@ fun_err:
 err_code_t analyse_lambda_declaration(ast_node_t *node, hashtable_t *symtable,
                                       data_type_node_t *explicit_data_type) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   if (node->type != AST_LAMBDA_DECLARATION) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   ast_node_t *body = node->data.lambda_declaration.body;
   if (body == NULL) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   data_type_node_t *expected_return_type = NULL;
@@ -238,7 +238,7 @@ err_code_t analyse_lambda_declaration(ast_node_t *node, hashtable_t *symtable,
   // Create new scope
   hashtable_t *current_scope;
   if (ht_init(&current_scope, local_scope_table_size) != NO_ERR) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
   current_scope->parent = symtable;
 

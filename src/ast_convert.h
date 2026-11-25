@@ -32,6 +32,7 @@ typedef struct {
   inner_statement_t *head;
   inner_statement_t *tail;
   inner_statement_t *function_start;
+  data_type_node_t *current_return_type;
 } context_t;
 
 /**

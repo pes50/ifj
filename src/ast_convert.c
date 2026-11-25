@@ -221,6 +221,7 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
 
   // Mark the end of the function prologue
   context->function_start = context->tail;
+  context->current_return_type = return_type;
 
   bool is_unit = return_type->type == DATA_TYPE_UNIT;
 
@@ -417,6 +418,7 @@ err_code_t convert_lambda_declaration(context_t *context, ast_node_t *node) {
   }
 
   context->function_start = context->tail;
+  context->current_return_type = node->data_type->data.lambda_type.return_type;
 
   bool is_unit =
       node->data_type->data.lambda_type.return_type->type == DATA_TYPE_UNIT;
@@ -524,6 +526,8 @@ err_code_t ast_convert(ast_node_t *main_node, inner_statement_t **code) {
       .stack = NULL,
       .table = NULL,
       .tail = NULL,
+      .function_start = NULL,
+      .current_return_type = NULL,
   };
 
   // Initialize variables
