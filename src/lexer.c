@@ -20,6 +20,8 @@
 #define LEXER_BUF_SIZE (LEXER_MAX_LOOKAHEAD + 1)
 #define LEXER_AT_MAIN "main"
 
+#define IS_ASCII(c) (((c) >= ' ' && (c) <= '~') || (c) == '\t')
+
 /**
  * @brief Dictionary for the keywords.
  */
@@ -748,6 +750,9 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         state = S_E;
       } else {
+        if (isalpha(character)) {
+          return LEXICAL_ERR;
+        }
         ungetc(character, input_stream);
         *type = TOK_LIT_INT;
         lexer_run = false;
@@ -780,6 +785,9 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else if (character == '_') {
         return LEXICAL_ERR;
       } else {
+        if (isalpha(character)) {
+          return LEXICAL_ERR;
+        }
         ungetc(character, input_stream);
         *type = TOK_LIT_INT;
         lexer_run = false;
@@ -882,9 +890,17 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else if (character == '_') {
         state = S_UNDERSCORE_EXP;
       } else if (character == 'D' || character == 'd') {
+        int next = getc(input_stream);
+        if (isalnum(next) || next == '_') {
+          return LEXICAL_ERR;
+        }
+        ungetc(next, input_stream);
         *type = TOK_LIT_DOUBLE;
         lexer_run = false;
       } else {
+        if (isalpha(character)) {
+          return LEXICAL_ERR;
+        }
         ungetc(character, input_stream);
         *type = TOK_LIT_DOUBLE;
         lexer_run = false;
@@ -911,6 +927,13 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else if (character == '_') {
         state = S_DEC_UNDERSCORE;
       } else if (character == 'D' || character == 'd') {
+        int next = getc(input_stream);
+        if (isalnum(next) || next == '_') {
+          return LEXICAL_ERR;
+        }
+        ungetc(next, input_stream);
+        *type = TOK_LIT_DOUBLE;
+        lexer_run = false;
         *type = TOK_LIT_DOUBLE;
         lexer_run = false;
       } else if (character == 'e' || character == 'E') {
@@ -919,6 +942,9 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         state = S_E;
       } else {
+        if (isalpha(character)) {
+          return LEXICAL_ERR;
+        }
         ungetc(character, input_stream);
         *type = TOK_LIT_DOUBLE;
         lexer_run = false;
