@@ -66,6 +66,7 @@ typedef enum {
   S_TOK_DOT,
   S_NUM,
   S_ZERO,
+  S_ZERO_DIGITS,
   S_STR,
   // NUMBERS, DECIMALS
   S_NUM_UNDERSCORE,
@@ -771,12 +772,42 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
           return INTERNAL_ERR;
         }
         state = S_E;
-      } else if ((character >= '0' && character <= '9') || character == '_') {
+      } else if (character >= '0' && character <= '9') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_ZERO_DIGITS;
+      } else if (character == '_') {
         return LEXICAL_ERR;
       } else {
         ungetc(character, input_stream);
         *type = TOK_LIT_INT;
         lexer_run = false;
+      }
+      break;
+
+    case S_ZERO_DIGITS:
+      if (character >= '0' && character <= '9') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+      } else if (character == '.') {
+        int next = getc(input_stream);
+        ungetc(next, input_stream);
+        if (!(next >= '0' && next <= '9')) {
+          return LEXICAL_ERR;
+        }
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_DOT;
+      } else if (character == 'e' || character == 'E') {
+        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_E;
+      } else {
+        return LEXICAL_ERR;
       }
       break;
 

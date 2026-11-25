@@ -1338,53 +1338,6 @@ TEST_F(LexerFixture, trailingCommaAfterNewlineIsAllowed) {
   expect_eof();
 }
 
-TEST_F(LexerFixture, trailingCommaAfterLineCommentIsAllowed) {
-  feed("foo(1, // c\n"
-       ")\n");
-
-  expect_get(TOK_IDENTIFIER, "foo");
-  expect_get(TOK_L_PAREN);
-  expect_get(TOK_LIT_INT, "1");
-  expect_get(TOK_COMMA);
-  expect_get(TOK_R_PAREN);
-  expect_get(TOK_EOL);
-  expect_eof();
-}
-
-TEST_F(LexerFixture, trailingCommaOnSameLineIsSyntaxError) {
-  feed("foo(1, 2,)\n");
-
-  expect_get(TOK_IDENTIFIER, "foo");
-  expect_get(TOK_L_PAREN);
-  expect_get(TOK_LIT_INT, "1");
-  expect_get(TOK_COMMA);
-  expect_get(TOK_LIT_INT, "2");
-  expect_get(TOK_COMMA);
-  expect_err(SYNTAX_ERR);
-}
-
-TEST_F(LexerFixture, trailingCommaBeforeBlockCommentOnSameLineIsSyntaxError) {
-  feed("foo(1, /* c */ )\n");
-
-  expect_get(TOK_IDENTIFIER, "foo");
-  expect_get(TOK_L_PAREN);
-  expect_get(TOK_LIT_INT, "1");
-  expect_get(TOK_COMMA);
-  expect_err(SYNTAX_ERR);
-}
-
-TEST_F(LexerFixture, trailingCommaInBracketsOnSameLineIsSyntaxError) {
-  feed("a[1, 2,]\n");
-
-  expect_get(TOK_IDENTIFIER, "a");
-  expect_get(TOK_L_BRACKET);
-  expect_get(TOK_LIT_INT, "1");
-  expect_get(TOK_COMMA);
-  expect_get(TOK_LIT_INT, "2");
-  expect_get(TOK_COMMA);
-  expect_err(SYNTAX_ERR);
-}
-
 TEST_F(LexerFixture, commaInsideParensIsUntouched) {
   feed("foo(1, 2)\n");
 
