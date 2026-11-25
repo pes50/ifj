@@ -240,7 +240,7 @@ err_code_t analyse_lambda_declaration(ast_node_t *node, hashtable_t *symtable,
   if (ht_init(&current_scope, local_scope_table_size) != NO_ERR) {
     RETURN_ERR(INTERNAL_ERR);
   }
-  current_scope->parent = symtable;
+  current_scope->parent = ht_get_root(symtable);
 
   // Create symbols for parameters
   err_code_t err = add_parameters_to_scope(node, current_scope);
