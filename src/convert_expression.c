@@ -95,7 +95,8 @@ static err_code_t convert_interpolated_string_on_stack(context_t *context,
 }
 
 err_code_t convert_function_call(context_t *context, ast_node_t *node) {
-  if (context == NULL || node == NULL || node->type != AST_FUNCTION_CALL) {
+  if (context == NULL || node == NULL || node->type != AST_FUNCTION_CALL ||
+      node->data_type == NULL) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
@@ -106,7 +107,8 @@ err_code_t convert_function_call(context_t *context, ast_node_t *node) {
 
   // Function is used as identifier
   if (calling->type == AST_FUNCTION_DECLARATION &&
-      node->data.function_call.argument_lists == NULL) {
+      node->data.function_call.argument_lists == NULL &&
+      node->data_type->type == DATA_TYPE_LAMBDA) {
     inner_symbol_t empty_sym = create_empty_symbol();
     inner_value_t val = {
         .inner_string = calling->data.function_declaration.name,

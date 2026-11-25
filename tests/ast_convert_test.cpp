@@ -1609,6 +1609,41 @@ ast_node_t *test_ext_lambdas_explicit_return() {
   });
 }
 
+// def makeAdder(): (Int) => Int = (x: Int) => x + 10
+// @main def main(): Unit = {
+//   val add10 = makeAdder()
+//   val factory = makeAdder
+//   val add10FromRef = factory()
+//   print(add10(5)); print("|"); print(add10FromRef(7))
+// } -> "15|17"
+ast_node_t *test_ext_lambdas_zero_arg_returning_lambda() {
+  ast_node_t *adder_lam = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("x"), &node_int),
+      create_block_node(create_binary_operation_node(TOK_BINARY_PLUS, id("x"),
+                                                     lit_int("10"))));
+
+  data_type_node_t *adder_type = create_lambda_type_node(
+      create_primitive_type_node(PRIMITIVE_INT), &node_int);
+
+  ast_node_t *fn_make_adder = create_function_declaration_node(
+      const_cast<char *>("makeAdder"), create_parameter_list_node(nullptr),
+      create_block_node(adder_lam), adder_type, false);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          val_decl("add10", call("makeAdder", {})),
+          val_decl("factory", id("makeAdder")),
+          val_decl("add10FromRef", call("factory", {})),
+          print_call(call("add10", {lit_int("5")})),
+          print_call(lit_str("|")),
+          print_call(call("add10FromRef", {lit_int("7")})),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_make_adder, fn_main}));
+}
+
 // Reuse pattern variable `v` across arms and across multiple `match` blocks:
 // var x: Int | String = 5
 // val r1 = x match { case v: Int => v + 1; case v: String => strLength(v); case
@@ -2202,6 +2237,8 @@ INSTANTIATE_TEST_SUITE_P(
                         "[7]|()|12"},
         CodegenTestCase{"ExtLambdas_ExplicitReturn",
                         test_ext_lambdas_explicit_return, "15|12|()"},
+        CodegenTestCase{"ExtLambdas_ZeroArgReturningLambda",
+                        test_ext_lambdas_zero_arg_returning_lambda, "15|17"},
 
         // Extension EXTKW: User Extension Methods
         CodegenTestCase{"ExtExtkw_IntMethods", test_ext_extkw_int_methods,
