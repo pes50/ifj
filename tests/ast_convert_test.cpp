@@ -1889,6 +1889,60 @@ ast_node_t *test_ext_extkw_int_methods() {
   return create_block_node(chain_nodes({ext_decl, fn_main}));
 }
 
+// extension (value: Int)
+//   def printVal(): Unit = print(value)
+//   def printAndDouble(): Int = { print(value); value * 2 }
+//   def twice: Int = value * 2
+// @main def main(): Unit = {
+//   val x = 7
+//   while readInt() > 0 do x.printVal()
+//   print("|")
+//   x.printAndDouble()
+//   x.twice
+//   print("|ok")
+// } -> "77|7|ok" (with stdin "1\n1\n0\n")
+ast_node_t *test_ext_extkw_dot_call_statements() {
+  ast_node_t *fn_print_val = create_function_declaration_node(
+      const_cast<char *>("printVal"), create_parameter_list_node(nullptr),
+      create_block_node(print_call(id("value"))), &node_unit, false);
+
+  ast_node_t *fn_print_and_double = create_function_declaration_node(
+      const_cast<char *>("printAndDouble"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          print_call(id("value")),
+          create_binary_operation_node(TOK_MUL, id("value"), lit_int("2")),
+      })),
+      &node_int, false);
+
+  ast_node_t *fn_twice = create_function_declaration_node(
+      const_cast<char *>("twice"), nullptr,
+      create_block_node(
+          create_binary_operation_node(TOK_MUL, id("value"), lit_int("2"))),
+      &node_int, false);
+
+  ast_node_t *ext_decl = create_extension_declaration_node(
+      create_parameter_node(const_cast<char *>("value"), &node_int),
+      chain_nodes({fn_print_val, fn_print_and_double, fn_twice}));
+
+  ast_node_t *cond = create_binary_operation_node(
+      TOK_GREATER_T, call("readInt"), lit_int("0"));
+  ast_node_t *loop = create_while_do_node(cond, dot_call(id("x"), "printVal"));
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          val_decl("x", lit_int("7")),
+          loop,
+          print_call(lit_str("|")),
+          dot_call(id("x"), "printAndDouble"),
+          dot_member(id("x"), "twice"),
+          print_call(lit_str("|ok")),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({ext_decl, fn_main}));
+}
+
 #pragma endregion
 
 #pragma region Extension PARAMLISTS: Parameterless & Multi-Param-List Functions
@@ -2249,6 +2303,9 @@ INSTANTIATE_TEST_SUITE_P(
         // Extension EXTKW: User Extension Methods
         CodegenTestCase{"ExtExtkw_IntMethods", test_ext_extkw_int_methods,
                         "12|v=6|18"},
+        CodegenTestCase{"ExtExtkw_DotCallStatements",
+                        test_ext_extkw_dot_call_statements, "77|7|ok",
+                        "1\n1\n0\n"},
 
         // Extension PARAMLISTS: Parameterless & Multi-Param-List Functions
         CodegenTestCase{"ExtParamlists_Basic", test_ext_paramlists_basic,

@@ -56,6 +56,10 @@ err_code_t convert_node(context_t *context, ast_node_t *node) {
     }
     break;
   case AST_DOT_FUNCTION_CALL:
+    err = convert_expression_on_stack(context, node);
+    if (err == NO_ERR) {
+      err = discard_stack_top(context);
+    }
     break;
   case AST_LAMBDA_DECLARATION:
     err = convert_lambda_expression(context, node);
