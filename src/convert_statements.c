@@ -197,6 +197,10 @@ err_code_t convert_block(context_t *context, ast_node_t *node) {
 }
 
 err_code_t convert_var_declaration(context_t *context, ast_node_t *node) {
+  if (context == NULL || node == NULL || node->data_type == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
   inner_symbol_t empty_sym = create_empty_symbol();
 
   char *unique_name =
@@ -214,37 +218,61 @@ err_code_t convert_var_declaration(context_t *context, ast_node_t *node) {
     RETURN_ERR(err);
   }
 
-  if (node->data.variable_declaration.expression != NULL) {
-    err = convert_expression_on_stack(
-        context, node->data.variable_declaration.expression);
-    if (err != NO_ERR) {
-      RETURN_ERR(err);
-    }
-
-    RETURN_ERR(append_statement(context, INNER_POPS,
-                                create_var_symbol(unique_name), empty_sym,
-                                empty_sym));
+  ast_node_t *expression = node->data.variable_declaration.expression;
+  if (expression == NULL || expression->data_type == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
   }
 
-  RETURN_ERR(NO_ERR);
+  err = convert_expression_on_stack(context, expression);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  err = retype_if_needed(context, expression, node);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  RETURN_ERR(append_statement(context, INNER_POPS,
+                              create_var_symbol(unique_name), empty_sym,
+                              empty_sym));
 }
 
 err_code_t convert_assignment(context_t *context, ast_node_t *node) {
+  if (context == NULL || node == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
   inner_symbol_t empty_sym = create_empty_symbol();
 
+  ast_node_t *calling = node->data.assignment.calling;
+  if (calling == NULL || calling->data_type == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
   char *var_name = NULL;
-  if (node->data.assignment.calling->type == AST_PARAMETER) {
-    var_name = node->data.assignment.calling->data.parameter.name;
+  if (calling->type == AST_PARAMETER) {
+    var_name = calling->data.parameter.name;
   } else {
-    var_name =
-        node->data.assignment.calling->data.variable_declaration.unique_id;
+    if (calling->type != AST_VARIABLE_DECLARATION) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+    var_name = calling->data.variable_declaration.unique_id;
   }
   if (var_name == NULL) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  err_code_t err =
-      convert_expression_on_stack(context, node->data.assignment.expression);
+  ast_node_t *expression = node->data.assignment.expression;
+  if (expression == NULL || expression->data_type == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+  err_code_t err = convert_expression_on_stack(context, expression);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  err = retype_if_needed(context, expression, calling);
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -259,12 +287,18 @@ static bool is_current_function_unit(context_t *context) {
 }
 
 err_code_t convert_return(context_t *context, ast_node_t *node) {
+  if (context == NULL || node == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
   inner_symbol_t empty_sym = create_empty_symbol();
-  bool push_nil = (node->data.return_statement.expression == NULL);
+  ast_node_t *expression = node->data.return_statement.expression;
+  bool push_nil = expression == NULL;
 
-  if (node->data.return_statement.expression != NULL) {
-    err_code_t err = convert_expression_on_stack(
-        context, node->data.return_statement.expression);
+  if (expression != NULL) {
+    if (expression->data_type == NULL) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+    err_code_t err = convert_expression_on_stack(context, expression);
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
@@ -275,6 +309,17 @@ err_code_t convert_return(context_t *context, ast_node_t *node) {
         RETURN_ERR(err);
       }
       push_nil = true;
+    } else if (context->current_return_type != NULL &&
+               are_data_types_identical(&node_double,
+                                        context->current_return_type) &&
+               are_data_types_identical(&node_int, expression->data_type) &&
+               context->tail != NULL &&
+               context->tail->operation != INNER_RETURN) {
+      err = append_statement(context, INNER_INT2FLOATS, empty_sym, empty_sym,
+                             empty_sym);
+      if (err != NO_ERR) {
+        RETURN_ERR(err);
+      }
     }
   }
 
