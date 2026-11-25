@@ -696,6 +696,38 @@ err_code_t analyse_binary_operation(ast_node_t *node, hashtable_t *symtable) {
   return NO_ERR;
 }
 
+err_code_t analyse_unary_operation(ast_node_t *node, hashtable_t *symtable) {
+  if (node == NULL || symtable == NULL || node->type != AST_UNARY_OPERATION) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  ast_node_t *expression = node->data.unary_operation.expression;
+  err_code_t err = analyse_expression(expression, symtable, NULL, true, false);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  data_type_node_t *type = expression->data_type;
+  switch (node->data.unary_operation.op) {
+  case TOK_UNARY_MINUS:
+  case TOK_UNARY_PLUS:
+    if (!are_data_types_identical(type, &node_int) &&
+        !are_data_types_identical(type, &node_double)) {
+      RETURN_ERR(TYPE_COMPAT_ERR);
+    }
+    break;
+  case TOK_NOT:
+    if (!are_data_types_identical(type, &node_boolean)) {
+      RETURN_ERR(TYPE_COMPAT_ERR);
+    }
+    break;
+  default:
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  RETURN_ERR(duplicate_type_node(type, &node->data_type));
+}
+
 #pragma region Match
 
 err_code_t analyse_match_case_literal(ast_node_t *node, hashtable_t *symtable,
@@ -1114,12 +1146,7 @@ err_code_t analyse_expression(ast_node_t *node, hashtable_t *symtable,
     err = analyse_binary_operation(node, symtable);
     break;
   case AST_UNARY_OPERATION:
-    err = analyse_expression(node->data.unary_operation.expression, symtable,
-                             NULL, true, false);
-    if (err == NO_ERR) {
-      err = duplicate_type_node(
-          node->data.unary_operation.expression->data_type, &node->data_type);
-    }
+    err = analyse_unary_operation(node, symtable);
     break;
   case AST_IDENTIFIER: {
     char *identifier = node->data.identifier.name;
