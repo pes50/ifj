@@ -1,3 +1,9 @@
+/************* Implementace překladače imperativního jazyka IFJ26 ************\
+ *
+ * @file ast_printer.hpp
+ *
+\*****************************************************************************/
+
 #pragma once
 
 extern "C" {

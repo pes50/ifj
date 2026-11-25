@@ -1,4 +1,4 @@
-/**************************** IFJ/IAL-Compiler-2026 ***************************\
+/************* Implementace překladače imperativního jazyka IFJ26 ************\
  *
  * @file symtable_test.cpp
  *
@@ -6,7 +6,7 @@
  *
  * @brief Unit tests for symbol table functionality
  *
- \*****************************************************************************/
+\*****************************************************************************/
 
 extern "C" {
 #include "symtable.h"
