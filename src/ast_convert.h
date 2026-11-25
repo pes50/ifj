@@ -18,7 +18,7 @@
 
 #define TRASH "GF@$trash"
 
-#define visited_table_size 100
+#define VISITED_TABLE_SIZE 100
 
 /**
  * @brief Structure to contain all relevant data about function context

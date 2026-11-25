@@ -14,7 +14,7 @@ analysis
 #include "ast_node.h"
 #include "symtable.h"
 
-#define local_scope_table_size 100
+#define LOCAL_SCOPE_TABLE_SIZE 100
 
 /**
  * @brief Checks if AST block node is semantically correct

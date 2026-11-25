@@ -542,7 +542,7 @@ err_code_t analyse_if(ast_node_t *node, hashtable_t *symtable,
 
   // Create new scope
   hashtable_t *current_scope;
-  err = ht_init(&current_scope, local_scope_table_size);
+  err = ht_init(&current_scope, LOCAL_SCOPE_TABLE_SIZE);
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -570,7 +570,7 @@ err_code_t analyse_if(ast_node_t *node, hashtable_t *symtable,
   }
 
   // Create new scope
-  err = ht_init(&current_scope, local_scope_table_size);
+  err = ht_init(&current_scope, LOCAL_SCOPE_TABLE_SIZE);
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -895,7 +895,7 @@ err_code_t analyse_match_case(ast_node_t *node, hashtable_t *symtable,
   err_code_t err = NO_ERR;
   // Create new scope
   hashtable_t *current_scope;
-  err = ht_init(&current_scope, local_scope_table_size);
+  err = ht_init(&current_scope, LOCAL_SCOPE_TABLE_SIZE);
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
