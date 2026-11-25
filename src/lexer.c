@@ -1189,8 +1189,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
        */
 
     case S_S_STR:
-      if (!(character == '"' || character == '\\' || character == '\n' ||
-            character == EOF || character == '$')) {
+      if (IS_ASCII(character) && character != '"' && character != '\\' &&
+          character != '$') {
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
         }
@@ -1208,8 +1208,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
     case S_START_S_STR:
       in_interpolated_str = true;
-      if (!(character == '"' || character == '\\' || character == '\n' ||
-            character == EOF || character == '$')) {
+      if (IS_ASCII(character) && character != '"' && character != '\\' &&
+          character != '$') {
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
         }
@@ -1328,7 +1328,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         state = S_DOLAR_STATE;
       } else if (character == '"') {
         state = S_END_S_ML;
-      } else if (!(character == '"' || character == EOF || character == '$')) {
+      } else if (IS_ASCII(character) || character == '\n' ||
+                 character == '\r') {
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
         }
@@ -1339,7 +1340,15 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       break;
 
     case S_END_S_ML:
-      if (!(character == '"' || character == EOF || character == '$')) {
+      if (character == '$') {
+        if (dynstr_append_char(output_val, '"') != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_DOLAR_STATE;
+      } else if (character == '"') {
+        state = S_END_S_ML_2;
+      } else if (IS_ASCII(character) || character == '\n' ||
+                 character == '\r') {
         // The quote wasn't stored, because end of string was suspected.
         // That is why it is added in addition to the current character.
         if (dynstr_append_char(output_val, '"') != NO_ERR ||
@@ -1347,29 +1356,13 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
           return INTERNAL_ERR;
         }
         state = S_START_S_ML;
-      } else if (character == '$') {
-        if (dynstr_append_char(output_val, '"') != NO_ERR) {
-          return INTERNAL_ERR;
-        }
-        state = S_DOLAR_STATE;
-      } else if (character == '"') {
-        state = S_END_S_ML_2;
       } else {
         return LEXICAL_ERR;
       }
       break;
 
     case S_END_S_ML_2:
-      if (!(character == '"' || character == EOF || character == '$')) {
-        // The quotes were not stored, because end of string was suspected.
-        // That is why they were added in addition to the current character.
-        if (dynstr_append_char(output_val, '"') != NO_ERR ||
-            dynstr_append_char(output_val, '"') != NO_ERR ||
-            dynstr_append_char(output_val, (char)character) != NO_ERR) {
-          return INTERNAL_ERR;
-        }
-        state = S_START_S_ML;
-      } else if (character == '$') {
+      if (character == '$') {
         // The quotes were not stored, because end of string was suspected.
         // Then go to S_DOLAR_STATE.
         if (dynstr_append_char(output_val, '"') != NO_ERR ||
@@ -1382,6 +1375,16 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         in_interpolated_str = false;
         interpolated_ml_str = false;
         lexer_run = false;
+      } else if (IS_ASCII(character) || character == '\n' ||
+                 character == '\r') {
+        // The quotes were not stored, because end of string was suspected.
+        // That is why they were added in addition to the current character.
+        if (dynstr_append_char(output_val, '"') != NO_ERR ||
+            dynstr_append_char(output_val, '"') != NO_ERR ||
+            dynstr_append_char(output_val, (char)character) != NO_ERR) {
+          return INTERNAL_ERR;
+        }
+        state = S_START_S_ML;
       } else {
         return LEXICAL_ERR;
       }
