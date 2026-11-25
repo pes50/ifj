@@ -1400,6 +1400,13 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
           comment_seen = true;
         }
         state = S_LINE_START;
+      } else if (bracket_depth > 0) {
+        if (tab_on_line || indent_level < bracket_start_indent + 1) {
+          return LEXICAL_ERR;
+        }
+        ungetc(character, input_stream);
+        *type = TOK_DIV;
+        lexer_run = false;
       } else {
         return LEXICAL_ERR;
       }
