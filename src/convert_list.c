@@ -259,7 +259,7 @@ err_code_t convert_list_access(context_t *context, ast_node_t *node) {
   }
 
   inner_symbol_t exit_code_sym =
-      create_const_symbol(INNER_INT, (inner_value_t){.inner_int = 40});
+      create_const_symbol(INNER_INT, (inner_value_t){.inner_int = RUNTIME_ERR});
 
   err = append_statement(context, INNER_EXIT, empty_sym, exit_code_sym,
                          empty_sym);

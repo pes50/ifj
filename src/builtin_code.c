@@ -12,6 +12,7 @@
 \*****************************************************************************/
 
 #include "builtin_code.h"
+#include "err_codes.h"
 
 /**
  * strLength(value: String): Int
@@ -1847,7 +1848,7 @@ static inner_statement_t sub_str_s36 = {
             .data.constant =
                 {
                     .datatype = INNER_INT,
-                    .value.inner_int = 40,
+                    .value.inner_int = RUNTIME_ERR,
                 },
         },
     .is_static = true,
@@ -3542,7 +3543,7 @@ static inner_statement_t head_s7 = {
             .data.constant =
                 {
                     .datatype = INNER_INT,
-                    .value.inner_int = 40,
+                    .value.inner_int = RUNTIME_ERR,
                 },
         },
     .next_statement = &head_s8,
@@ -4980,7 +4981,7 @@ static inner_statement_t tail_s11 = {
             .data.constant =
                 {
                     .datatype = INNER_INT,
-                    .value.inner_int = 40,
+                    .value.inner_int = RUNTIME_ERR,
                 },
         },
     .next_statement = &tail_s12,
@@ -7383,7 +7384,7 @@ static inner_statement_t range_s17 = {
             .data.constant =
                 {
                     .datatype = INNER_INT,
-                    .value.inner_int = 40,
+                    .value.inner_int = RUNTIME_ERR,
                 },
         },
     .next_statement = &range_s18,
@@ -8612,7 +8613,7 @@ static inner_statement_t by_s8 = {
             .data.constant =
                 {
                     .datatype = INNER_INT,
-                    .value.inner_int = 40,
+                    .value.inner_int = RUNTIME_ERR,
                 },
         },
     .next_statement = &by_s9,
