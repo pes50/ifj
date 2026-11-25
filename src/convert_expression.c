@@ -180,18 +180,26 @@ static err_code_t convert_dot_function_call(context_t *context,
   }
 
   inner_symbol_t empty_sym = create_empty_symbol();
+  ast_node_t *calling = node->data.dot_function_call.calling;
 
-  // Evaluate target
-  err_code_t err = convert_expression_on_stack(context, target);
-  if (err != NO_ERR) {
-    RETURN_ERR(err);
+  bool is_static_call =
+      (node->data.dot_function_call.attribute_index == 0 && calling != NULL &&
+       calling->type == AST_FUNCTION_DECLARATION &&
+       calling->data.function_declaration.is_static);
+
+  // Evaluate target for attribute access and method calls
+  if (!is_static_call) {
+    err_code_t err = convert_expression_on_stack(context, target);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
   }
 
   // Attribute access
   if (node->data.dot_function_call.attribute_index > 0) {
     inner_symbol_t instance_variable;
     inner_symbol_t attribute_val_variable;
-    err = create_helper_variable(context, &instance_variable);
+    err_code_t err = create_helper_variable(context, &instance_variable);
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
@@ -224,12 +232,11 @@ static err_code_t convert_dot_function_call(context_t *context,
   }
 
   // Function call
-  ast_node_t *calling = node->data.dot_function_call.calling;
   if (calling == NULL || calling->type != AST_FUNCTION_DECLARATION) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  err = enqueue_function(context, calling);
+  err_code_t err = enqueue_function(context, calling);
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }

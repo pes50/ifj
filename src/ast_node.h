@@ -93,6 +93,7 @@ typedef struct ast_node_t {
       char *name;
       data_type_node_t *data_type;
       bool optional;
+      err_code_t (*create_default)(struct ast_node_t **out);
     } parameter;
 
     struct {
