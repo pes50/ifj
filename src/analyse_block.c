@@ -44,7 +44,7 @@ err_code_t analyse_while_do(ast_node_t *node, hashtable_t *symtable,
       // Create new scope
       hashtable_t *current_scope;
       if (ht_init(&current_scope, local_scope_table_size) != NO_ERR) {
-        return INTERNAL_ERR;
+        RETURN_ERR(INTERNAL_ERR);
       }
       current_scope->parent = symtable;
       if (node->data.while_do.body->type == AST_BLOCK) {
@@ -62,52 +62,52 @@ err_code_t analyse_while_do(ast_node_t *node, hashtable_t *symtable,
     err = duplicate_type_node(&node_unit, &node->data_type);
   }
 
-  return err;
+  RETURN_ERR(err);
 }
 
 err_code_t analyse_variable_declaration(ast_node_t *node,
                                         hashtable_t *symtable) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   if (node->type != AST_VARIABLE_DECLARATION) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   ast_node_t *expression = node->data.variable_declaration.expression;
   if (expression == NULL) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   err_code_t err = analyse_expression(expression, symtable,
                                       node->data.variable_declaration.data_type,
                                       true, false);
   if (err != NO_ERR) {
-    return err;
+    RETURN_ERR(err);
   }
 
   data_type_node_t *data_type = node->data.variable_declaration.data_type;
   if (data_type != NULL) {
     err = analyse_type(data_type, symtable);
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
 
     if (!are_data_types_compatible(expression->data_type, data_type)) {
-      return TYPE_COMPAT_ERR;
+      RETURN_ERR(TYPE_COMPAT_ERR);
     }
   }
 
   err = ht_insert_item(symtable, node->data.variable_declaration.name, node);
   if (err != NO_ERR) {
-    return err;
+    RETURN_ERR(err);
   }
 
   err = duplicate_type_node(
       data_type != NULL ? data_type : expression->data_type, &node->data_type);
 
-  return err;
+  RETURN_ERR(err);
 }
 
 err_code_t analyse_assignment(ast_node_t *node, hashtable_t *symtable) {
@@ -162,25 +162,25 @@ err_code_t analyse_return(ast_node_t *node, hashtable_t *symtable,
                           bool allow_return) {
 
   if (!allow_return) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
   // Type must be explicitly defined for return
   if (explicit_data_type == NULL) {
-    return TYPE_COMPAT_ERR;
+    RETURN_ERR(TYPE_COMPAT_ERR);
   }
 
   ast_node_t *expression = node->data.return_statement.expression;
   if (expression == NULL) {
     // No expression is allowed only when return type is explicitly Unit
     if (!are_data_types_identical(&node_unit, explicit_data_type)) {
-      return TYPE_COMPAT_ERR;
+      RETURN_ERR(TYPE_COMPAT_ERR);
     }
     node->data_type = &node_unit;
   } else {
     err_code_t err =
         analyse_expression(expression, symtable, NULL, true, false);
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
 
     // Discard any return value if return type is explicitly Unit
@@ -190,24 +190,24 @@ err_code_t analyse_return(ast_node_t *node, hashtable_t *symtable,
     } else {
       if (!are_data_types_compatible(expression->data_type,
                                      explicit_data_type)) {
-        return TYPE_COMPAT_ERR;
+        RETURN_ERR(TYPE_COMPAT_ERR);
       }
       return duplicate_type_node(expression->data_type, &node->data_type);
     }
   }
 
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 err_code_t analyse_for_do(ast_node_t *node, hashtable_t *symtable,
                           data_type_node_t *explicit_data_type,
                           bool allow_return) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   if (node->type != AST_FOR_DO) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   ast_node_t *body = node->data.for_do.body;
@@ -215,35 +215,34 @@ err_code_t analyse_for_do(ast_node_t *node, hashtable_t *symtable,
   ast_node_t *iterator = node->data.for_do.iterator;
 
   if (body == NULL || generator == NULL || iterator == NULL) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   if (iterator->type != AST_PARAMETER) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   if (iterator->data.parameter.name == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   err_code_t err = NO_ERR;
   if (iterator->data.parameter.data_type != NULL) {
     err = analyse_type(iterator->data.parameter.data_type, symtable);
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
   }
 
   err = analyse_expression(generator, symtable, NULL, true, false);
-
   if (err != NO_ERR) {
-    return err;
+    RETURN_ERR(err);
   }
 
   if (generator->data_type == NULL ||
       (generator->data_type->type != DATA_TYPE_LIST &&
        generator->data_type->type != DATA_TYPE_RANGE)) {
-    return TYPE_COMPAT_ERR;
+    RETURN_ERR(TYPE_COMPAT_ERR);
   }
 
   if (generator->data_type->type == DATA_TYPE_LIST) {
@@ -254,12 +253,12 @@ err_code_t analyse_for_do(ast_node_t *node, hashtable_t *symtable,
       err = duplicate_type_node(elements_type,
                                 &iterator->data.parameter.data_type);
       if (err != NO_ERR) {
-        return err;
+        RETURN_ERR(err);
       }
     } else {
       if (!are_data_types_compatible(iterator->data.parameter.data_type,
                                      elements_type)) {
-        return TYPE_COMPAT_ERR;
+        RETURN_ERR(TYPE_COMPAT_ERR);
       }
     }
   } else {
@@ -267,12 +266,12 @@ err_code_t analyse_for_do(ast_node_t *node, hashtable_t *symtable,
     if (iterator->data.parameter.data_type == NULL) {
       err = duplicate_type_node(&node_int, &iterator->data.parameter.data_type);
       if (err != NO_ERR) {
-        return err;
+        RETURN_ERR(err);
       }
     } else {
       if (!are_data_types_identical(&node_int,
                                     iterator->data.parameter.data_type)) {
-        return TYPE_COMPAT_ERR;
+        RETURN_ERR(TYPE_COMPAT_ERR);
       }
     }
   }
@@ -283,31 +282,31 @@ err_code_t analyse_for_do(ast_node_t *node, hashtable_t *symtable,
   if (err == NO_ERR) {
     current_scope->parent = symtable;
   } else {
-    return err;
+    RETURN_ERR(err);
   }
 
   err = duplicate_type_node(iterator->data.parameter.data_type,
                             &iterator->data_type);
   if (err != NO_ERR) {
     ht_destruct(&current_scope);
-    return err;
+    RETURN_ERR(err);
   }
 
   err = ht_insert_item(current_scope, iterator->data.parameter.name, iterator);
   if (err != NO_ERR) {
     ht_destruct(&current_scope);
-    return err;
+    RETURN_ERR(err);
   }
 
   ast_node_t *current = node->data.for_do.guards;
   while (current != NULL) {
     err = analyse_expression(current, current_scope, NULL, true, false);
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
 
     if (!are_data_types_identical(&node_boolean, current->data_type)) {
-      return TYPE_COMPAT_ERR;
+      RETURN_ERR(TYPE_COMPAT_ERR);
     }
 
     current = current->next;
@@ -320,18 +319,18 @@ err_code_t analyse_for_do(ast_node_t *node, hashtable_t *symtable,
     err = duplicate_type_node(&node_unit, &node->data_type);
   }
 
-  return err;
+  RETURN_ERR(err);
 }
 
 err_code_t analyse_block(ast_node_t *node, hashtable_t *symtable,
                          data_type_node_t *explicit_data_type,
                          bool allow_return) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   if (node->type != AST_BLOCK || node->data.block.statement == NULL) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   err_code_t err = NO_ERR;
@@ -431,5 +430,5 @@ err_code_t analyse_block(ast_node_t *node, hashtable_t *symtable,
     }
   }
 
-  return err;
+  RETURN_ERR(err);
 }
