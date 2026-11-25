@@ -1,8 +1,8 @@
-/**************************** IFJ/IAL-Compiler-2026 ***************************\
+/************* Implementace překladače imperativního jazyka IFJ26 ************\
  *
  * @file stack.c
  *
- * @author Matous Jahoda     (xjahodm00)
+ * @author Matouš Jahoda     (xjahodm00)
  * @author Roman Skoupý      (xskoupr00)
  *
  * @brief Implementation of stack using a linked list

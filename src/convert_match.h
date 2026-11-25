@@ -1,4 +1,4 @@
-/**************************** IFJ/IAL-Compiler-2026 ***************************\
+/************* Implementace překladače imperativního jazyka IFJ26 ************\
  *
  * @file convert_match.h
  *
@@ -6,7 +6,7 @@
  *
  * @brief Interface for AST to 3AC conversion of match expressions
  *
- \*****************************************************************************/
+\*****************************************************************************/
 
 #pragma once
 

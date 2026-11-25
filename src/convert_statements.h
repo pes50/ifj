@@ -1,4 +1,4 @@
-/**************************** IFJ/IAL-Compiler-2026 ***************************\
+/************* Implementace překladače imperativního jazyka IFJ26 ************\
  *
  * @file convert_statements.h
  *
@@ -7,7 +7,7 @@
  *
  * @brief Specification of AST to 3AC conversion of statements
  *
- \*****************************************************************************/
+\*****************************************************************************/
 
 #pragma once
 

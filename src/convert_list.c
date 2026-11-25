@@ -1,4 +1,4 @@
-/**************************** IFJ/IAL-Compiler-2026 ***************************\
+/************* Implementace překladače imperativního jazyka IFJ26 ************\
  *
  * @file convert_list.c
  *
@@ -6,7 +6,7 @@
  *
  * @brief Implementation of AST to 3AC conversion of lists
  *
- \*****************************************************************************/
+\*****************************************************************************/
 
 #include "convert_list.h"
 #include "convert_expression.h"

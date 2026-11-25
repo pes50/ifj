@@ -1,4 +1,4 @@
-/**************************** IFJ/IAL-Compiler-2026 ***************************\
+/************* Implementace překladače imperativního jazyka IFJ26 ************\
  *
  * @file convert_match.c
  *
@@ -6,7 +6,7 @@
  *
  * @brief Implementation of AST to 3AC conversion of match expressions
  *
- \*****************************************************************************/
+\*****************************************************************************/
 
 #include "convert_match.h"
 #include "ast_node.h"

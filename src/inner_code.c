@@ -1,4 +1,4 @@
-/**************************** IFJ/IAL-Compiler-2026 ***************************\
+/************* Implementace překladače imperativního jazyka IFJ26 ************\
  *
  * @file inner_code.c
  *
@@ -6,7 +6,7 @@
  *
  * @brief Implementation of functions for working with inner code
  *
- \*****************************************************************************/
+\*****************************************************************************/
 
 #include "inner_code.h"
 #include "string_duplicate.h"

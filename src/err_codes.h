@@ -1,8 +1,8 @@
-/**************************** IFJ/IAL-Compiler-2026 ***************************\
+/************* Implementace překladače imperativního jazyka IFJ26 ************\
  *
  * @file err_codes.h
  *
- * @author Matous Jahoda      (xjahodm00)
+ * @author Matouš Jahoda      (xjahodm00)
  *
  * @brief Contains error codes enum
  *
