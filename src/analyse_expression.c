@@ -274,6 +274,7 @@ err_code_t analyse_function_call(char *identifier, ast_node_t *node,
   if (table_node->type == AST_PARAMETER) {
     if (table_node->data.parameter.data_type != NULL) {
       if (table_node->data.parameter.data_type->type == DATA_TYPE_LAMBDA) {
+        node->data.function_call.calling = table_node;
         RETURN_ERR(analyse_lambda_call(node, symtable,
                                        table_node->data.parameter.data_type));
       }
@@ -290,6 +291,7 @@ err_code_t analyse_function_call(char *identifier, ast_node_t *node,
 
     // Handle lambda variable
     if (data_type->type == DATA_TYPE_LAMBDA) {
+      node->data.function_call.calling = table_node;
       RETURN_ERR(analyse_lambda_call(node, symtable, data_type));
     }
 
@@ -987,7 +989,7 @@ err_code_t analyse_expression(ast_node_t *node, hashtable_t *symtable,
   case AST_BUILTIN_BODY:
     RETURN_ERR(OTHER_SEMANTIC_ERR);
   case AST_LAMBDA_DECLARATION:
-    RETURN_ERR(analyse_lambda_declaration(node, symtable));
+    RETURN_ERR(analyse_lambda_declaration(node, symtable, explicit_data_type));
   case AST_FUNCTION_CALL:
     RETURN_ERR(analyse_function_call(node->data.function_call.name, node,
                                      symtable, explicit_data_type));

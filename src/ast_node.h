@@ -82,6 +82,7 @@ typedef struct ast_node_t {
     struct {
       struct ast_node_t *parameters;
       struct ast_node_t *body;
+      char *unique_id;
     } lambda_declaration;
 
     struct {

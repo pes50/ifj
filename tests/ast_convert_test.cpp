@@ -1415,6 +1415,200 @@ ast_node_t *test_ext_lambdas_basic() {
   });
 }
 
+// def inc(x: Int): Int = x + 1
+// def isEven(x: Int): Boolean = (x / 2) * 2 == x
+// def applyTwice(f: (Int) => Int, v: Int): Int = f(f(v))
+// @main def main(): Unit = {
+//   var op = inc
+//   val r1 = applyTwice(op, 3)          // 5
+//   op = (x: Int) => x * 10
+//   val r2 = applyTwice(op, 2)          // 200
+//   val evens = List(1, 2, 3, 4, 5, 6).filter(isEven)
+//   print(r1); print("|"); print(r2); print("|"); print(evens)
+// } -> "5|200|List(2, 4, 6)"
+ast_node_t *test_ext_lambdas_higher_order_and_fn_refs() {
+  ast_node_t *fn_inc = create_function_declaration_node(
+      const_cast<char *>("inc"),
+      create_parameter_list_node(
+          create_parameter_node(const_cast<char *>("x"), &node_int)),
+      create_block_node(
+          create_binary_operation_node(TOK_BINARY_PLUS, id("x"), lit_int("1"))),
+      &node_int, false);
+
+  ast_node_t *half_mul_2 = create_binary_operation_node(
+      TOK_MUL, create_binary_operation_node(TOK_DIV, id("x"), lit_int("2")),
+      lit_int("2"));
+  ast_node_t *fn_is_even = create_function_declaration_node(
+      const_cast<char *>("isEven"),
+      create_parameter_list_node(
+          create_parameter_node(const_cast<char *>("x"), &node_int)),
+      create_block_node(
+          create_binary_operation_node(TOK_EQUAL, half_mul_2, id("x"))),
+      &node_boolean, false);
+
+  ast_node_t *apply_params = create_parameter_list_node(chain_nodes({
+      create_parameter_node(
+          const_cast<char *>("f"),
+          create_lambda_type_node(create_primitive_type_node(PRIMITIVE_INT),
+                                  &node_int)),
+      create_parameter_node(const_cast<char *>("v"), &node_int),
+  }));
+  ast_node_t *fn_apply_twice = create_function_declaration_node(
+      const_cast<char *>("applyTwice"), apply_params,
+      create_block_node(call("f", {call("f", {id("v")})})), &node_int, false);
+
+  ast_node_t *mul10_lam = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("x"), &node_int),
+      create_block_node(
+          create_binary_operation_node(TOK_MUL, id("x"), lit_int("10"))));
+
+  ast_node_t *nums = call("List", {lit_int("1"), lit_int("2"), lit_int("3"),
+                                   lit_int("4"), lit_int("5"), lit_int("6")});
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          var_decl("op", id("inc")),
+          val_decl("r1", call("applyTwice", {id("op"), lit_int("3")})),
+          assign("op", mul10_lam),
+          val_decl("r2", call("applyTwice", {id("op"), lit_int("2")})),
+          val_decl("evens", dot_call(nums, "filter", {id("isEven")})),
+          print_call(id("r1")),
+          print_call(lit_str("|")),
+          print_call(id("r2")),
+          print_call(lit_str("|")),
+          print_call(id("evens")),
+      })),
+      &node_unit, true);
+
+  return create_block_node(
+      chain_nodes({fn_inc, fn_is_even, fn_apply_twice, fn_main}));
+}
+
+// def chooseOp(useAdd: Boolean): (Int, Int) => Int =
+//   if useAdd then (a: Int, b: Int) => a + b else (a: Int, b: Int) => a * b
+// @main def main(): Unit = {
+//   val fAdd = chooseOp(true)
+//   val fMul = chooseOp(false)
+//   print(fAdd(3, 4)); print("|"); print(fMul(3, 4))
+// } -> "7|12"
+ast_node_t *test_ext_lambdas_returned_and_if_expr() {
+  auto make_bin_lam = [](token_type_t op) {
+    ast_node_t *params = chain_nodes({
+        create_parameter_node(const_cast<char *>("a"), &node_int),
+        create_parameter_node(const_cast<char *>("b"), &node_int),
+    });
+    return create_lambda_declaration_node(
+        params,
+        create_block_node(create_binary_operation_node(op, id("a"), id("b"))));
+  };
+
+  data_type_node_t *ret_fn_type = create_lambda_type_node(
+      chain_types({create_primitive_type_node(PRIMITIVE_INT),
+                   create_primitive_type_node(PRIMITIVE_INT)}),
+      &node_int);
+
+  ast_node_t *fn_choose = create_function_declaration_node(
+      const_cast<char *>("chooseOp"),
+      create_parameter_list_node(
+          create_parameter_node(const_cast<char *>("useAdd"), &node_boolean)),
+      create_block_node(create_if_node(
+          id("useAdd"), create_block_node(make_bin_lam(TOK_BINARY_PLUS)),
+          create_block_node(make_bin_lam(TOK_MUL)))),
+      ret_fn_type, false);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          val_decl("fAdd", call("chooseOp", {lit_bool(true)})),
+          val_decl("fMul", call("chooseOp", {lit_bool(false)})),
+          print_call(call("fAdd", {lit_int("3"), lit_int("4")})),
+          print_call(lit_str("|")),
+          print_call(call("fMul", {lit_int("3"), lit_int("4")})),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_choose, fn_main}));
+}
+
+// @main def main(): Unit = {
+//   val printer: (Int) => Unit = (x: Int) => {
+//   x + 99; print("["); print(x); print("]")
+//   }
+//   val bareExpr = (x: Int) => x * 3
+//   val u = printer(7)
+//   print("|"); print(u); print("|"); print(bareExpr(4))
+// } -> "[7]|()|12"
+ast_node_t *test_ext_lambdas_unit_return_and_expr_body() {
+  ast_node_t *unit_lam = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("x"), &node_int),
+      create_block_node(chain_nodes({
+          create_binary_operation_node(TOK_BINARY_PLUS, id("x"), lit_int("99")),
+          print_call(lit_str("[")),
+          print_call(id("x")),
+          print_call(lit_str("]")),
+      })));
+
+  ast_node_t *bare_lam = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("x"), &node_int),
+      create_binary_operation_node(TOK_MUL, id("x"), lit_int("3")));
+
+  data_type_node_t *printer_type = create_lambda_type_node(
+      create_primitive_type_node(PRIMITIVE_INT), &node_unit);
+
+  return wrap_main({
+      val_decl("printer", unit_lam, printer_type),
+      val_decl("bareExpr", bare_lam),
+      val_decl("u", call("printer", {lit_int("7")})),
+      print_call(lit_str("|")),
+      print_call(id("u")),
+      print_call(lit_str("|")),
+      print_call(call("bareExpr", {lit_int("4")})),
+  });
+}
+
+// @main def main(): Unit = {
+//   val incRet = (x: Int) => return x + 10
+//   val mulRet = (a: Int, b: Int) => return a * b
+//   val unitRet: (Int) => Unit = (x: Int) => return
+//   print(incRet(5)); print("|")
+//   print(mulRet(3, 4)); print("|")
+//   val u = unitRet(9); print(u)
+// } -> "15|12|()"
+ast_node_t *test_ext_lambdas_explicit_return() {
+  ast_node_t *inc_ret_lam = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("x"), &node_int),
+      create_return_node(create_binary_operation_node(TOK_BINARY_PLUS, id("x"),
+                                                      lit_int("10"))));
+
+  ast_node_t *mul_ret_lam = create_lambda_declaration_node(
+      chain_nodes({
+          create_parameter_node(const_cast<char *>("a"), &node_int),
+          create_parameter_node(const_cast<char *>("b"), &node_int),
+      }),
+      create_return_node(
+          create_binary_operation_node(TOK_MUL, id("a"), id("b"))));
+
+  ast_node_t *unit_ret_lam = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("x"), &node_int),
+      create_return_node(nullptr));
+
+  data_type_node_t *unit_ret_type = create_lambda_type_node(
+      create_primitive_type_node(PRIMITIVE_INT), &node_unit);
+
+  return wrap_main({
+      val_decl("incRet", inc_ret_lam),
+      val_decl("mulRet", mul_ret_lam),
+      val_decl("unitRet", unit_ret_lam, unit_ret_type),
+      print_call(call("incRet", {lit_int("5")})),
+      print_call(lit_str("|")),
+      print_call(call("mulRet", {lit_int("3"), lit_int("4")})),
+      print_call(lit_str("|")),
+      val_decl("u", call("unitRet", {lit_int("9")})),
+      print_call(id("u")),
+  });
+}
+
 // Reuse pattern variable `v` across arms and across multiple `match` blocks:
 // var x: Int | String = 5
 // val r1 = x match { case v: Int => v + 1; case v: String => strLength(v); case
@@ -1998,6 +2192,16 @@ INSTANTIATE_TEST_SUITE_P(
 
         // Extension LAMBDAS: Anonymous Functions
         CodegenTestCase{"ExtLambdas_Basic", test_ext_lambdas_basic, "18|11|42"},
+        CodegenTestCase{"ExtLambdas_HigherOrderAndFnRefs",
+                        test_ext_lambdas_higher_order_and_fn_refs,
+                        "5|200|List(2, 4, 6)"},
+        CodegenTestCase{"ExtLambdas_ReturnedAndIfExpr",
+                        test_ext_lambdas_returned_and_if_expr, "7|12"},
+        CodegenTestCase{"ExtLambdas_UnitReturnAndExprBody",
+                        test_ext_lambdas_unit_return_and_expr_body,
+                        "[7]|()|12"},
+        CodegenTestCase{"ExtLambdas_ExplicitReturn",
+                        test_ext_lambdas_explicit_return, "15|12|()"},
 
         // Extension EXTKW: User Extension Methods
         CodegenTestCase{"ExtExtkw_IntMethods", test_ext_extkw_int_methods,

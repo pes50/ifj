@@ -30,7 +30,10 @@ err_code_t analyse_function_declaration(ast_node_t *node,
  *
  * @param node A pointer to an AST lambda declaration node
  * @param symtable A pointer to the symtable
+ * @param explicit_data_type A pointer to a lambda return data type node, NULL
+ * if not defined
  *
  * @return NO_ERR if correct
  */
-err_code_t analyse_lambda_declaration(ast_node_t *node, hashtable_t *symtable);
+err_code_t analyse_lambda_declaration(ast_node_t *node, hashtable_t *symtable,
+                                      data_type_node_t *explicit_data_type);

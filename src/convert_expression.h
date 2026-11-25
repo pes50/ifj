@@ -43,3 +43,13 @@ err_code_t convert_function_call(context_t *context, ast_node_t *node);
  * @return NO_ERR if everything ok
  */
 err_code_t convert_if(context_t *context, ast_node_t *node, bool push_result);
+
+/**
+ * @brief Converts AST lambda declaration node to 3AC expression
+ *
+ * @param context Context structure of the function in which the node is
+ * @param node Node to convert
+ *
+ * @return NO_ERR if everything ok
+ */
+err_code_t convert_lambda_expression(context_t *context, ast_node_t *node);

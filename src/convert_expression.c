@@ -100,18 +100,37 @@ err_code_t convert_function_call(context_t *context, ast_node_t *node) {
   }
 
   ast_node_t *calling = node->data.function_call.calling;
-  if (calling != NULL) {
-    if (calling->type == AST_LIST_CONSTRUCTOR) {
-      RETURN_ERR(convert_list_constructor_inline(context, node));
-    }
-    if (calling->type == AST_VARIABLE_DECLARATION ||
-        calling->type == AST_PARAMETER) {
-      RETURN_ERR(convert_list_access(context, node));
-    }
+  if (calling == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
   }
 
+  // Function is used as identifier
+  if (calling->type == AST_FUNCTION_DECLARATION &&
+      node->data.function_call.argument_lists == NULL) {
+    inner_symbol_t empty_sym = create_empty_symbol();
+    inner_value_t val = {
+        .inner_string = calling->data.function_declaration.name,
+    };
+    inner_symbol_t label_sym = create_const_symbol(INNER_STRING, val);
+    RETURN_ERR(append_statement(context, INNER_PUSHS, empty_sym, label_sym,
+                                empty_sym));
+  }
+
+  // Function call is a list constructor
+  if (calling->type == AST_LIST_CONSTRUCTOR) {
+    RETURN_ERR(convert_list_constructor_inline(context, node));
+  }
+
+  // Function call is a list access
+  if ((calling->type == AST_VARIABLE_DECLARATION ||
+       calling->type == AST_PARAMETER) &&
+      calling->data_type != NULL &&
+      calling->data_type->type == DATA_TYPE_LIST) {
+    RETURN_ERR(convert_list_access(context, node));
+  }
+
+  // Handle function call
   inner_symbol_t empty_sym = create_empty_symbol();
-  inner_symbol_t label = create_label_symbol(node->data.function_call.name);
 
   // Push all arguments left-to-right onto the data stack
   ast_node_t *argument_list = node->data.function_call.argument_lists;
@@ -132,9 +151,19 @@ err_code_t convert_function_call(context_t *context, ast_node_t *node) {
     argument_list = argument_list->next;
   }
 
-  // call
+  // Get calling label
+  inner_symbol_t target_sym;
+  if (calling->type == AST_VARIABLE_DECLARATION) {
+    target_sym =
+        create_var_symbol(calling->data.variable_declaration.unique_id);
+  } else if (calling->type == AST_PARAMETER) {
+    target_sym = create_var_symbol(calling->data.parameter.name);
+  } else {
+    target_sym = create_label_symbol(node->data.function_call.name);
+  }
+
   RETURN_ERR(
-      append_statement(context, INNER_CALL, empty_sym, label, empty_sym));
+      append_statement(context, INNER_CALL, empty_sym, target_sym, empty_sym));
 }
 
 static err_code_t convert_dot_function_call(context_t *context,
@@ -240,6 +269,19 @@ err_code_t create_operand(context_t *context, ast_node_t *node,
       RETURN_ERR(INTERNAL_ERR);
     }
 
+    // Function is used as an identifier
+    if (calling->type == AST_FUNCTION_DECLARATION) {
+      err_code_t err = enqueue_function(context, calling);
+      if (err != NO_ERR) {
+        RETURN_ERR(err);
+      }
+      inner_value_t val = {
+          .inner_string = calling->data.function_declaration.name,
+      };
+      *operand = create_const_symbol(INNER_STRING, val);
+      RETURN_ERR(NO_ERR);
+    }
+
     char *var_name = NULL;
     if (calling->type == AST_VARIABLE_DECLARATION) {
       var_name = calling->data.variable_declaration.unique_id;
@@ -272,7 +314,7 @@ err_code_t create_operation(ast_node_t *node,
   case TOK_MUL:
     *operation = INNER_MULS;
     break;
-  case TOK_DIV:
+  case TOK_DIV: {
     data_type_node_t *left_type = node->data.binary_operation.left->data_type;
     data_type_node_t *right_type = node->data.binary_operation.right->data_type;
     if (left_type == NULL || right_type == NULL) {
@@ -286,6 +328,7 @@ err_code_t create_operation(ast_node_t *node,
       *operation = INNER_IDIVS;
     }
     break;
+  }
   case TOK_LOWER_T:
     *operation = INNER_LTS;
     break;
@@ -675,6 +718,32 @@ err_code_t convert_if(context_t *context, ast_node_t *node, bool push_result) {
   return NO_ERR;
 }
 
+err_code_t convert_lambda_expression(context_t *context, ast_node_t *node) {
+  if (context == NULL || node == NULL || node->type != AST_LAMBDA_DECLARATION) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  if (node->data.lambda_declaration.unique_id == NULL) {
+    node->data.lambda_declaration.unique_id =
+        create_unique_label(context, "lambda");
+    if (node->data.lambda_declaration.unique_id == NULL) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+  }
+
+  err_code_t err = enqueue_function(context, node);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  inner_value_t val = {.inner_string = node->data.lambda_declaration.unique_id};
+  inner_symbol_t label_sym = create_const_symbol(INNER_STRING, val);
+  inner_symbol_t empty_sym = create_empty_symbol();
+
+  RETURN_ERR(
+      append_statement(context, INNER_PUSHS, empty_sym, label_sym, empty_sym));
+}
+
 err_code_t convert_expression_on_stack(context_t *context, ast_node_t *node) {
   if (context == NULL || node == NULL) {
     RETURN_ERR(INTERNAL_ERR);
@@ -697,6 +766,8 @@ err_code_t convert_expression_on_stack(context_t *context, ast_node_t *node) {
   }
   case AST_DOT_FUNCTION_CALL:
     RETURN_ERR(convert_dot_function_call(context, node));
+  case AST_LAMBDA_DECLARATION:
+    RETURN_ERR(convert_lambda_expression(context, node));
   case AST_UNARY_OPERATION:
     RETURN_ERR(convert_unary_op_expression(context, node));
   case AST_BINARY_OPERATION:

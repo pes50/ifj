@@ -214,7 +214,8 @@ fun_err:
   RETURN_ERR(err);
 }
 
-err_code_t analyse_lambda_declaration(ast_node_t *node, hashtable_t *symtable) {
+err_code_t analyse_lambda_declaration(ast_node_t *node, hashtable_t *symtable,
+                                      data_type_node_t *explicit_data_type) {
   if (node == NULL || symtable == NULL) {
     return INTERNAL_ERR;
   }
@@ -226,6 +227,12 @@ err_code_t analyse_lambda_declaration(ast_node_t *node, hashtable_t *symtable) {
   ast_node_t *body = node->data.lambda_declaration.body;
   if (body == NULL) {
     return OTHER_SEMANTIC_ERR;
+  }
+
+  data_type_node_t *expected_return_type = NULL;
+  if (explicit_data_type != NULL &&
+      explicit_data_type->type == DATA_TYPE_LAMBDA) {
+    expected_return_type = explicit_data_type->data.lambda_type.return_type;
   }
 
   // Create new scope
@@ -241,17 +248,46 @@ err_code_t analyse_lambda_declaration(ast_node_t *node, hashtable_t *symtable) {
     goto fun_err;
   }
 
+  data_type_node_t *lambda_return_type = NULL;
+
   if (body->type == AST_BLOCK) {
-    err = analyse_block(body, current_scope, NULL, false);
+    err = analyse_block(body, current_scope, expected_return_type, false);
+    if (err != NO_ERR) {
+      goto fun_err;
+    }
+    lambda_return_type = body->data_type;
+  } else if (body->type == AST_RETURN) {
+    ast_node_t *return_expression = body->data.return_statement.expression;
+    if (expected_return_type != NULL) {
+      err = analyse_return(body, current_scope, expected_return_type, true);
+      if (err != NO_ERR) {
+        goto fun_err;
+      }
+      lambda_return_type = expected_return_type;
+    } else if (return_expression != NULL) {
+      err = analyse_expression(return_expression, current_scope, NULL, true,
+                               true);
+      if (err != NO_ERR) {
+        goto fun_err;
+      }
+      body->data.return_statement.discard =
+          are_data_types_identical(return_expression->data_type, &node_unit);
+      lambda_return_type = return_expression->data_type;
+    } else {
+      body->data.return_statement.discard = true;
+      lambda_return_type = &node_unit;
+    }
   } else {
-    err = analyse_expression(body, current_scope, NULL, true, true);
-  }
-  if (err != NO_ERR) {
-    goto fun_err;
+    err = analyse_expression(body, current_scope, expected_return_type, true,
+                             false);
+    if (err != NO_ERR) {
+      goto fun_err;
+    }
+    lambda_return_type = body->data_type;
   }
 
   err = duplicate_function_type(node->data.lambda_declaration.parameters,
-                                body->data_type, &node->data_type);
+                                lambda_return_type, &node->data_type);
   if (err != NO_ERR) {
     goto fun_err;
   }

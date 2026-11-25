@@ -48,13 +48,20 @@ err_code_t convert_node(context_t *context, ast_node_t *node) {
   switch (node->type) {
   case AST_FUNCTION_CALL:
     err = enqueue_function(context, node->data.function_call.calling);
-    if (err != NO_ERR) {
-      RETURN_ERR(err);
+    if (err == NO_ERR) {
+      err = convert_function_call(context, node);
     }
-    RETURN_ERR(convert_function_call(context, node));
+    if (err == NO_ERR) {
+      err = discard_stack_top(context);
+    }
+    break;
   case AST_DOT_FUNCTION_CALL:
     break;
   case AST_LAMBDA_DECLARATION:
+    err = convert_lambda_expression(context, node);
+    if (err == NO_ERR) {
+      err = discard_stack_top(context);
+    }
     break;
   case AST_EXTENSION_DECLARATION:
     break;

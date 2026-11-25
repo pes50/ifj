@@ -368,6 +368,87 @@ err_code_t convert_class_constructor(context_t *context, ast_node_t *node) {
       append_statement(context, INNER_RETURN, empty_sym, empty_sym, empty_sym);
   RETURN_ERR(err);
 }
+
+err_code_t convert_lambda_declaration(context_t *context, ast_node_t *node) {
+  if (context == NULL || node == NULL || node->type != AST_LAMBDA_DECLARATION ||
+      node->data_type == NULL || node->data_type->type != DATA_TYPE_LAMBDA ||
+      node->data_type->data.lambda_type.return_type == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  char *lambda_name = node->data.lambda_declaration.unique_id;
+  ast_node_t *body = node->data.lambda_declaration.body;
+  if (lambda_name == NULL || body == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_symbol_t empty_sym = create_empty_symbol();
+
+  // LABEL {lambda_name}
+  err_code_t err =
+      append_statement(context, INNER_LABEL, empty_sym,
+                       create_label_symbol(lambda_name), empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // CREATEFRAME
+  err = append_statement(context, INNER_CREATEFRAME, empty_sym, empty_sym,
+                         empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  // PUSHFRAME
+  err = append_statement(context, INNER_PUSHFRAME, empty_sym, empty_sym,
+                         empty_sym);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  err = pop_parameter_list_reverse(context,
+                                   node->data.lambda_declaration.parameters);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  context->function_start = context->tail;
+
+  bool is_unit =
+      node->data_type->data.lambda_type.return_type->type == DATA_TYPE_UNIT;
+
+  err = convert_statement_list(context, body, !is_unit);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  if (context->tail->operation != INNER_RETURN) {
+    if (is_unit) {
+      inner_value_t nil_val = {.inner_nil = NULL};
+      inner_symbol_t nil_sym = create_const_symbol(INNER_NIL, nil_val);
+      err =
+          append_statement(context, INNER_PUSHS, empty_sym, nil_sym, empty_sym);
+      if (err != NO_ERR) {
+        RETURN_ERR(err);
+      }
+    }
+
+    err = append_statement(context, INNER_POPFRAME, empty_sym, empty_sym,
+                           empty_sym);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+
+    err = append_statement(context, INNER_RETURN, empty_sym, empty_sym,
+                           empty_sym);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+  }
+
+  RETURN_ERR(NO_ERR);
+}
+
 #pragma endregion
 
 #pragma region Interface implementation
@@ -386,11 +467,13 @@ err_code_t enqueue_function(context_t *context, ast_node_t *declaration_node) {
   case AST_CLASS_DECLARATION:
     name = declaration_node->data.class_declaration.name;
     break;
+  case AST_LAMBDA_DECLARATION:
+    name = declaration_node->data.lambda_declaration.unique_id;
+    break;
   case AST_LIST_CONSTRUCTOR:
   case AST_VARIABLE_DECLARATION:
   case AST_PARAMETER:
     RETURN_ERR(NO_ERR);
-    break;
   default:
     RETURN_ERR(INTERNAL_ERR);
   }
@@ -466,11 +549,17 @@ err_code_t ast_convert(ast_node_t *main_node, inner_statement_t **code) {
     ast_node_t *current = current_element->data;
     stack_pop(context.stack);
 
-    if (current->type == AST_FUNCTION_DECLARATION) {
+    switch (current->type) {
+    case AST_FUNCTION_DECLARATION:
       err = convert_function_declaration(&context, current);
-    } else if (current->type == AST_CLASS_DECLARATION) {
+      break;
+    case AST_CLASS_DECLARATION:
       err = convert_class_constructor(&context, current);
-    } else {
+      break;
+    case AST_LAMBDA_DECLARATION:
+      err = convert_lambda_declaration(&context, current);
+      break;
+    default:
       err = INTERNAL_ERR;
     }
 
