@@ -478,6 +478,103 @@ err_code_t convert_string_expression(context_t *context, ast_node_t *node) {
       append_statement(context, INNER_PUSHS, empty_sym, dst_var, empty_sym));
 }
 
+static err_code_t convert_logical_op_expression(context_t *context,
+                                                ast_node_t *node) {
+  token_type_t logical_op = node->data.binary_operation.op;
+  if (logical_op != TOK_AND && logical_op != TOK_OR) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  ast_node_t *left_operand = node->data.binary_operation.left;
+  ast_node_t *right_operand = node->data.binary_operation.right;
+  if (left_operand == NULL || right_operand == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  char *short_label_name = create_unique_label(context, "short_circuit");
+  char *end_label_name = create_unique_label(context, "short_circuit_end");
+  if (short_label_name == NULL || end_label_name == NULL) {
+    free(short_label_name);
+    free(end_label_name);
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_symbol_t empty_sym = create_empty_symbol();
+  inner_value_t bool_val = {.inner_bool = logical_op == TOK_OR};
+  inner_symbol_t bool_sym = create_const_symbol(INNER_BOOL, bool_val);
+
+  inner_symbol_t short_label = create_label_symbol(short_label_name);
+  inner_symbol_t short_label_owned = short_label;
+  short_label_owned.owns_identifier = true;
+
+  inner_symbol_t end_label = create_label_symbol(end_label_name);
+  inner_symbol_t end_label_owned = end_label;
+  end_label_owned.owns_identifier = true;
+
+  // Evaluate left operand
+  err_code_t err = convert_expression_on_stack(context, left_operand);
+  if (err != NO_ERR) {
+    free(short_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // Short-circuit if ({left == false} for &&) or ({left == true} for ||)
+  err = append_statement(context, INNER_PUSHS, empty_sym, bool_sym, empty_sym);
+  if (err != NO_ERR) {
+    free(short_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  err = append_statement(context, INNER_JUMPIFEQS, short_label, empty_sym,
+                         empty_sym);
+  if (err != NO_ERR) {
+    free(short_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // Evaluate right operand
+  err = convert_expression_on_stack(context, right_operand);
+  if (err != NO_ERR) {
+    free(short_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  err = append_statement(context, INNER_JUMP, end_label, empty_sym, empty_sym);
+  if (err != NO_ERR) {
+    free(short_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // Restore the short-circuit value on stack
+  err = append_statement(context, INNER_LABEL, empty_sym, short_label_owned,
+                         empty_sym);
+  if (err != NO_ERR) {
+    free(short_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  err = append_statement(context, INNER_PUSHS, empty_sym, bool_sym, empty_sym);
+  if (err != NO_ERR) {
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  err = append_statement(context, INNER_LABEL, empty_sym, end_label_owned,
+                         empty_sym);
+  if (err != NO_ERR) {
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  RETURN_ERR(NO_ERR);
+}
+
 err_code_t convert_binary_op_expression(context_t *context, ast_node_t *node) {
   if (context == NULL || node == NULL || node->type != AST_BINARY_OPERATION) {
     RETURN_ERR(INTERNAL_ERR);
@@ -492,15 +589,22 @@ err_code_t convert_binary_op_expression(context_t *context, ast_node_t *node) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
+  token_type_t binary_op = node->data.binary_operation.op;
+
   // concat strings
-  if (node->data.binary_operation.op == TOK_BINARY_PLUS &&
+  if (binary_op == TOK_BINARY_PLUS &&
       are_data_types_identical(&node_string, left_operand->data_type)) {
     RETURN_ERR(convert_string_expression(context, node));
   }
 
   // concat lists
-  if (node->data.binary_operation.op == TOK_CONCAT_LIST) {
+  if (binary_op == TOK_CONCAT_LIST) {
     RETURN_ERR(convert_list_concat_expression(context, node));
+  }
+
+  // short-circuit logical operators
+  if (binary_op == TOK_AND || binary_op == TOK_OR) {
+    RETURN_ERR(convert_logical_op_expression(context, node));
   }
 
   // left child recursion
