@@ -2310,6 +2310,73 @@ def totalExpensive(items: List[Item], minPrice: Int): Int =
   print(s"$label=$sum")
 )",
             "[total]=170"),
+      E2EOk("ExtMix_NestedListIndexing",
+            R"(import ifj26.*
+@main def main(): Unit =
+  val matrix = List(List(10, 20, 30), List(40, 50, 60), List(70, 80, 90))
+  val cube = List(List(List(1, 2), List(3, 4)), List(List(5, 6), List(7, 8)))
+  print(matrix(1)(2))
+  print("|")
+  print(cube(1)(0)(1))
+)",
+            "60|6"),
+
+      E2EOk("ExtMix_CurriedAndListOfLambdas",
+            R"(import ifj26.*
+@main def main(): Unit =
+  val makeAdder = (a: Int) => (b: Int) => a + b
+  val ops = List((x: Int) => x + 1, (x: Int) => x * 10, (x: Int) => x - 3)
+  val handlers = List(
+    List((x: Int) => x + 2, (x: Int) => x * 3),
+    List((x: Int) => x - 1, (x: Int) => x * 5)
+  )
+  print(makeAdder(4)(6))
+  print("|")
+  print(ops(1)(5))
+  print("|")
+  print(handlers(1)(1)(4))
+)",
+            "10|50|20"),
+
+      E2ECompileErr("ExtMixErr_NestedListIndexingTooDeep",
+                    R"(import ifj26.*
+@main def main(): Unit =
+  val matrix = List(List(1, 2), List(3, 4))
+  print(matrix(1)(0)(0))
+)",
+                    {5, 6}),
+
+      E2ECompileErr("ExtMixErr_NestedListNonIntSecondIndex",
+                    R"(import ifj26.*
+@main def main(): Unit =
+  val matrix = List(List(1, 2), List(3, 4))
+  print(matrix(1)("0"))
+)",
+                    {5, 6}),
+
+      E2ECompileErr("ExtMixErr_ListOfLambdasWrongArgType",
+                    R"(import ifj26.*
+@main def main(): Unit =
+  val ops = List((x: Int) => x + 1, (x: Int) => x * 2)
+  print(ops(0)("bad"))
+)",
+                    {5, 6}),
+
+      E2ECompileErr("ExtMixErr_CurriedLambdaWrongSecondArgCount",
+                    R"(import ifj26.*
+@main def main(): Unit =
+  val f = (a: Int) => (b: Int) => a + b
+  print(f(1)(2, 3))
+)",
+                    {5, 6}),
+
+      E2ERuntimeErr("ExtMixRuntime40_NestedListSecondIndexOutOfBounds",
+                    R"(import ifj26.*
+@main def main(): Unit =
+  val matrix = List(List(1, 2), List(3, 4))
+  print(matrix(1)(2))
+)",
+                    {40}),
   };
 }
 
