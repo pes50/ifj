@@ -88,6 +88,13 @@ protected:
     EXPECT_EQ(lexer_peek_token(tok.get(), eol, offset), err);
   }
 
+  void expect_err(err_code_t expected) {
+    token_t tok;
+    token_init(&tok);
+    EXPECT_EQ(lexer_get_token(&tok, ALLOWED), expected);
+    token_clear(&tok);
+  }
+
   // Input ended with "\n": EOL was already returned, only EOF remains.
   void expect_eof() { expect_get(TOK_EOF); }
 };
@@ -1114,6 +1121,279 @@ TEST_F(LexerFixture, toStringlengthZero) {
   expect_get(TOK_IDENTIFIER, "toString");
   expect_get(TOK_DOT);
   expect_get(TOK_IDENTIFIER, "length");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, extensionMethodCallOnIntLiteral) {
+  feed("x = 6.plus(12)\n");
+
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "6");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "plus");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "12");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, intLiteralFollowedByDotAtEof) {
+  feed("a = 5.");
+
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "5");
+  expect_get(TOK_DOT);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, toStringOnDouble) {
+  feed("a = 1.5.toString\n");
+
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_DOUBLE, "1.5");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "toString");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, doubleLiteralsAfterDotLookahead) {
+  feed("a = 0.5 10.25e2 1_0.5 .5\n");
+
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_DOUBLE, "0.5");
+  expect_get(TOK_LIT_DOUBLE, "10.25e2");
+  expect_get(TOK_LIT_DOUBLE, "10.5");
+  expect_get(TOK_LIT_DOUBLE, ".5");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, divisionAtLineStartInParens) {
+  feed("val x = (10\n"
+       "    / 2)\n");
+
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "10");
+  expect_get(TOK_DIV);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, divisionAtLineStartInParensAfterComments) {
+  feed("val x = (10 // c\n"
+       "    // d\n"
+       "    /* e */ / 2)\n");
+
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "10");
+  expect_get(TOK_DIV);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, divisionAtLineStartInParensTooShallow) {
+  feed("val x = (10\n"
+       "/ 2)\n");
+
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "10");
+  expect_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, minusAtLineStartInParens) {
+  feed("val x = (10\n"
+       "    - 2)\n");
+
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "10");
+  expect_get(TOK_BINARY_MINUS);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, starAtLineStartInParens) {
+  feed("val x = (10\n"
+       "    * 2)\n");
+
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "10");
+  expect_get(TOK_MUL);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, DISABLED_divisionAtLogicalLineStartIsLeftToParser) {
+  feed("a = 1\n"
+       "/ 2\n");
+
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_EOL);
+  expect_get(TOK_DIV);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, doubleWithLeadingZero) {
+  feed("a = 01.5\n");
+
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_DOUBLE, "01.5");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, doubleWithLeadingZerosAndExponent) {
+  feed("a = 00.5e1\n");
+
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_DOUBLE, "00.5e1");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, intWithLeadingZerosIsError) {
+  feed("a = 007\n");
+
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_ASSIGN);
+  expect_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, intWithLeadingZerosAndMemberIsError) {
+  feed("a = 007.toString\n");
+
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_ASSIGN);
+  expect_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, zeroUnderscoreIsError) {
+  feed("a = 0_1\n");
+
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_ASSIGN);
+  expect_err(LEXICAL_ERR);
+}
+
+TEST_F(LexerFixture, zeroIsStillInt) {
+  feed("f(0)\n");
+
+  expect_get(TOK_IDENTIFIER, "f");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, trailingCommaAfterNewlineIsAllowed) {
+  feed("foo(1,\n"
+       "  2,\n"
+       ")\n");
+
+  expect_get(TOK_IDENTIFIER, "foo");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, trailingCommaAfterLineCommentIsAllowed) {
+  feed("foo(1, // c\n"
+       ")\n");
+
+  expect_get(TOK_IDENTIFIER, "foo");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_R_PAREN);
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, trailingCommaOnSameLineIsSyntaxError) {
+  feed("foo(1, 2,)\n");
+
+  expect_get(TOK_IDENTIFIER, "foo");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_COMMA);
+  expect_err(SYNTAX_ERR);
+}
+
+TEST_F(LexerFixture, trailingCommaBeforeBlockCommentOnSameLineIsSyntaxError) {
+  feed("foo(1, /* c */ )\n");
+
+  expect_get(TOK_IDENTIFIER, "foo");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_COMMA);
+  expect_err(SYNTAX_ERR);
+}
+
+TEST_F(LexerFixture, trailingCommaInBracketsOnSameLineIsSyntaxError) {
+  feed("a[1, 2,]\n");
+
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_L_BRACKET);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_COMMA);
+  expect_err(SYNTAX_ERR);
+}
+
+TEST_F(LexerFixture, commaInsideParensIsUntouched) {
+  feed("foo(1, 2)\n");
+
+  expect_get(TOK_IDENTIFIER, "foo");
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_COMMA);
+  expect_get(TOK_LIT_INT, "2");
+  expect_get(TOK_R_PAREN);
   expect_get(TOK_EOL);
   expect_eof();
 }
