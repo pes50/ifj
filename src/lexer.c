@@ -1064,7 +1064,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
     case S_STR:
       if (character == '\\') {
         state = S_ESCAPE_SEQ;
-      } else if (!(character == '\n' || character == EOF || character == '"')) {
+      } else if (IS_ASCII(character) && character != '"') {
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
         }
@@ -1077,8 +1077,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       break;
 
     case S_START_STRING:
-      if (!(character == '\n' || character == EOF || character == '"' ||
-            character == '\\')) {
+      if (IS_ASCII(character) && character != '"' && character != '\\') {
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
         }
@@ -1131,10 +1130,13 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
       if (character == '"') {
         state = S_END_ML;
-      } else {
+      } else if (IS_ASCII(character) || character == '\n' ||
+                 character == '\r') {
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
         }
+      } else {
+        return LEXICAL_ERR;
       }
       break;
 
@@ -1145,7 +1147,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
       if (character == '"') {
         state = S_END_ML_2;
-      } else {
+      } else if (IS_ASCII(character) || character == '\n' ||
+                 character == '\r') {
         // The quote wasn't stored, because end of string was suspected.
         // That is why it is added in addition to the current character.
         if (dynstr_append_char(output_val, '"') != NO_ERR ||
@@ -1153,6 +1156,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
           return INTERNAL_ERR;
         }
         state = S_START_ML;
+      } else {
+        return LEXICAL_ERR;
       }
       break;
 
@@ -1164,7 +1169,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       if (character == '"') {
         *type = TOK_LIT_M_STRING;
         lexer_run = false;
-      } else {
+      } else if (IS_ASCII(character) || character == '\n' ||
+                 character == '\r') {
         // The quotes were not stored, because end of string was suspected.
         // That is why they were added in addition to the current character.
         if (dynstr_append_char(output_val, '"') != NO_ERR ||
@@ -1173,6 +1179,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
           return INTERNAL_ERR;
         }
         state = S_START_ML;
+      } else {
+        return LEXICAL_ERR;
       }
       break;
 
