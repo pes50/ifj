@@ -1,12 +1,12 @@
-/**************************** IFJ/IAL-Compiler-2026 ***************************\
+/************* Implementace překladače imperativního jazyka IFJ26 ************\
  *
  * @file parser.h
  *
- * @author Matous Jahoda (xjahodm00)
+ * @author Matouš Jahoda (xjahodm00)
  *
  * @brief Specification of parser interface
  *
- \*****************************************************************************/
+\*****************************************************************************/
 
 #include "ast_node.h"
 #include "err_codes.h"

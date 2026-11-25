@@ -1,8 +1,8 @@
-/**************************** IFJ/IAL-Compiler-2026 ***************************\
+/************* Implementace překladače imperativního jazyka IFJ26 ************\
  *
  * @file token_stack.c
  *
- * @author Matous Jahoda (xjahodm00)
+ * @author Matouš Jahoda (xjahodm00)
  *
  * @brief Implementation for token stack
  *

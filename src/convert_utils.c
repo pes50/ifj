@@ -1,4 +1,4 @@
-/**************************** IFJ/IAL-Compiler-2026 ***************************\
+/************* Implementace překladače imperativního jazyka IFJ26 ************\
  *
  * @file convert_utils.c
  *
@@ -7,7 +7,7 @@
  *
  * @brief Implementation of helper functions used in AST to 3AC conversion
  *
- \*****************************************************************************/
+\*****************************************************************************/
 
 #include "convert_utils.h"
 #include "convert_node.h"

@@ -1,4 +1,4 @@
-/**************************** IFJ/IAL-Compiler-2026 ***************************\
+/************* Implementace překladače imperativního jazyka IFJ26 ************\
  *
  * @file inner_code.h
  *
@@ -6,7 +6,7 @@
  *
  * @brief Data structure of inner code and interface specification
  *
- \*****************************************************************************/
+\*****************************************************************************/
 
 #ifndef INNER_CODE_H
 #define INNER_CODE_H

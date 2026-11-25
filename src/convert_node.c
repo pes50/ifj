@@ -1,4 +1,4 @@
-/**************************** IFJ/IAL-Compiler-2026 ***************************\
+/************* Implementace překladače imperativního jazyka IFJ26 ************\
  *
  * @file convert_node.c
  *
@@ -7,7 +7,7 @@
  * @brief Implementation of AST node to 3AC statement conversion
  *        (1 node -> 1 statement)
  *
- \*****************************************************************************/
+\*****************************************************************************/
 
 #include "convert_node.h"
 #include "ast_node.h"

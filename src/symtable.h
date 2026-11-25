@@ -1,4 +1,4 @@
-/**************************** IFJ/IAL-Compiler-2026 ***************************\
+/************* Implementace překladače imperativního jazyka IFJ26 ************\
  *
  * @file symtable.h
  *
@@ -8,7 +8,7 @@
  * @brief Specification of symbol table interface and declaration
  * of symbol table interface functions
  *
- \*****************************************************************************/
+\*****************************************************************************/
 
 #ifndef SYMTABLE_H
 #define SYMTABLE_H
