@@ -534,8 +534,13 @@ err_code_t analyse_if(ast_node_t *node, hashtable_t *symtable,
   }
   current_scope->parent = symtable;
 
-  err = analyse_block(false_branch, current_scope, explicit_data_type,
-                      allow_return);
+  if (false_branch->type == AST_BLOCK) {
+    err = analyse_block(false_branch, current_scope, explicit_data_type,
+                        allow_return);
+  } else {
+    err = analyse_expression(false_branch, current_scope, explicit_data_type,
+                             false, allow_return);
+  }
   ht_destruct(&current_scope);
   if (err != NO_ERR) {
     RETURN_ERR(err);
