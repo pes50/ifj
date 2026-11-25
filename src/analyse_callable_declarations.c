@@ -83,18 +83,18 @@ err_code_t add_parameters_to_scope(ast_node_t *node, hashtable_t *symtable) {
         current_list->data.parameter_list.parameters;
     while (current_parameter != NULL) {
       if (current_parameter->data.parameter.name == NULL) {
-        return INTERNAL_ERR;
+        RETURN_ERR(INTERNAL_ERR);
       }
 
       err = analyse_type(current_parameter->data.parameter.data_type, symtable);
       if (err != NO_ERR) {
-        return err;
+        RETURN_ERR(err);
       }
 
       err = ht_insert_item(symtable, current_parameter->data.parameter.name,
                            current_parameter);
       if (err != NO_ERR) {
-        return err;
+        RETURN_ERR(err);
       }
 
       if (current_parameter->data_type == NULL) {
@@ -103,7 +103,7 @@ err_code_t add_parameters_to_scope(ast_node_t *node, hashtable_t *symtable) {
       }
 
       if (err != NO_ERR) {
-        return err;
+        RETURN_ERR(err);
       }
 
       current_parameter = current_parameter->next;
@@ -113,40 +113,40 @@ err_code_t add_parameters_to_scope(ast_node_t *node, hashtable_t *symtable) {
     }
 
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
     current_list = current_list->next;
   }
 
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 err_code_t analyse_function_declaration(ast_node_t *node,
                                         hashtable_t *symtable) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   if (node->type != AST_FUNCTION_DECLARATION) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   // Already analysed
   if (node->data_type != NULL) {
-    return NO_ERR;
+    RETURN_ERR(NO_ERR);
   }
 
   // Recursive function without defined type
   if (node->_visited) {
     if (node->data.function_declaration.return_type == NULL) {
-      return TYPE_COMPAT_ERR;
+      RETURN_ERR(TYPE_COMPAT_ERR);
     }
-    return NO_ERR;
+    RETURN_ERR(NO_ERR);
   }
 
   ast_node_t *body = node->data.function_declaration.body;
   if (body == NULL) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   err_code_t err = NO_ERR;
@@ -154,14 +154,14 @@ err_code_t analyse_function_declaration(ast_node_t *node,
   if (return_type != NULL) {
     err = analyse_type(return_type, symtable);
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
   }
 
   // Create new scope
   hashtable_t *current_scope;
   if (ht_init(&current_scope, local_scope_table_size) != NO_ERR) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
   current_scope->parent = symtable;
 

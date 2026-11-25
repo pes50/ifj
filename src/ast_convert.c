@@ -7,6 +7,10 @@
  *
  * @brief Implementation of AST to 3AC conversion entrypoint
  *
+ * @note Gemini Hydrogen was used to translate plain-text IFJcode26 into C inner
+ * statement constructor calls in this file and files related to AST to 3AC
+ * conversion (convert_*.c)
+ *
  \*****************************************************************************/
 
 #include "ast_convert.h"

@@ -63,8 +63,6 @@ err_code_t convert_node(context_t *context, ast_node_t *node) {
       err = discard_stack_top(context);
     }
     break;
-  case AST_EXTENSION_DECLARATION:
-    break;
   case AST_BLOCK:
     err = convert_block(context, node);
     break;
@@ -81,6 +79,7 @@ err_code_t convert_node(context_t *context, ast_node_t *node) {
     err = convert_while_do(context, node);
     break;
   case AST_FOR_DO:
+    err = convert_for_do(context, node);
     break;
   case AST_RETURN:
     err = convert_return(context, node);
@@ -90,14 +89,6 @@ err_code_t convert_node(context_t *context, ast_node_t *node) {
     if (err == NO_ERR) {
       err = discard_stack_top(context);
     }
-    break;
-  case AST_MATCH_CASE:
-    break;
-  case AST_BINARY_OPERATION:
-    break;
-  case AST_UNARY_OPERATION:
-    break;
-  case AST_LIST_CONSTRUCTOR:
     break;
   default:
     err = INTERNAL_ERR;

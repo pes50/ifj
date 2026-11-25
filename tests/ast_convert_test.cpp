@@ -1199,26 +1199,30 @@ ast_node_t *test_ext_control_if_expr_numeric_promotion() {
   });
 }
 
+static ast_node_t *param(const char *name, data_type_node_t *type = nullptr) {
+  return create_parameter_node(const_cast<char *>(name), type);
+}
+
 // var s1 = 0; for i <- 1 to 5 do s1 = s1 + i          -> 15
 // var s2 = 0; for i <- 1 until 5 do s2 = s2 + i       -> 10
 // var s3 = 0; for i <- 1 to 10 by 3 do s3 = s3 + i    -> 1 + 4 + 7 + 10 = 22
 ast_node_t *test_ext_control_for_ranges() {
   ast_node_t *gen_to = dot_call(lit_int("1"), "to", {lit_int("5")});
   ast_node_t *loop1 = create_for_do_node(
-      id("i"), gen_to, nullptr,
+      param("i"), gen_to, nullptr,
       create_block_node(assign("s1", create_binary_operation_node(
                                          TOK_BINARY_PLUS, id("s1"), id("i")))));
 
   ast_node_t *gen_until = dot_call(lit_int("1"), "until", {lit_int("5")});
   ast_node_t *loop2 = create_for_do_node(
-      id("i"), gen_until, nullptr,
+      param("i"), gen_until, nullptr,
       create_block_node(assign("s2", create_binary_operation_node(
                                          TOK_BINARY_PLUS, id("s2"), id("i")))));
 
   ast_node_t *gen_by = dot_call(dot_call(lit_int("1"), "to", {lit_int("10")}),
                                 "by", {lit_int("3")});
   ast_node_t *loop3 = create_for_do_node(
-      id("i"), gen_by, nullptr,
+      param("i"), gen_by, nullptr,
       create_block_node(assign("s3", create_binary_operation_node(
                                          TOK_BINARY_PLUS, id("s3"), id("i")))));
 
@@ -1241,7 +1245,7 @@ ast_node_t *test_ext_control_for_ranges() {
 ast_node_t *test_ext_control_for_list() {
   ast_node_t *lst = call("List", {lit_int("10"), lit_int("20"), lit_int("30")});
   ast_node_t *loop = create_for_do_node(
-      id("x"), lst, nullptr,
+      param("x"), lst, nullptr,
       create_block_node(
           assign("sum", create_binary_operation_node(TOK_BINARY_PLUS, id("sum"),
                                                      id("x")))));
@@ -1258,7 +1262,7 @@ ast_node_t *test_ext_control_for_err_zero_step() {
   ast_node_t *gen = dot_call(dot_call(lit_int("1"), "to", {lit_int("5")}), "by",
                              {id("step")});
   ast_node_t *loop = create_for_do_node(
-      id("i"), gen, nullptr, create_block_node(create_unit_literal_node()));
+      param("i"), gen, nullptr, create_block_node(create_unit_literal_node()));
 
   return wrap_main({
       val_decl("step", lit_int("0")),
