@@ -40,6 +40,7 @@ void destroy_node(ast_node_t *node) {
   case AST_LAMBDA_DECLARATION:
     destroy_node(node->data.lambda_declaration.parameters);
     destroy_node(node->data.lambda_declaration.body);
+    free(node->data.lambda_declaration.unique_id);
     break;
   case AST_PARAMETER_LIST:
     destroy_node(node->data.parameter_list.parameters);
@@ -214,6 +215,7 @@ ast_node_t *create_lambda_declaration_node(ast_node_t *parameters,
   node->type = AST_LAMBDA_DECLARATION;
   node->data.lambda_declaration.parameters = parameters;
   node->data.lambda_declaration.body = body;
+  node->data.lambda_declaration.unique_id = NULL;
 
   return node;
 }

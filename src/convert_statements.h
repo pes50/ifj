@@ -49,7 +49,7 @@ err_code_t convert_block(context_t *context, ast_node_t *node);
  * @brief Converts an AST variable declaration node to 3AC expression
  *
  * @param context Context structure of the function in which the node is
- * @param node A pointer to the first node to convert
+ * @param node A pointer to the node to convert
  *
  * @return NO_ERR if everything ok
  */
@@ -59,7 +59,7 @@ err_code_t convert_var_declaration(context_t *context, ast_node_t *node);
  * @brief Converts an AST assignment node to 3AC expression
  *
  * @param context Context structure of the function in which the node is
- * @param node A pointer to the first node to convert
+ * @param node A pointer to the node to convert
  *
  * @return NO_ERR if everything ok
  */
@@ -69,8 +69,18 @@ err_code_t convert_assignment(context_t *context, ast_node_t *node);
  * @brief Converts an AST return node to 3AC expression
  *
  * @param context Context structure of the function in which the node is
- * @param node A pointer to the first node to convert
+ * @param node A pointer to the node to convert
  *
  * @return NO_ERR if everything ok
  */
 err_code_t convert_return(context_t *context, ast_node_t *node);
+
+/**
+ * @brief Converts an AST for do node to 3AC
+ *
+ * @param context Context structure of the function in which the node is
+ * @param node A pointer to the node to convert
+ *
+ * @return NO_ERR if everything ok
+ */
+err_code_t convert_for_do(context_t *context, ast_node_t *node);

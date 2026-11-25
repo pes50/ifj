@@ -453,7 +453,7 @@ CALL subStr
 EXIT int@0
 )")
                 .exit_code,
-            40);
+            RUNTIME_ERR);
 
   // end < 0
   EXPECT_EQ(run_ifjcode(R"(
@@ -465,7 +465,7 @@ CALL subStr
 EXIT int@0
 )")
                 .exit_code,
-            40);
+            RUNTIME_ERR);
 
   // start > end
   EXPECT_EQ(run_ifjcode(R"(
@@ -477,7 +477,7 @@ CALL subStr
 EXIT int@0
 )")
                 .exit_code,
-            40);
+            RUNTIME_ERR);
 
   // start >= length
   EXPECT_EQ(run_ifjcode(R"(
@@ -489,7 +489,7 @@ CALL subStr
 EXIT int@0
 )")
                 .exit_code,
-            40);
+            RUNTIME_ERR);
 
   // end > length
   EXPECT_EQ(run_ifjcode(R"(
@@ -501,7 +501,7 @@ CALL subStr
 EXIT int@0
 )")
                 .exit_code,
-            40);
+            RUNTIME_ERR);
 }
 
 // ============================================================================
@@ -1311,7 +1311,7 @@ PUSHS int@0
 CALL List$$range
 EXIT int@0
 )");
-  EXPECT_EQ(zero_res.exit_code, 40) << zero_res.output;
+  EXPECT_EQ(zero_res.exit_code, RUNTIME_ERR) << zero_res.output;
 }
 
 // ============================================================================
@@ -1421,7 +1421,7 @@ PUSHS int@0
 CALL $Range$by
 EXIT int@0
 )");
-  EXPECT_EQ(zero_res.exit_code, 40) << zero_res.output;
+  EXPECT_EQ(zero_res.exit_code, RUNTIME_ERR) << zero_res.output;
 }
 
 // ============================================================================

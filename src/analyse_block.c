@@ -17,17 +17,21 @@ semantic analysis
 err_code_t analyse_while_do(ast_node_t *node, hashtable_t *symtable,
                             data_type_node_t *explicit_type) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   if (node->type != AST_WHILE_DO) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
+  }
+
+  if (node->data.while_do.body == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   ast_node_t *condition = node->data.while_do.condition;
 
   if (condition == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   err_code_t err = analyse_expression(condition, symtable, NULL, true, false);
@@ -43,8 +47,13 @@ err_code_t analyse_while_do(ast_node_t *node, hashtable_t *symtable,
         return INTERNAL_ERR;
       }
       current_scope->parent = symtable;
-      err = analyse_block(node->data.while_do.body, current_scope,
-                          explicit_type, true);
+      if (node->data.while_do.body->type == AST_BLOCK) {
+        err = analyse_block(node->data.while_do.body, current_scope,
+                            explicit_type, true);
+      } else {
+        err = analyse_expression(node->data.while_do.body, current_scope,
+                                 explicit_type, true, true);
+      }
       ht_destruct(&current_scope);
     }
   }

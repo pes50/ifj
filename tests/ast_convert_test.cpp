@@ -1199,26 +1199,30 @@ ast_node_t *test_ext_control_if_expr_numeric_promotion() {
   });
 }
 
+static ast_node_t *param(const char *name, data_type_node_t *type = nullptr) {
+  return create_parameter_node(const_cast<char *>(name), type);
+}
+
 // var s1 = 0; for i <- 1 to 5 do s1 = s1 + i          -> 15
 // var s2 = 0; for i <- 1 until 5 do s2 = s2 + i       -> 10
 // var s3 = 0; for i <- 1 to 10 by 3 do s3 = s3 + i    -> 1 + 4 + 7 + 10 = 22
 ast_node_t *test_ext_control_for_ranges() {
   ast_node_t *gen_to = dot_call(lit_int("1"), "to", {lit_int("5")});
   ast_node_t *loop1 = create_for_do_node(
-      id("i"), gen_to, nullptr,
+      param("i"), gen_to, nullptr,
       create_block_node(assign("s1", create_binary_operation_node(
                                          TOK_BINARY_PLUS, id("s1"), id("i")))));
 
   ast_node_t *gen_until = dot_call(lit_int("1"), "until", {lit_int("5")});
   ast_node_t *loop2 = create_for_do_node(
-      id("i"), gen_until, nullptr,
+      param("i"), gen_until, nullptr,
       create_block_node(assign("s2", create_binary_operation_node(
                                          TOK_BINARY_PLUS, id("s2"), id("i")))));
 
   ast_node_t *gen_by = dot_call(dot_call(lit_int("1"), "to", {lit_int("10")}),
                                 "by", {lit_int("3")});
   ast_node_t *loop3 = create_for_do_node(
-      id("i"), gen_by, nullptr,
+      param("i"), gen_by, nullptr,
       create_block_node(assign("s3", create_binary_operation_node(
                                          TOK_BINARY_PLUS, id("s3"), id("i")))));
 
@@ -1241,7 +1245,7 @@ ast_node_t *test_ext_control_for_ranges() {
 ast_node_t *test_ext_control_for_list() {
   ast_node_t *lst = call("List", {lit_int("10"), lit_int("20"), lit_int("30")});
   ast_node_t *loop = create_for_do_node(
-      id("x"), lst, nullptr,
+      param("x"), lst, nullptr,
       create_block_node(
           assign("sum", create_binary_operation_node(TOK_BINARY_PLUS, id("sum"),
                                                      id("x")))));
@@ -1258,7 +1262,7 @@ ast_node_t *test_ext_control_for_err_zero_step() {
   ast_node_t *gen = dot_call(dot_call(lit_int("1"), "to", {lit_int("5")}), "by",
                              {id("step")});
   ast_node_t *loop = create_for_do_node(
-      id("i"), gen, nullptr, create_block_node(create_unit_literal_node()));
+      param("i"), gen, nullptr, create_block_node(create_unit_literal_node()));
 
   return wrap_main({
       val_decl("step", lit_int("0")),
@@ -1413,6 +1417,235 @@ ast_node_t *test_ext_lambdas_basic() {
       print_call(lit_str("|")),
       print_call(call("zeroArg")),
   });
+}
+
+// def inc(x: Int): Int = x + 1
+// def isEven(x: Int): Boolean = (x / 2) * 2 == x
+// def applyTwice(f: (Int) => Int, v: Int): Int = f(f(v))
+// @main def main(): Unit = {
+//   var op = inc
+//   val r1 = applyTwice(op, 3)          // 5
+//   op = (x: Int) => x * 10
+//   val r2 = applyTwice(op, 2)          // 200
+//   val evens = List(1, 2, 3, 4, 5, 6).filter(isEven)
+//   print(r1); print("|"); print(r2); print("|"); print(evens)
+// } -> "5|200|List(2, 4, 6)"
+ast_node_t *test_ext_lambdas_higher_order_and_fn_refs() {
+  ast_node_t *fn_inc = create_function_declaration_node(
+      const_cast<char *>("inc"),
+      create_parameter_list_node(
+          create_parameter_node(const_cast<char *>("x"), &node_int)),
+      create_block_node(
+          create_binary_operation_node(TOK_BINARY_PLUS, id("x"), lit_int("1"))),
+      &node_int, false);
+
+  ast_node_t *half_mul_2 = create_binary_operation_node(
+      TOK_MUL, create_binary_operation_node(TOK_DIV, id("x"), lit_int("2")),
+      lit_int("2"));
+  ast_node_t *fn_is_even = create_function_declaration_node(
+      const_cast<char *>("isEven"),
+      create_parameter_list_node(
+          create_parameter_node(const_cast<char *>("x"), &node_int)),
+      create_block_node(
+          create_binary_operation_node(TOK_EQUAL, half_mul_2, id("x"))),
+      &node_boolean, false);
+
+  ast_node_t *apply_params = create_parameter_list_node(chain_nodes({
+      create_parameter_node(
+          const_cast<char *>("f"),
+          create_lambda_type_node(create_primitive_type_node(PRIMITIVE_INT),
+                                  &node_int)),
+      create_parameter_node(const_cast<char *>("v"), &node_int),
+  }));
+  ast_node_t *fn_apply_twice = create_function_declaration_node(
+      const_cast<char *>("applyTwice"), apply_params,
+      create_block_node(call("f", {call("f", {id("v")})})), &node_int, false);
+
+  ast_node_t *mul10_lam = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("x"), &node_int),
+      create_block_node(
+          create_binary_operation_node(TOK_MUL, id("x"), lit_int("10"))));
+
+  ast_node_t *nums = call("List", {lit_int("1"), lit_int("2"), lit_int("3"),
+                                   lit_int("4"), lit_int("5"), lit_int("6")});
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          var_decl("op", id("inc")),
+          val_decl("r1", call("applyTwice", {id("op"), lit_int("3")})),
+          assign("op", mul10_lam),
+          val_decl("r2", call("applyTwice", {id("op"), lit_int("2")})),
+          val_decl("evens", dot_call(nums, "filter", {id("isEven")})),
+          print_call(id("r1")),
+          print_call(lit_str("|")),
+          print_call(id("r2")),
+          print_call(lit_str("|")),
+          print_call(id("evens")),
+      })),
+      &node_unit, true);
+
+  return create_block_node(
+      chain_nodes({fn_inc, fn_is_even, fn_apply_twice, fn_main}));
+}
+
+// def chooseOp(useAdd: Boolean): (Int, Int) => Int =
+//   if useAdd then (a: Int, b: Int) => a + b else (a: Int, b: Int) => a * b
+// @main def main(): Unit = {
+//   val fAdd = chooseOp(true)
+//   val fMul = chooseOp(false)
+//   print(fAdd(3, 4)); print("|"); print(fMul(3, 4))
+// } -> "7|12"
+ast_node_t *test_ext_lambdas_returned_and_if_expr() {
+  auto make_bin_lam = [](token_type_t op) {
+    ast_node_t *params = chain_nodes({
+        create_parameter_node(const_cast<char *>("a"), &node_int),
+        create_parameter_node(const_cast<char *>("b"), &node_int),
+    });
+    return create_lambda_declaration_node(
+        params,
+        create_block_node(create_binary_operation_node(op, id("a"), id("b"))));
+  };
+
+  data_type_node_t *ret_fn_type = create_lambda_type_node(
+      chain_types({create_primitive_type_node(PRIMITIVE_INT),
+                   create_primitive_type_node(PRIMITIVE_INT)}),
+      &node_int);
+
+  ast_node_t *fn_choose = create_function_declaration_node(
+      const_cast<char *>("chooseOp"),
+      create_parameter_list_node(
+          create_parameter_node(const_cast<char *>("useAdd"), &node_boolean)),
+      create_block_node(create_if_node(
+          id("useAdd"), create_block_node(make_bin_lam(TOK_BINARY_PLUS)),
+          create_block_node(make_bin_lam(TOK_MUL)))),
+      ret_fn_type, false);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          val_decl("fAdd", call("chooseOp", {lit_bool(true)})),
+          val_decl("fMul", call("chooseOp", {lit_bool(false)})),
+          print_call(call("fAdd", {lit_int("3"), lit_int("4")})),
+          print_call(lit_str("|")),
+          print_call(call("fMul", {lit_int("3"), lit_int("4")})),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_choose, fn_main}));
+}
+
+// @main def main(): Unit = {
+//   val printer: (Int) => Unit = (x: Int) => {
+//   x + 99; print("["); print(x); print("]")
+//   }
+//   val bareExpr = (x: Int) => x * 3
+//   val u = printer(7)
+//   print("|"); print(u); print("|"); print(bareExpr(4))
+// } -> "[7]|()|12"
+ast_node_t *test_ext_lambdas_unit_return_and_expr_body() {
+  ast_node_t *unit_lam = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("x"), &node_int),
+      create_block_node(chain_nodes({
+          create_binary_operation_node(TOK_BINARY_PLUS, id("x"), lit_int("99")),
+          print_call(lit_str("[")),
+          print_call(id("x")),
+          print_call(lit_str("]")),
+      })));
+
+  ast_node_t *bare_lam = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("x"), &node_int),
+      create_binary_operation_node(TOK_MUL, id("x"), lit_int("3")));
+
+  data_type_node_t *printer_type = create_lambda_type_node(
+      create_primitive_type_node(PRIMITIVE_INT), &node_unit);
+
+  return wrap_main({
+      val_decl("printer", unit_lam, printer_type),
+      val_decl("bareExpr", bare_lam),
+      val_decl("u", call("printer", {lit_int("7")})),
+      print_call(lit_str("|")),
+      print_call(id("u")),
+      print_call(lit_str("|")),
+      print_call(call("bareExpr", {lit_int("4")})),
+  });
+}
+
+// @main def main(): Unit = {
+//   val incRet = (x: Int) => return x + 10
+//   val mulRet = (a: Int, b: Int) => return a * b
+//   val unitRet: (Int) => Unit = (x: Int) => return
+//   print(incRet(5)); print("|")
+//   print(mulRet(3, 4)); print("|")
+//   val u = unitRet(9); print(u)
+// } -> "15|12|()"
+ast_node_t *test_ext_lambdas_explicit_return() {
+  ast_node_t *inc_ret_lam = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("x"), &node_int),
+      create_return_node(create_binary_operation_node(TOK_BINARY_PLUS, id("x"),
+                                                      lit_int("10"))));
+
+  ast_node_t *mul_ret_lam = create_lambda_declaration_node(
+      chain_nodes({
+          create_parameter_node(const_cast<char *>("a"), &node_int),
+          create_parameter_node(const_cast<char *>("b"), &node_int),
+      }),
+      create_return_node(
+          create_binary_operation_node(TOK_MUL, id("a"), id("b"))));
+
+  ast_node_t *unit_ret_lam = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("x"), &node_int),
+      create_return_node(nullptr));
+
+  data_type_node_t *unit_ret_type = create_lambda_type_node(
+      create_primitive_type_node(PRIMITIVE_INT), &node_unit);
+
+  return wrap_main({
+      val_decl("incRet", inc_ret_lam),
+      val_decl("mulRet", mul_ret_lam),
+      val_decl("unitRet", unit_ret_lam, unit_ret_type),
+      print_call(call("incRet", {lit_int("5")})),
+      print_call(lit_str("|")),
+      print_call(call("mulRet", {lit_int("3"), lit_int("4")})),
+      print_call(lit_str("|")),
+      val_decl("u", call("unitRet", {lit_int("9")})),
+      print_call(id("u")),
+  });
+}
+
+// def makeAdder(): (Int) => Int = (x: Int) => x + 10
+// @main def main(): Unit = {
+//   val add10 = makeAdder()
+//   val factory = makeAdder
+//   val add10FromRef = factory()
+//   print(add10(5)); print("|"); print(add10FromRef(7))
+// } -> "15|17"
+ast_node_t *test_ext_lambdas_zero_arg_returning_lambda() {
+  ast_node_t *adder_lam = create_lambda_declaration_node(
+      create_parameter_node(const_cast<char *>("x"), &node_int),
+      create_block_node(create_binary_operation_node(TOK_BINARY_PLUS, id("x"),
+                                                     lit_int("10"))));
+
+  data_type_node_t *adder_type = create_lambda_type_node(
+      create_primitive_type_node(PRIMITIVE_INT), &node_int);
+
+  ast_node_t *fn_make_adder = create_function_declaration_node(
+      const_cast<char *>("makeAdder"), create_parameter_list_node(nullptr),
+      create_block_node(adder_lam), adder_type, false);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          val_decl("add10", call("makeAdder", {})),
+          val_decl("factory", id("makeAdder")),
+          val_decl("add10FromRef", call("factory", {})),
+          print_call(call("add10", {lit_int("5")})),
+          print_call(lit_str("|")),
+          print_call(call("add10FromRef", {lit_int("7")})),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_make_adder, fn_main}));
 }
 
 // Reuse pattern variable `v` across arms and across multiple `match` blocks:
@@ -1656,6 +1889,60 @@ ast_node_t *test_ext_extkw_int_methods() {
   return create_block_node(chain_nodes({ext_decl, fn_main}));
 }
 
+// extension (value: Int)
+//   def printVal(): Unit = print(value)
+//   def printAndDouble(): Int = { print(value); value * 2 }
+//   def twice: Int = value * 2
+// @main def main(): Unit = {
+//   val x = 7
+//   while readInt() > 0 do x.printVal()
+//   print("|")
+//   x.printAndDouble()
+//   x.twice
+//   print("|ok")
+// } -> "77|7|ok" (with stdin "1\n1\n0\n")
+ast_node_t *test_ext_extkw_dot_call_statements() {
+  ast_node_t *fn_print_val = create_function_declaration_node(
+      const_cast<char *>("printVal"), create_parameter_list_node(nullptr),
+      create_block_node(print_call(id("value"))), &node_unit, false);
+
+  ast_node_t *fn_print_and_double = create_function_declaration_node(
+      const_cast<char *>("printAndDouble"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          print_call(id("value")),
+          create_binary_operation_node(TOK_MUL, id("value"), lit_int("2")),
+      })),
+      &node_int, false);
+
+  ast_node_t *fn_twice = create_function_declaration_node(
+      const_cast<char *>("twice"), nullptr,
+      create_block_node(
+          create_binary_operation_node(TOK_MUL, id("value"), lit_int("2"))),
+      &node_int, false);
+
+  ast_node_t *ext_decl = create_extension_declaration_node(
+      create_parameter_node(const_cast<char *>("value"), &node_int),
+      chain_nodes({fn_print_val, fn_print_and_double, fn_twice}));
+
+  ast_node_t *cond = create_binary_operation_node(
+      TOK_GREATER_T, call("readInt"), lit_int("0"));
+  ast_node_t *loop = create_while_do_node(cond, dot_call(id("x"), "printVal"));
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          val_decl("x", lit_int("7")),
+          loop,
+          print_call(lit_str("|")),
+          dot_call(id("x"), "printAndDouble"),
+          dot_member(id("x"), "twice"),
+          print_call(lit_str("|ok")),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({ext_decl, fn_main}));
+}
+
 #pragma endregion
 
 #pragma region Extension PARAMLISTS: Parameterless & Multi-Param-List Functions
@@ -1706,6 +1993,372 @@ ast_node_t *test_ext_paramlists_basic() {
 
   return create_block_node(
       chain_nodes({fn_answer, fn_add, fn_offset, fn_main}));
+}
+
+#pragma endregion
+
+#pragma region Additional tests
+
+// Nested block shadowing (Spec 2.2): inner val/var must not overwrite outer x
+ast_node_t *test_core_block_shadowing() {
+  ast_node_t *innermost = create_if_node(
+      lit_bool(true),
+      create_block_node(chain_nodes({
+          var_decl("x", lit_int("30")),
+          assign("x", create_binary_operation_node(TOK_BINARY_PLUS, id("x"),
+                                                   lit_int("5"))),
+          assign("out", create_binary_operation_node(TOK_BINARY_PLUS, id("out"),
+                                                     id("x"))),
+      })),
+      create_block_node(create_unit_literal_node()));
+
+  ast_node_t *outer_if = create_if_node(
+      lit_bool(true),
+      create_block_node(chain_nodes({
+          val_decl("x", lit_int("20")),
+          assign("out", create_binary_operation_node(TOK_BINARY_PLUS, id("out"),
+                                                     id("x"))),
+          innermost,
+      })),
+      create_block_node(create_unit_literal_node()));
+
+  return wrap_main({
+      val_decl("x", lit_int("10")),
+      var_decl("out", lit_int("0")),
+      outer_if,
+      assign("out",
+             create_binary_operation_node(TOK_BINARY_PLUS, id("out"), id("x"))),
+      print_call(id("out")),
+  });
+}
+
+// Forward call & mutual recursion (Spec 2.3): isEven <-> isOdd
+ast_node_t *test_core_mutual_recursion() {
+  ast_node_t *even_cond =
+      create_binary_operation_node(TOK_EQUAL, id("n"), lit_int("0"));
+  ast_node_t *fn_is_even = create_function_declaration_node(
+      const_cast<char *>("isEven"),
+      create_parameter_list_node(param("n", &node_int)),
+      create_block_node(create_if_node(
+          even_cond, create_block_node(create_return_node(lit_bool(true))),
+          create_block_node(create_return_node(
+              call("isOdd", {create_binary_operation_node(
+                                TOK_BINARY_MINUS, id("n"), lit_int("1"))}))))),
+      &node_boolean, false);
+
+  ast_node_t *odd_cond =
+      create_binary_operation_node(TOK_EQUAL, id("n"), lit_int("0"));
+  ast_node_t *fn_is_odd = create_function_declaration_node(
+      const_cast<char *>("isOdd"),
+      create_parameter_list_node(param("n", &node_int)),
+      create_block_node(create_if_node(
+          odd_cond, create_block_node(create_return_node(lit_bool(false))),
+          create_block_node(create_return_node(
+              call("isEven", {create_binary_operation_node(
+                                 TOK_BINARY_MINUS, id("n"), lit_int("1"))}))))),
+      &node_boolean, false);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          print_call(call("isEven", {lit_int("6")})),
+          print_call(lit_str("|")),
+          print_call(call("isOdd", {lit_int("6")})),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_is_even, fn_is_odd, fn_main}));
+}
+
+// Explicit : Unit function with `return expr` evaluates side effects & returns
+// () def step(): Int = { print("side:"); 99 } def runUnit(): Unit = { return
+// step() }
+// @main def main(): Unit = { val u = runUnit(); print(u) } -> "side:()"
+ast_node_t *test_core_unit_return_discards_value() {
+  ast_node_t *fn_step = create_function_declaration_node(
+      const_cast<char *>("step"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          print_call(lit_str("side:")),
+          lit_int("99"),
+      })),
+      &node_int, false);
+
+  ast_node_t *fn_run_unit = create_function_declaration_node(
+      const_cast<char *>("runUnit"), create_parameter_list_node(nullptr),
+      create_block_node(create_return_node(call("step"))), &node_unit, false);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          val_decl("u", call("runUnit")),
+          print_call(id("u")),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_step, fn_run_unit, fn_main}));
+}
+
+// Lexicographical String comparisons & mixed Int/Double equality/ordering
+ast_node_t *test_core_string_and_mixed_relational() {
+  ast_node_t *s_lt =
+      create_binary_operation_node(TOK_LOWER_T, lit_str("abc"), lit_str("abd"));
+  ast_node_t *s_gt =
+      create_binary_operation_node(TOK_GREATER_T, lit_str("b"), lit_str("a"));
+  ast_node_t *num_eq =
+      create_binary_operation_node(TOK_EQUAL, lit_int("5"), lit_double("5.0"));
+  ast_node_t *num_lt = create_binary_operation_node(TOK_LOWER_T, lit_int("5"),
+                                                    lit_double("5.5"));
+
+  return wrap_main({
+      print_call(s_lt),
+      print_call(lit_str(" ")),
+      print_call(s_gt),
+      print_call(lit_str(" ")),
+      print_call(num_eq),
+      print_call(lit_str(" ")),
+      print_call(num_lt),
+  });
+}
+
+// Runtime error 57: integer division by zero
+ast_node_t *test_core_err_int_div_by_zero() {
+  return wrap_main({
+      val_decl("z", lit_int("0")),
+      val_decl("bad",
+               create_binary_operation_node(TOK_DIV, lit_int("10"), id("z"))),
+      print_call(id("bad")),
+  });
+}
+
+// Runtime error 57: float division by zero
+ast_node_t *test_core_float_div_by_zero() {
+  ast_node_t *inf_val = create_binary_operation_node(TOK_DIV, lit_double("1.0"),
+                                                     lit_double("0.0"));
+  ast_node_t *is_huge = create_binary_operation_node(TOK_GREATER_T, inf_val,
+                                                     lit_double("1000.0"));
+  return wrap_main({print_call(is_huge)});
+}
+
+// Multiple guards, negative step (to & until), and 0-iteration empty ranges
+ast_node_t *test_ext_control_for_guards_and_neg_step() {
+  // Loop 1: for i <- 1 to 10 if i > 2 if i < 8 do s1 = s1 + i -> 3+4+5+6+7 = 25
+  ast_node_t *guards1 = chain_nodes({
+      create_binary_operation_node(TOK_GREATER_T, id("i"), lit_int("2")),
+      create_binary_operation_node(TOK_LOWER_T, id("i"), lit_int("8")),
+  });
+  ast_node_t *loop1 = create_for_do_node(
+      param("i"), dot_call(lit_int("1"), "to", {lit_int("10")}), guards1,
+      create_block_node(assign("s1", create_binary_operation_node(
+                                         TOK_BINARY_PLUS, id("s1"), id("i")))));
+
+  // Loop 2: for i <- 5 to 1 by -2 do s2 = s2 + i -> 5 + 3 + 1 = 9
+  ast_node_t *gen2 = dot_call(dot_call(lit_int("5"), "to", {lit_int("1")}),
+                              "by", {lit_neg_int("2")});
+  ast_node_t *loop2 = create_for_do_node(
+      param("i"), gen2, nullptr,
+      create_block_node(assign("s2", create_binary_operation_node(
+                                         TOK_BINARY_PLUS, id("s2"), id("i")))));
+
+  // Loop 3: for i <- 5 until 1 by -1 if i < 5 do s3 = s3 + i -> 4 + 3 + 2 = 9
+  ast_node_t *gen3 = dot_call(dot_call(lit_int("5"), "until", {lit_int("1")}),
+                              "by", {lit_neg_int("1")});
+  ast_node_t *guard3 =
+      create_binary_operation_node(TOK_LOWER_T, id("i"), lit_int("5"));
+  ast_node_t *loop3 = create_for_do_node(
+      param("i"), gen3, guard3,
+      create_block_node(assign("s3", create_binary_operation_node(
+                                         TOK_BINARY_PLUS, id("s3"), id("i")))));
+
+  // Loop 4: empty ascending range (5 to 1) -> 0 iterations, s4 stays 42
+  ast_node_t *loop4 = create_for_do_node(
+      param("i"), dot_call(lit_int("5"), "to", {lit_int("1")}), nullptr,
+      create_block_node(assign("s4", lit_int("0"))));
+
+  return wrap_main({
+      var_decl("s1", lit_int("0")),
+      loop1,
+      var_decl("s2", lit_int("0")),
+      loop2,
+      var_decl("s3", lit_int("0")),
+      loop3,
+      var_decl("s4", lit_int("42")),
+      loop4,
+      print_call(id("s1")),
+      print_call(lit_str("|")),
+      print_call(id("s2")),
+      print_call(lit_str("|")),
+      print_call(id("s3")),
+      print_call(lit_str("|")),
+      print_call(id("s4")),
+  });
+}
+
+// Single evaluation of generator bounds/step + early return from for loop
+ast_node_t *test_ext_control_for_single_eval_and_early_return() {
+  ast_node_t *div_cond = create_binary_operation_node(
+      TOK_EQUAL,
+      create_binary_operation_node(
+          TOK_MUL, create_binary_operation_node(TOK_DIV, id("x"), lit_int("3")),
+          lit_int("3")),
+      id("x"));
+
+  ast_node_t *find_loop = create_for_do_node(
+      param("x"), dot_call(id("from"), "to", {id("toVal")}), div_cond,
+      create_block_node(create_return_node(id("x"))));
+
+  ast_node_t *fn_find =
+      create_function_declaration_node(const_cast<char *>("firstDiv3"),
+                                       create_parameter_list_node(chain_nodes({
+                                           param("from", &node_int),
+                                           param("toVal", &node_int),
+                                       })),
+                                       create_block_node(chain_nodes({
+                                           find_loop,
+                                           create_return_node(lit_neg_int("1")),
+                                       })),
+                                       &node_int, false);
+
+  // stdin: "2\n6\n2\n" -> 2 to 6 by 2 -> 2 + 4 + 6 = 12
+  ast_node_t *stdin_gen =
+      dot_call(dot_call(call("readInt"), "to", {call("readInt")}), "by",
+               {call("readInt")});
+  ast_node_t *stdin_loop = create_for_do_node(
+      param("i"), stdin_gen, nullptr,
+      create_block_node(
+          assign("sum", create_binary_operation_node(TOK_BINARY_PLUS, id("sum"),
+                                                     id("i")))));
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          var_decl("sum", lit_int("0")),
+          stdin_loop,
+          print_call(id("sum")),
+          print_call(lit_str("|")),
+          print_call(call("firstDiv3", {lit_int("4"), lit_int("10")})),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_find, fn_main}));
+}
+
+// List clamping (drop/take > len, inverted slice, empty range) & Double
+// toString
+ast_node_t *test_ext_lists_boundaries_and_double_tostr() {
+  ast_node_t *ints = call("List", {lit_int("1"), lit_int("2"), lit_int("3")});
+  ast_node_t *dbls = call("List", {lit_double("1.5"), lit_double("2.5")});
+
+  return wrap_main({
+      val_decl("xs", ints),
+      val_decl("ds", dbls),
+      print_call(dot_call(id("xs"), "drop", {lit_int("10")})),
+      print_call(lit_str("|")),
+      print_call(dot_call(id("xs"), "take", {lit_int("10")})),
+      print_call(lit_str("|")),
+      print_call(dot_call(id("xs"), "slice", {lit_int("2"), lit_int("1")})),
+      print_call(lit_str("|")),
+      print_call(dot_call(id("List"), "range", {lit_int("5"), lit_int("2")})),
+      print_call(lit_str("|")),
+      print_call(dot_member(id("ds"), "toString")),
+  });
+}
+
+// Runtime error 40: negative list index
+ast_node_t *test_ext_lists_err_neg_index() {
+  return wrap_main({
+      val_decl("lst", call("List", {lit_int("10"), lit_int("20")})),
+      val_decl("v", call("lst", {lit_neg_int("1")})),
+      print_call(id("v")),
+  });
+}
+
+// Case class pattern matching with guards and fallback
+ast_node_t *test_ext_algebdt_case_class_literal_and_guard() {
+  ast_node_t *cc_decl = create_class_declaration_node(
+      const_cast<char *>("Pair"), create_parameter_list_node(chain_nodes({
+                                      param("a", &node_int),
+                                      param("b", &node_int),
+                                  })));
+
+  auto make_classify = []() {
+    ast_node_t *c_zero = create_match_case_node(
+        call("Pair", {id("x"), id("y")}),
+        create_binary_operation_node(TOK_EQUAL, id("x"), lit_int("0")),
+        create_block_node(id("y")));
+
+    ast_node_t *c_diag = create_match_case_node(
+        call("Pair", {id("x"), id("y")}),
+        create_binary_operation_node(TOK_EQUAL, id("x"), id("y")),
+        create_block_node(
+            create_binary_operation_node(TOK_MUL, id("x"), lit_int("10"))));
+
+    ast_node_t *c_other =
+        create_match_case_node(call("Pair", {id("x"), id("y")}), nullptr,
+                               create_block_node(create_binary_operation_node(
+                                   TOK_BINARY_PLUS, id("x"), id("y"))));
+
+    ast_node_t *c_default = create_match_case_node(
+        underscore(), nullptr, create_block_node(lit_int("0")));
+
+    return create_match_node(id("p"),
+                             chain_nodes({c_zero, c_diag, c_other, c_default}));
+  };
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          var_decl("p", call("Pair", {lit_int("0"), lit_int("7")})),
+          val_decl("r1", make_classify()),
+          assign("p", call("Pair", {lit_int("3"), lit_int("3")})),
+          val_decl("r2", make_classify()),
+          assign("p", call("Pair", {lit_int("2"), lit_int("5")})),
+          val_decl("r3", make_classify()),
+          print_call(id("r1")),
+          print_call(lit_str("|")),
+          print_call(id("r2")),
+          print_call(lit_str("|")),
+          print_call(id("r3")),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({cc_decl, fn_main}));
+}
+
+// EXTKW + PARAMLISTS (Spec 5.10) + Boolean.toString (Spec 5.4)
+ast_node_t *test_ext_extkw_multi_paramlist_and_bool_tostring() {
+  ast_node_t *wrap_plists = chain_nodes({
+      create_parameter_list_node(param("prefix", &node_string)),
+      create_parameter_list_node(param("suffix", &node_string)),
+  });
+
+  ast_node_t *fn_wrap = create_function_declaration_node(
+      const_cast<char *>("wrap"), wrap_plists,
+      create_block_node(create_binary_operation_node(
+          TOK_BINARY_PLUS,
+          create_binary_operation_node(TOK_BINARY_PLUS, id("prefix"), id("s")),
+          id("suffix"))),
+      &node_string, false);
+
+  ast_node_t *ext_decl =
+      create_extension_declaration_node(param("s", &node_string), fn_wrap);
+
+  ast_node_t *arg_lists = chain_nodes({
+      create_argument_list_node(lit_str("[")),
+      create_argument_list_node(lit_str("]")),
+  });
+  ast_node_t *wrapped = create_dot_function_call_node(
+      const_cast<char *>("wrap"), lit_str("IFJ"), arg_lists);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          print_call(wrapped),
+          print_call(lit_str("|")),
+          print_call(dot_member(lit_bool(true), "toString")),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({ext_decl, fn_main}));
 }
 
 #pragma endregion
@@ -1840,19 +2493,19 @@ INSTANTIATE_TEST_SUITE_P(
         CodegenTestCase{"BuiltinSubStr_EmptyAtStart",
                         test_substr_empty_at_start, "0"},
         CodegenTestCase{"BuiltinSubStr_EmptyAtEnd", test_substr_empty_at_end,
-                        "", "", 40},
+                        "", "", RUNTIME_ERR},
         CodegenTestCase{"BuiltinSubStr_EmptyString", test_substr_empty_string,
-                        "", "", 40},
+                        "", "", RUNTIME_ERR},
         CodegenTestCase{"BuiltinSubStr_ErrStartNeg", test_substr_err_start_neg,
-                        "", "", 40},
+                        "", "", RUNTIME_ERR},
         CodegenTestCase{"BuiltinSubStr_ErrEndNeg", test_substr_err_end_neg, "",
-                        "", 40},
+                        "", RUNTIME_ERR},
         CodegenTestCase{"BuiltinSubStr_ErrStartGtEnd",
-                        test_substr_err_start_gt_end, "", "", 40},
+                        test_substr_err_start_gt_end, "", "", RUNTIME_ERR},
         CodegenTestCase{"BuiltinSubStr_ErrStartGtLen",
-                        test_substr_err_start_gt_len, "", "", 40},
+                        test_substr_err_start_gt_len, "", "", RUNTIME_ERR},
         CodegenTestCase{"BuiltinSubStr_ErrEndGtLen", test_substr_err_end_gt_len,
-                        "", "", 40},
+                        "", "", RUNTIME_ERR},
 
         // Built-in: ord
         CodegenTestCase{"BuiltinOrd_First", test_ord_first, "65"},
@@ -1939,13 +2592,14 @@ INSTANTIATE_TEST_SUITE_P(
         CodegenTestCase{"ExtLists_HigherOrder", test_ext_lists_higher_order,
                         "List(6, 8)|List(1, 2)|List(6, 3, 8)"},
         CodegenTestCase{"ExtLists_ErrIndexOOB", test_ext_lists_err_index_oob,
-                        "", "", 40},
+                        "", "", RUNTIME_ERR},
         CodegenTestCase{"ExtLists_ErrEmptyHead", test_ext_lists_err_empty_head,
-                        "", "", 40},
+                        "", "", RUNTIME_ERR},
         CodegenTestCase{"ExtLists_ErrEmptyTail", test_ext_lists_err_empty_tail,
-                        "", "", 40},
+                        "", "", RUNTIME_ERR},
         CodegenTestCase{"ExtLists_ErrRangeZeroStep",
-                        test_ext_lists_err_range_zero_step, "", "", 40},
+                        test_ext_lists_err_range_zero_step, "", "",
+                        RUNTIME_ERR},
         // Extension INTERPOLATEDS: Interpolated Strings
         CodegenTestCase{"ExtInterpolateds_Basic", test_ext_interpolateds_basic,
                         "IFJ27 costs $0 (1.23)"},
@@ -1980,7 +2634,8 @@ INSTANTIATE_TEST_SUITE_P(
                         "15|10|22"},
         CodegenTestCase{"ExtControl_ForList", test_ext_control_for_list, "60"},
         CodegenTestCase{"ExtControl_ForErrZeroStep",
-                        test_ext_control_for_err_zero_step, "", "", 40},
+                        test_ext_control_for_err_zero_step, "", "",
+                        RUNTIME_ERR},
 
         // Extension ALGEBDT (Additional): Type Alias, Match & Case Class
         CodegenTestCase{"ExtAlgebdt_TypeAliasAndMatch",
@@ -1998,14 +2653,68 @@ INSTANTIATE_TEST_SUITE_P(
 
         // Extension LAMBDAS: Anonymous Functions
         CodegenTestCase{"ExtLambdas_Basic", test_ext_lambdas_basic, "18|11|42"},
+        CodegenTestCase{"ExtLambdas_HigherOrderAndFnRefs",
+                        test_ext_lambdas_higher_order_and_fn_refs,
+                        "5|200|List(2, 4, 6)"},
+        CodegenTestCase{"ExtLambdas_ReturnedAndIfExpr",
+                        test_ext_lambdas_returned_and_if_expr, "7|12"},
+        CodegenTestCase{"ExtLambdas_UnitReturnAndExprBody",
+                        test_ext_lambdas_unit_return_and_expr_body,
+                        "[7]|()|12"},
+        CodegenTestCase{"ExtLambdas_ExplicitReturn",
+                        test_ext_lambdas_explicit_return, "15|12|()"},
+        CodegenTestCase{"ExtLambdas_ZeroArgReturningLambda",
+                        test_ext_lambdas_zero_arg_returning_lambda, "15|17"},
 
         // Extension EXTKW: User Extension Methods
         CodegenTestCase{"ExtExtkw_IntMethods", test_ext_extkw_int_methods,
                         "12|v=6|18"},
+        CodegenTestCase{"ExtExtkw_DotCallStatements",
+                        test_ext_extkw_dot_call_statements, "77|7|ok",
+                        "1\n1\n0\n"},
 
         // Extension PARAMLISTS: Parameterless & Multi-Param-List Functions
-        CodegenTestCase{"ExtParamlists_Basic", test_ext_paramlists_basic,
-                        "48"}),
+        CodegenTestCase{"ExtParamlists_Basic", test_ext_paramlists_basic, "48"},
+
+        // Additional Core & Built-in Edge Cases
+        CodegenTestCase{"Core_BlockShadowing", test_core_block_shadowing, "65"},
+        CodegenTestCase{"Core_MutualRecursion", test_core_mutual_recursion,
+                        "true|false"},
+        CodegenTestCase{"Core_UnitReturnDiscardsValue",
+                        test_core_unit_return_discards_value, "side:()"},
+        CodegenTestCase{"Core_StringAndMixedRelational",
+                        test_core_string_and_mixed_relational,
+                        "true true true true"},
+        CodegenTestCase{"Core_ErrIntDivByZero", test_core_err_int_div_by_zero,
+                        "", "", 57},
+        CodegenTestCase{"Core_FloatDivByZero", test_core_float_div_by_zero, "",
+                        "", 57},
+        CodegenTestCase{"BuiltinReadDouble_PlusSign", test_readdouble_basic,
+                        "2.50", "+2.5\n"},
+        CodegenTestCase{"BuiltinReadDouble_UpperExponent",
+                        test_readdouble_basic, "150.00", "1.5E2\n"},
+        CodegenTestCase{"BuiltinReadDouble_RejectsInf", test_readdouble_basic,
+                        "0.00", "inf\n"},
+        CodegenTestCase{"BuiltinReadDouble_RejectsNan", test_readdouble_basic,
+                        "0.00", "nan\n"},
+
+        // Additional Extension Edge Cases
+        CodegenTestCase{"ExtControl_ForGuardsAndNegStep",
+                        test_ext_control_for_guards_and_neg_step, "25|9|9|42"},
+        CodegenTestCase{"ExtControl_ForSingleEvalAndEarlyReturn",
+                        test_ext_control_for_single_eval_and_early_return,
+                        "12|6", "2\n6\n2\n"},
+        CodegenTestCase{"ExtLists_BoundariesAndDoubleToStr",
+                        test_ext_lists_boundaries_and_double_tostr,
+                        "List()|List(1, 2, 3)|List()|List()|List(1.50, 2.50)"},
+        CodegenTestCase{"ExtLists_ErrNegIndex", test_ext_lists_err_neg_index,
+                        "", "", RUNTIME_ERR},
+        CodegenTestCase{"ExtAlgebdt_CaseClassLiteralAndGuard",
+                        test_ext_algebdt_case_class_literal_and_guard,
+                        "7|30|7"},
+        CodegenTestCase{"ExtExtkw_MultiParamlistAndBoolToString",
+                        test_ext_extkw_multi_paramlist_and_bool_tostring,
+                        "[IFJ]|true"}),
     [](const ::testing::TestParamInfo<CodegenTestCase> &info) {
       return info.param.name;
     });

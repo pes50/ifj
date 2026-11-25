@@ -48,15 +48,24 @@ err_code_t convert_node(context_t *context, ast_node_t *node) {
   switch (node->type) {
   case AST_FUNCTION_CALL:
     err = enqueue_function(context, node->data.function_call.calling);
-    if (err != NO_ERR) {
-      RETURN_ERR(err);
+    if (err == NO_ERR) {
+      err = convert_function_call(context, node);
     }
-    RETURN_ERR(convert_function_call(context, node));
+    if (err == NO_ERR) {
+      err = discard_stack_top(context);
+    }
+    break;
   case AST_DOT_FUNCTION_CALL:
+    err = convert_expression_on_stack(context, node);
+    if (err == NO_ERR) {
+      err = discard_stack_top(context);
+    }
     break;
   case AST_LAMBDA_DECLARATION:
-    break;
-  case AST_EXTENSION_DECLARATION:
+    err = convert_lambda_expression(context, node);
+    if (err == NO_ERR) {
+      err = discard_stack_top(context);
+    }
     break;
   case AST_BLOCK:
     err = convert_block(context, node);
@@ -74,6 +83,7 @@ err_code_t convert_node(context_t *context, ast_node_t *node) {
     err = convert_while_do(context, node);
     break;
   case AST_FOR_DO:
+    err = convert_for_do(context, node);
     break;
   case AST_RETURN:
     err = convert_return(context, node);
@@ -83,14 +93,6 @@ err_code_t convert_node(context_t *context, ast_node_t *node) {
     if (err == NO_ERR) {
       err = discard_stack_top(context);
     }
-    break;
-  case AST_MATCH_CASE:
-    break;
-  case AST_BINARY_OPERATION:
-    break;
-  case AST_UNARY_OPERATION:
-    break;
-  case AST_LIST_CONSTRUCTOR:
     break;
   default:
     err = INTERNAL_ERR;

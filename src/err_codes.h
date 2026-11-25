@@ -23,6 +23,7 @@ typedef enum err_codes {
   TYPE_COMPAT_ERR = 6,  // type‑compatibility/derivation errors
   ASSIGN_CONST_ERR = 7, // assign to a read‑only variable or formal parameter
   OTHER_SEMANTIC_ERR = 10, // other semantic errors
+  RUNTIME_ERR = 40,        // interpret runtime error
   INTERNAL_ERR = 99,       // internal compiler error
 } err_code_t;
 

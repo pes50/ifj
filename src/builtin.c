@@ -1161,6 +1161,24 @@ static ast_node_t tail_function_declaration = {
 
 #pragma region List.range(start, end, [step]) : List[Int]
 
+err_code_t create_default_int_one(ast_node_t **out) {
+  if (out == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  token_t token = {
+      .type = TOK_LIT_INT,
+      .value = "1",
+  };
+  ast_node_t *node = create_leaf_node(&token);
+  if (node == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+  *out = node;
+
+  RETURN_ERR(NO_ERR);
+}
+
 static ast_node_t range_body = {
     .type = AST_BUILTIN_BODY,
     .data.builtin_body = {.first_instruction = &range_code},
@@ -1174,6 +1192,7 @@ static ast_node_t step_int_parameter_node = {
             .name = "step",
             .data_type = &node_int,
             .optional = true,
+            .create_default = create_default_int_one,
         },
     .data_type = &node_unit,
     .next = NULL,
