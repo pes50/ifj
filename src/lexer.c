@@ -730,10 +730,17 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       } else if (character == '_') {
         state = S_NUM_UNDERSCORE;
       } else if (character == '.') {
-        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
-          return INTERNAL_ERR;
+        int next = getc(input_stream);
+        ungetc(next, input_stream);
+        if (next >= '0' && next <= '9') {
+          if (dynstr_append_char(output_val, '.') != NO_ERR)
+            return INTERNAL_ERR;
+          state = S_DOT;
+        } else {
+          *type = TOK_LIT_INT;
+          next_state = S_TOK_DOT;
+          lexer_run = false;
         }
-        state = S_DOT;
       } else if (character == 'e' || character == 'E') {
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;
@@ -748,10 +755,17 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
     case S_ZERO:
       if (character == '.') {
-        if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
-          return INTERNAL_ERR;
+        int next = getc(input_stream);
+        ungetc(next, input_stream);
+        if (next >= '0' && next <= '9') {
+          if (dynstr_append_char(output_val, '.') != NO_ERR)
+            return INTERNAL_ERR;
+          state = S_DOT;
+        } else {
+          *type = TOK_LIT_INT;
+          next_state = S_TOK_DOT;
+          lexer_run = false;
         }
-        state = S_DOT;
       } else if (character == 'e' || character == 'E') {
         if (dynstr_append_char(output_val, (char)character) != NO_ERR) {
           return INTERNAL_ERR;

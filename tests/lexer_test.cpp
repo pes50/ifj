@@ -267,11 +267,6 @@ TEST_F(LexerFixture, UnderscoreMustBeFollowedByDigit) {
   expect_get_err(LEXICAL_ERR);
 }
 
-TEST_F(LexerFixture, DecimalPointMustBeFollowedByDigit) {
-  feed("1.\n");
-  expect_get_err(LEXICAL_ERR);
-}
-
 TEST_F(LexerFixture, ExponentMustHaveDigits) {
   feed("1e\n");
   expect_get_err(LEXICAL_ERR);
@@ -1081,6 +1076,44 @@ TEST_F(LexerFixture,
   expect_get(TOK_LIT_INTERP_M_STRING_PART, "x\"");
   expect_get(TOK_IDENTIFIER, "b");
   expect_get(TOK_LIT_INTERP_M_STRING_END, "");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, toStringIntLit) {
+  feed("a = 5.toString");
+
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "5");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "toString");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, toStringZero) {
+  feed("a = 0.toString");
+
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "toString");
+  expect_get(TOK_EOL);
+  expect_eof();
+}
+
+TEST_F(LexerFixture, toStringlengthZero) {
+  feed("a = 0.toString.length");
+
+  expect_get(TOK_IDENTIFIER, "a");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_LIT_INT, "0");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "toString");
+  expect_get(TOK_DOT);
+  expect_get(TOK_IDENTIFIER, "length");
   expect_get(TOK_EOL);
   expect_eof();
 }
