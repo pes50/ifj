@@ -536,7 +536,7 @@ err_code_t ast_convert(ast_node_t *main_node, inner_statement_t **code) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  err_code_t err = ht_init(&context.table, visited_table_size);
+  err_code_t err = ht_init(&context.table, VISITED_TABLE_SIZE);
   if (err != NO_ERR) {
     goto cleanup;
   }

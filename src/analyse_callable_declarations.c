@@ -160,7 +160,7 @@ err_code_t analyse_function_declaration(ast_node_t *node,
 
   // Create new scope
   hashtable_t *current_scope;
-  if (ht_init(&current_scope, local_scope_table_size) != NO_ERR) {
+  if (ht_init(&current_scope, LOCAL_SCOPE_TABLE_SIZE) != NO_ERR) {
     RETURN_ERR(INTERNAL_ERR);
   }
   current_scope->parent = symtable;
@@ -237,7 +237,7 @@ err_code_t analyse_lambda_declaration(ast_node_t *node, hashtable_t *symtable,
 
   // Create new scope
   hashtable_t *current_scope;
-  if (ht_init(&current_scope, local_scope_table_size) != NO_ERR) {
+  if (ht_init(&current_scope, LOCAL_SCOPE_TABLE_SIZE) != NO_ERR) {
     RETURN_ERR(INTERNAL_ERR);
   }
   current_scope->parent = ht_get_root(symtable);

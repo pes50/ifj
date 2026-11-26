@@ -13,7 +13,7 @@
 #include "ast_node.h"
 #include "builtin_code.h"
 
-#define builtin_table_size 200
+#define BUILTIN_TABLE_SIZE 200
 
 #pragma region Types
 
@@ -1451,7 +1451,7 @@ static ast_node_t to_list_function_declaration = {
 hashtable_t *create_builtin_symtable() {
   // Create the table
   hashtable_t *table = NULL;
-  if (ht_init(&table, builtin_table_size) != NO_ERR) {
+  if (ht_init(&table, BUILTIN_TABLE_SIZE) != NO_ERR) {
     return NULL;
   }
 

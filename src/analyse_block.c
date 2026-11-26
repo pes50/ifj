@@ -43,7 +43,7 @@ err_code_t analyse_while_do(ast_node_t *node, hashtable_t *symtable,
     if (err == NO_ERR) {
       // Create new scope
       hashtable_t *current_scope;
-      if (ht_init(&current_scope, local_scope_table_size) != NO_ERR) {
+      if (ht_init(&current_scope, LOCAL_SCOPE_TABLE_SIZE) != NO_ERR) {
         RETURN_ERR(INTERNAL_ERR);
       }
       current_scope->parent = symtable;
@@ -278,7 +278,7 @@ err_code_t analyse_for_do(ast_node_t *node, hashtable_t *symtable,
 
   // Create new scope
   hashtable_t *current_scope;
-  err = ht_init(&current_scope, local_scope_table_size);
+  err = ht_init(&current_scope, LOCAL_SCOPE_TABLE_SIZE);
   if (err == NO_ERR) {
     current_scope->parent = symtable;
   } else {
@@ -381,7 +381,7 @@ err_code_t analyse_block(ast_node_t *node, hashtable_t *symtable,
       break;
     case AST_BLOCK:
       // Create new scope
-      err = ht_init(&current_scope, local_scope_table_size);
+      err = ht_init(&current_scope, LOCAL_SCOPE_TABLE_SIZE);
       if (err == NO_ERR) {
         current_scope->parent = symtable;
         err = analyse_block(current, current_scope, explicit_data_type, true);
