@@ -2310,7 +2310,7 @@ def totalExpensive(items: List[Item], minPrice: Int): Int =
   var total = 0
   for it <- items do
     val addVal = it match
-      case Item(_, p) if p >= minPrice => p
+      case Item(n, p) if p >= minPrice => p
       case _ => 0
     total = total + addVal
   total
@@ -2336,13 +2336,17 @@ def totalExpensive(items: List[Item], minPrice: Int): Int =
       E2EOk("ExtMix_CurriedAndListOfLambdas",
             R"(import ifj26.*
 @main def main(): Unit =
-  val makeAdder = (a: Int) => (b: Int) => a + b
+  val pickOp = (useMul: Boolean) =>
+    if useMul then
+      (b: Int) => b * 10
+    else
+      (b: Int) => b + 4
   val ops = List((x: Int) => x + 1, (x: Int) => x * 10, (x: Int) => x - 3)
   val handlers = List(
     List((x: Int) => x + 2, (x: Int) => x * 3),
     List((x: Int) => x - 1, (x: Int) => x * 5)
   )
-  print(makeAdder(4)(6))
+  print(pickOp(false)(6))
   print("|")
   print(ops(1)(5))
   print("|")
@@ -2377,7 +2381,7 @@ def totalExpensive(items: List[Item], minPrice: Int): Int =
       E2ECompileErr("ExtMixErr_CurriedLambdaWrongSecondArgCount",
                     R"(import ifj26.*
 @main def main(): Unit =
-  val f = (a: Int) => (b: Int) => a + b
+  val f = (a: Int) => (b: Int) => b + 1
   print(f(1)(2, 3))
 )",
                     {5, 6}),

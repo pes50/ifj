@@ -998,7 +998,9 @@ err_code_t fun_body(token_t *token, ast_node_t **node, bool is_lambda) {
     }
 
     if (is_lambda) {
-      if (token->type != TOK_EOL && token->type != TOK_R_PAREN) {
+      if (token->type != TOK_EOL && token->type != TOK_R_PAREN &&
+          token->type != TOK_COMMA && token->type != TOK_SEMICOLON &&
+          token->type != TOK_DEDENT && token->type != TOK_EXPRESSION_END) {
         destroy_node(body);
         RETURN_ERR(SYNTAX_ERR);
       }

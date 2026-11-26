@@ -437,6 +437,11 @@ static err_code_t convert_unary_op_expression(context_t *context,
                                 empty_symbol(), empty_symbol()));
   }
 
+  if (node->data.unary_operation.op == TOK_UNARY_PLUS) {
+    RETURN_ERR(convert_expression_on_stack(
+        context, node->data.unary_operation.expression));
+  }
+
   if (node->data.unary_operation.op == TOK_NOT) {
     err = convert_expression_on_stack(context,
                                       node->data.unary_operation.expression);
