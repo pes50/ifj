@@ -2426,10 +2426,6 @@ err_code_t expr_pre_parse(token_t *token, ast_node_t **node,
     return interpol_m(token, node);
 
   case TOK_IDENTIFIER:
-    tmp_token = token_create();
-    if (tmp_token == NULL) {
-      RETURN_ERR(INTERNAL_ERR);
-    }
     ret = lexer_peek_token(tmp_token, ALLOWED, 0);
     if (ret != NO_ERR) {
       token_free(tmp_token);
