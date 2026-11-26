@@ -661,12 +661,29 @@ err_code_t ret_type(token_t *token, data_type_node_t **node) {
     RETURN_ERR(ret);
   }
   ret = type(token, node);
-
   if (ret != NO_ERR) {
     destroy_type_node(*node);
     *node = NULL;
     RETURN_ERR(ret);
   }
+
+  ret = types(token, &(*node)->next);
+  if (ret != NO_ERR) {
+    destroy_type_node(*node);
+    *node = NULL;
+    RETURN_ERR(ret);
+  }
+
+  if ((*node)->next != NULL) {
+    data_type_node_t *union_type = create_union_type_node(*node);
+    if (union_type == NULL) {
+      destroy_type_node(*node);
+      *node = NULL;
+      RETURN_ERR(INTERNAL_ERR);
+    }
+    *node = union_type;
+  }
+
   return NO_ERR;
 }
 
@@ -930,6 +947,16 @@ err_code_t param(token_t *token, ast_node_t **node) {
     RETURN_ERR(ret);
   }
 
+  if (data_type->next != NULL) {
+    data_type_node_t *union_type = create_union_type_node(data_type);
+    if (union_type == NULL) {
+      free(name);
+      destroy_type_node(data_type);
+      RETURN_ERR(INTERNAL_ERR);
+    }
+    data_type = union_type;
+  }
+
   *node = create_parameter_node(name, data_type);
   free(name);
   if (*node == NULL) {
@@ -1124,9 +1151,17 @@ err_code_t stmt(token_t *token, ast_node_t **node) {
 
   case TOK_KW_RETURN:
     token_clear(token);
-    ret = lexer_get_token(token, FORBIDDEN);
+    ret = lexer_get_token(token, ALLOWED);
     if (ret != NO_ERR) {
       RETURN_ERR(ret);
+    }
+
+    if (token->type == TOK_EOL) {
+      *node = create_return_node(NULL);
+      if (*node == NULL) {
+        RETURN_ERR(INTERNAL_ERR);
+      }
+      return NO_ERR;
     }
 
     ast_node_t *expression = NULL;
