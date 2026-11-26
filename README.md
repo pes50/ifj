@@ -1,13 +1,13 @@
 # Implementace překladače imperativního jazyka IFJ26
 
-Překladač z jazyka IFJ26 do jazyka IFJcode26. Technická dokumentace projektu je dostupná v souboru [dokumentace.pdf](./dokumentace.pdf).
+Překladač z jazyka IFJ26 do jazyka IFJcode26. Technická dokumentace projektu je dostupná v souboru [dokumentace.pdf](./dokumentace.pdf). 
 
 # Autoři
 
-- **Roman Skoupý** *(vedoucí)* – 281698 (`xskoupr00`)
-- Matouš Jahoda – 281744 (`xjahodm00`)
-- Tomáš Peňás – 281746 (`xpenast00`)
-- Simon Šmíd – 282246 (`xsmidsi00`)
+- **Roman Skoupý** *(vedoucí)* – 281698 (`xskoupr00`) @pes50
+- Matouš Jahoda – 281744 (`xjahodm00`) @dzagoda
+- Tomáš Peňás – 281746 (`xpenast00`) @TRico2
+- Simon Šmíd – 282246 (`xsmidsi00`) @smid-simon
 
 # Požadavky
 
