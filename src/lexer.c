@@ -370,6 +370,10 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
           return LEXICAL_ERR;
         }
 
+        if (bracket_depth > 0) {
+          return SYNTAX_ERR;
+        }
+
         // A file not ending with '\n' still needs a final EOL.
         if (token_prev_type != TOK_EOL && token_prev_type != TOK_EMPTY &&
             token_prev_type != TOK_INDENT && token_prev_type != TOK_DEDENT &&
@@ -1477,8 +1481,11 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         state = S_LINE_START;
       } else if (bracket_depth > 0) {
-        if (tab_on_line || indent_level < bracket_start_indent + 1) {
+        if (tab_on_line) {
           return LEXICAL_ERR;
+        }
+        if (indent_level < bracket_start_indent + 1) {
+          return SYNTAX_ERR;
         }
         ungetc(character, input_stream);
         *type = TOK_DIV;
@@ -1493,12 +1500,12 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       ungetc(character, input_stream);
 
       if (bracket_depth > 0) {
-        bool is_closing = (character == ')' || character == ']');
+        bool is_closing = (bool)(character == ')') || (bool)(character == ']');
         size_t min_indent =
             is_closing ? bracket_start_indent : bracket_start_indent + 1;
 
         if (character == EOF || indent_level < min_indent) {
-          return LEXICAL_ERR;
+          return SYNTAX_ERR;
         }
         state = S_START;
         continue;
