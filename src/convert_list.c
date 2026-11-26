@@ -117,12 +117,18 @@ err_code_t convert_list_constructor_inline(context_t *context,
 }
 
 err_code_t convert_list_access(context_t *context, ast_node_t *node) {
-  if (context == NULL || node == NULL || node->type != AST_FUNCTION_CALL) {
+  if (context == NULL || node == NULL ||
+      (node->type != AST_FUNCTION_CALL &&
+       node->type != AST_DOT_FUNCTION_CALL)) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  ast_node_t *calling = node->data.function_call.calling;
-  ast_node_t *argument_list = node->data.function_call.argument_lists;
+  bool is_dot_call = node->type == AST_DOT_FUNCTION_CALL;
+  ast_node_t *calling = is_dot_call ? node->data.dot_function_call.target
+                                    : node->data.function_call.calling;
+  ast_node_t *argument_list = is_dot_call
+                                  ? node->data.dot_function_call.argument_lists
+                                  : node->data.function_call.argument_lists;
   if (calling == NULL || argument_list == NULL ||
       argument_list->type != AST_ARGUMENT_LIST || argument_list->next != NULL) {
     RETURN_ERR(INTERNAL_ERR);
@@ -156,7 +162,11 @@ err_code_t convert_list_access(context_t *context, ast_node_t *node) {
   }
 
   // Evaluate target expression
-  if (calling->type == AST_VARIABLE_DECLARATION) {
+  if (is_dot_call) {
+    // Target expression is already evaluated at the stack
+    err = append_statement(context, INNER_POPS, target_helper, empty_sym,
+                           empty_sym);
+  } else if (calling->type == AST_VARIABLE_DECLARATION) {
     err = append_statement(
         context, INNER_MOVE, target_helper,
         create_var_symbol(calling->data.variable_declaration.unique_id),
@@ -178,8 +188,7 @@ err_code_t convert_list_access(context_t *context, ast_node_t *node) {
   }
 
   // Evaluate index expression
-  err = convert_expression_on_stack(
-      context, argument_list->data.argument_list.arguments);
+  err = convert_expression_on_stack(context, argument);
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }

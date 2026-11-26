@@ -107,6 +107,7 @@ err_code_t convert_function_call(context_t *context, ast_node_t *node) {
 
   // Function is used as identifier
   if (calling->type == AST_FUNCTION_DECLARATION &&
+      calling->data.function_declaration.parameter_lists != NULL &&
       node->data.function_call.argument_lists == NULL &&
       node->data_type->type == DATA_TYPE_LAMBDA) {
     inner_symbol_t empty_sym = create_empty_symbol();
@@ -170,7 +171,8 @@ err_code_t convert_function_call(context_t *context, ast_node_t *node) {
 
 static err_code_t convert_dot_function_call(context_t *context,
                                             ast_node_t *node) {
-  if (context == NULL || node == NULL || node->type != AST_DOT_FUNCTION_CALL) {
+  if (context == NULL || node == NULL || node->type != AST_DOT_FUNCTION_CALL ||
+      node->data.dot_function_call.name == NULL) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
@@ -193,6 +195,55 @@ static err_code_t convert_dot_function_call(context_t *context,
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
+  }
+
+  // Direct call on expression result
+  if (node->data.dot_function_call.name[0] == '\0') {
+    if (target->data_type == NULL) {
+      RETURN_ERR(INTERNAL_ERR);
+    }
+
+    // Nested list access
+    if (target->data_type->type == DATA_TYPE_LIST) {
+      RETURN_ERR(convert_list_access(context, node));
+    }
+
+    // Chained lambda call
+    if (target->data_type->type == DATA_TYPE_LAMBDA) {
+      inner_symbol_t function_var;
+      err_code_t err = create_helper_variable(context, &function_var);
+      if (err != NO_ERR) {
+        RETURN_ERR(err);
+      }
+
+      err = append_statement(context, INNER_POPS, function_var, empty_sym,
+                             empty_sym);
+      if (err != NO_ERR) {
+        RETURN_ERR(err);
+      }
+
+      ast_node_t *argument_list = node->data.dot_function_call.argument_lists;
+      while (argument_list != NULL) {
+        if (argument_list->type != AST_ARGUMENT_LIST) {
+          RETURN_ERR(INTERNAL_ERR);
+        }
+
+        for (ast_node_t *arg = argument_list->data.argument_list.arguments;
+             arg != NULL; arg = arg->next) {
+          err = convert_expression_on_stack(context, arg);
+          if (err != NO_ERR) {
+            RETURN_ERR(err);
+          }
+        }
+
+        argument_list = argument_list->next;
+      }
+
+      RETURN_ERR(append_statement(context, INNER_CALL, empty_sym, function_var,
+                                  empty_sym));
+    }
+
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   // Attribute access
