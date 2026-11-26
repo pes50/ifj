@@ -1778,13 +1778,13 @@ def f(x: Int): Int =
     ()
 )",
                     {6}),
-      E2ECompileErr("ExtControlErr_ForNonBoolGuard",
+      E2ECompileErr("ExtControlErr_ForSameLineGuard",
                     R"(import ifj26.*
 @main def main(): Unit =
   for i <- 1 to 5 if i do
     ()
 )",
-                    {6}),
+                    {2}),
       E2ECompileErr("ExtControlErr_ForLiteralZeroStep",
                     R"(import ifj26.*
 @main def main(): Unit =
