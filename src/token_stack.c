@@ -218,7 +218,7 @@ bool reduce(token_stack_t *stack) {
     return false;
   }
 
-  // if top is token, create a lef node
+  // if top is token, create a leaf node
   if (data->type == TOKEN) {
     switch (data->token.token->type) {
     // E -> i

@@ -85,6 +85,7 @@ err_code_t lambda(token_t *token, ast_node_t **node);
 
 #pragma region PARSE
 
+// program entry point, initializes lexer
 err_code_t parse(ast_node_t **node, FILE *stream) {
   token_t *token = token_create();
   if (token == NULL) {
@@ -102,6 +103,7 @@ err_code_t parse(ast_node_t **node, FILE *stream) {
 
 #pragma region HIGH LEVEL
 
+// parsing entry point
 err_code_t start(token_t *token, ast_node_t **node) {
   err_code_t ret = lexer_get_token(token, FORBIDDEN);
   if (ret != NO_ERR) {
@@ -132,6 +134,7 @@ err_code_t start(token_t *token, ast_node_t **node) {
   return NO_ERR;
 }
 
+// checks if prolog is valid
 err_code_t prolog(token_t *token) {
   if (token->type != TOK_KW_IMPORT) {
     return SYNTAX_ERR;
@@ -164,6 +167,7 @@ err_code_t prolog(token_t *token) {
   return lexer_get_token(token, REQUIRED);
 }
 
+// highest level nonterminal
 err_code_t prog(token_t *token, ast_node_t **node) {
   // helper variable
   err_code_t ret;
@@ -233,6 +237,7 @@ err_code_t prog(token_t *token, ast_node_t **node) {
   }
 }
 
+// function definition
 err_code_t fun_def(token_t *token, ast_node_t **node, bool is_main) {
   if (token->type != TOK_KW_DEF) {
     return SYNTAX_ERR;
@@ -313,6 +318,7 @@ err_code_t fun_def(token_t *token, ast_node_t **node, bool is_main) {
   return NO_ERR;
 }
 
+// union definition
 err_code_t type_alias(token_t *token, ast_node_t **node) {
   if (token->type != TOK_KW_TYPE) {
     return SYNTAX_ERR;
@@ -396,6 +402,7 @@ err_code_t type_alias(token_t *token, ast_node_t **node) {
   return NO_ERR;
 }
 
+// class definition
 err_code_t class_def(token_t *token, ast_node_t **node) {
   // case
   if (token->type != TOK_KW_CASE) {
@@ -497,6 +504,7 @@ err_code_t class_def(token_t *token, ast_node_t **node) {
   return NO_ERR;
 }
 
+// custom methods definition
 err_code_t extension(token_t *token, ast_node_t **node) {
   if (token->type != TOK_KW_EXTENSION) {
     return SYNTAX_ERR;
@@ -587,6 +595,7 @@ err_code_t extension(token_t *token, ast_node_t **node) {
   return NO_ERR;
 }
 
+// one instance of extension definition
 err_code_t ext_list(token_t *token, ast_node_t **node) {
   if (token->type == TOK_DEDENT) {
     return NO_ERR;
@@ -604,6 +613,7 @@ err_code_t ext_list(token_t *token, ast_node_t **node) {
 
 #pragma region TYPES PARAMS
 
+// constructs parameter list from params
 err_code_t param_lists(token_t *token, ast_node_t **node) {
   if (token->type != TOK_L_PAREN) {
     return NO_ERR;
@@ -650,6 +660,7 @@ err_code_t param_lists(token_t *token, ast_node_t **node) {
   return NO_ERR;
 }
 
+// creates data_type_node_t node if return type is present
 err_code_t ret_type(token_t *token, data_type_node_t **node) {
   if (token->type != TOK_COLON) {
     return NO_ERR;
@@ -687,6 +698,7 @@ err_code_t ret_type(token_t *token, data_type_node_t **node) {
   return NO_ERR;
 }
 
+// one instance of a type
 err_code_t type(token_t *token, data_type_node_t **node) {
   switch (token->type) {
   case TOK_KW_UNIT:
@@ -762,6 +774,7 @@ err_code_t type(token_t *token, data_type_node_t **node) {
   RETURN_ERR(ret);
 }
 
+// creates a union out of multiple types
 err_code_t types(token_t *token, data_type_node_t **node) {
   if (token->type != TOK_PIPE) {
     return NO_ERR;
@@ -789,6 +802,7 @@ err_code_t types(token_t *token, data_type_node_t **node) {
   RETURN_ERR(ret);
 }
 
+// special type for lambdas
 err_code_t lambda_type(token_t *token, data_type_node_t **node) {
   if (token->type != TOK_L_PAREN) {
     return SYNTAX_ERR;
@@ -852,6 +866,7 @@ err_code_t lambda_type(token_t *token, data_type_node_t **node) {
   return NO_ERR;
 }
 
+// recursively reads the rest of types in lambda type
 err_code_t lambda_type_tail(token_t *token, data_type_node_t **node) {
   if (token->type != TOK_COMMA) {
     return NO_ERR;
@@ -871,6 +886,7 @@ err_code_t lambda_type_tail(token_t *token, data_type_node_t **node) {
   return lambda_type_tail(token, &(*node)->next);
 }
 
+// if present, reads one parameter
 err_code_t params(token_t *token, ast_node_t **node) {
   if (token->type != TOK_IDENTIFIER) {
     return NO_ERR;
@@ -890,6 +906,7 @@ err_code_t params(token_t *token, ast_node_t **node) {
   RETURN_ERR(ret);
 }
 
+// recursively reads the rest of parameters
 err_code_t params_tail(token_t *token, ast_node_t **node) {
   if (token->type != TOK_COMMA) {
     return NO_ERR;
@@ -904,6 +921,7 @@ err_code_t params_tail(token_t *token, ast_node_t **node) {
   return params(token, node);
 }
 
+// creates one parameter node
 err_code_t param(token_t *token, ast_node_t **node) {
   if (token->type != TOK_IDENTIFIER) {
     return NO_ERR;
@@ -970,6 +988,7 @@ err_code_t param(token_t *token, ast_node_t **node) {
 
 #pragma region BLOCK BODY
 
+// same line or block definition
 err_code_t fun_body(token_t *token, ast_node_t **node, bool is_lambda) {
   // same line definition
   if (token->type != TOK_EOL) {
@@ -1056,6 +1075,7 @@ err_code_t fun_body(token_t *token, ast_node_t **node, bool is_lambda) {
   RETURN_ERR(ret);
 }
 
+// reads all statements inside a block
 err_code_t block(token_t *token, ast_node_t **node) {
   if (token->type == TOK_DEDENT) {
     return NO_ERR;
@@ -1090,6 +1110,7 @@ err_code_t block(token_t *token, ast_node_t **node) {
 
 #pragma region STATEMENTS
 
+// handles multiple statements on one line
 err_code_t stmt_tail(token_t *token, ast_node_t **node) {
   if (token->type == TOK_EOL) {
     token_clear(token);
@@ -1118,6 +1139,7 @@ err_code_t stmt_tail(token_t *token, ast_node_t **node) {
   RETURN_ERR(ret);
 }
 
+// calls the corresponding statement function
 err_code_t stmt(token_t *token, ast_node_t **node) {
   err_code_t ret;
   switch (token->type) {
@@ -1204,6 +1226,7 @@ err_code_t stmt(token_t *token, ast_node_t **node) {
   }
 }
 
+// creates if statement node
 err_code_t if_stmt(token_t *token, ast_node_t **node) {
   ast_node_t *condition = NULL;
   err_code_t ret = expr(token, &condition, false);
@@ -1241,6 +1264,7 @@ err_code_t if_stmt(token_t *token, ast_node_t **node) {
   return NO_ERR;
 }
 
+// constructs true branch node
 err_code_t if_stmt_tail(token_t *token, ast_node_t **true_branch,
                         ast_node_t **false_branch) {
   err_code_t ret;
@@ -1313,6 +1337,7 @@ err_code_t if_stmt_tail(token_t *token, ast_node_t **true_branch,
   RETURN_ERR(ret);
 }
 
+// handles if statements without else
 err_code_t else_stmt(token_t *token, ast_node_t **node) {
   if (token->type != TOK_KW_ELSE) {
     return NO_ERR;
@@ -1327,6 +1352,7 @@ err_code_t else_stmt(token_t *token, ast_node_t **node) {
   return else_stmt_tail(token, node);
 }
 
+// constructs false branch
 err_code_t else_stmt_tail(token_t *token, ast_node_t **node) {
   if (token->type != TOK_EOL) {
     ast_node_t *body;
@@ -1387,6 +1413,7 @@ err_code_t else_stmt_tail(token_t *token, ast_node_t **node) {
   RETURN_ERR(ret);
 }
 
+// handles statements beggining with a identifier
 err_code_t id_stmt(token_t *token, ast_node_t **node) {
   token_t *tmp_token = token_create();
   err_code_t ret = lexer_peek_token(tmp_token, ALLOWED, 0);
@@ -1451,6 +1478,7 @@ err_code_t id_stmt(token_t *token, ast_node_t **node) {
   RETURN_ERR(ret);
 }
 
+// handles variable and constant declaration
 err_code_t var_dec(token_t *token, ast_node_t **node, bool is_const) {
   token_clear(token);
   err_code_t ret = lexer_get_token(token, FORBIDDEN);
@@ -1527,6 +1555,7 @@ err_code_t var_dec(token_t *token, ast_node_t **node, bool is_const) {
 
 #pragma region LOOPS
 
+// for loop entry point
 err_code_t for_loop(token_t *token, ast_node_t **node) {
   ast_node_t *iterator = NULL;
   ast_node_t *generator = NULL;
@@ -1633,6 +1662,7 @@ err_code_t for_loop(token_t *token, ast_node_t **node) {
   return NO_ERR;
 }
 
+// constructs iterator
 err_code_t gen(token_t *token, ast_node_t **iterator, ast_node_t **generator) {
   if (token->type != TOK_IDENTIFIER) {
     return TYPE_COMPAT_ERR;
@@ -1678,6 +1708,7 @@ err_code_t gen(token_t *token, ast_node_t **iterator, ast_node_t **generator) {
   return NO_ERR;
 }
 
+// handles generators
 err_code_t gen_tail(token_t *token, ast_node_t *expression,
                     ast_node_t **generator) {
 
@@ -1783,6 +1814,7 @@ err_code_t gen_tail(token_t *token, ast_node_t *expression,
   return SYNTAX_ERR;
 }
 
+// reads all if guards
 err_code_t guard_list(token_t *token, ast_node_t **node) {
   if (token->type == TOK_DEDENT) {
     return NO_ERR;
@@ -1815,6 +1847,7 @@ err_code_t guard_list(token_t *token, ast_node_t **node) {
   RETURN_ERR(ret);
 }
 
+// handles the for loop body
 err_code_t for_tail(token_t *token, ast_node_t **node) {
   if (token->type != TOK_KW_DO) {
     return SYNTAX_ERR;
@@ -1885,6 +1918,7 @@ err_code_t for_tail(token_t *token, ast_node_t **node) {
   RETURN_ERR(ret);
 }
 
+// handles while loop
 err_code_t while_loop(token_t *token, ast_node_t **node) {
   ast_node_t *condition = NULL;
   err_code_t ret = expr(token, &condition, false);
@@ -1963,6 +1997,7 @@ err_code_t while_loop(token_t *token, ast_node_t **node) {
 
 #pragma region CASE
 
+// reads one pattern in case
 err_code_t case_list(token_t *token, ast_node_t **node) {
   if (token->type != TOK_KW_CASE) {
     return NO_ERR;
@@ -2003,6 +2038,7 @@ err_code_t case_list(token_t *token, ast_node_t **node) {
   RETURN_ERR(ret);
 }
 
+// recursively reads the rest of patterns
 err_code_t case_tail(token_t *token, ast_node_t **guard,
                      ast_node_t **expression) {
   err_code_t ret;
@@ -2032,6 +2068,7 @@ err_code_t case_tail(token_t *token, ast_node_t **guard,
   RETURN_ERR(ret);
 }
 
+// one parameter in case
 err_code_t case_param(token_t *token, ast_node_t **node) {
   token_t *tmp_token;
   switch (token->type) {
@@ -2112,6 +2149,7 @@ err_code_t case_param(token_t *token, ast_node_t **node) {
   }
 }
 
+// one instance of if guard
 err_code_t if_guard(token_t *token, ast_node_t **node) {
   if (token->type != TOK_KW_IF) {
     return SYNTAX_ERR;
@@ -2130,6 +2168,7 @@ err_code_t if_guard(token_t *token, ast_node_t **node) {
 
 #pragma region ARGUMENTS
 
+// creates argument lists nodes from args
 err_code_t arg_lists(token_t *token, ast_node_t **node) {
   if (token->type != TOK_L_PAREN) {
     return NO_ERR;
@@ -2173,6 +2212,7 @@ err_code_t arg_lists(token_t *token, ast_node_t **node) {
   RETURN_ERR(ret);
 }
 
+// reads one argument
 err_code_t args(token_t *token, ast_node_t **node) {
   if (token->type == TOK_R_PAREN) {
     return NO_ERR;
@@ -2191,6 +2231,7 @@ err_code_t args(token_t *token, ast_node_t **node) {
   RETURN_ERR(ret);
 }
 
+// reads rest of the argumnets
 err_code_t args_tail(token_t *token, ast_node_t **node) {
   if (token->type == TOK_R_PAREN) {
     return NO_ERR;
@@ -2271,6 +2312,7 @@ bool is_end(token_t *token, bool in_gen) {
   }
 }
 
+// main expression handling
 err_code_t expr(token_t *token, ast_node_t **node, bool in_gen) {
   bool is_lambda = false;
   err_code_t ret = check_lambda(token, node, &is_lambda);
@@ -2373,6 +2415,7 @@ err_code_t expr(token_t *token, ast_node_t **node, bool in_gen) {
   return NO_ERR;
 }
 
+// checks for match
 err_code_t expr_tail(token_t *token, ast_node_t **node,
                      ast_node_t **expression) {
   if (token->type != TOK_KW_MATCH) {
@@ -2427,6 +2470,7 @@ err_code_t expr_tail(token_t *token, ast_node_t **node,
   return NO_ERR;
 }
 
+// checks if expression isnt a lambda
 err_code_t check_lambda(token_t *token, ast_node_t **node, bool *end) {
   *end = false;
   if (token->type != TOK_L_PAREN) {
@@ -2611,6 +2655,7 @@ err_code_t expr_pre_parse(token_t *token, ast_node_t **node,
   }
 }
 
+// creates a function call node
 err_code_t fun_call(token_t *token, ast_node_t **node) {
   if (token->type != TOK_IDENTIFIER) {
     return SYNTAX_ERR;
@@ -2649,6 +2694,7 @@ err_code_t fun_call(token_t *token, ast_node_t **node) {
   RETURN_ERR(ret);
 }
 
+// handles token dot call
 err_code_t dot_call(token_t *token, ast_node_t **node) {
   ast_node_t *target = create_leaf_node(token);
   if (target == NULL) {
@@ -2711,6 +2757,7 @@ err_code_t dot_call(token_t *token, ast_node_t **node) {
   return dot_call_tail(token, node, new_target);
 }
 
+// multiple dot calls and nonterm dot call
 err_code_t dot_call_tail(token_t *token, ast_node_t **node,
                          ast_node_t *target) {
   if (token->type != TOK_DOT) {
@@ -2767,6 +2814,7 @@ err_code_t dot_call_tail(token_t *token, ast_node_t **node,
   return NO_ERR;
 }
 
+// list definition
 err_code_t list(token_t *token, ast_node_t **node) {
   token_clear(token);
   err_code_t ret = lexer_get_token(token, ALLOWED);
@@ -2792,6 +2840,7 @@ err_code_t list(token_t *token, ast_node_t **node) {
   return NO_ERR;
 }
 
+// handles interpoloids
 err_code_t interpol(token_t *token, ast_node_t **node) {
   ast_node_t *expressions = NULL;
 
@@ -2830,6 +2879,7 @@ err_code_t interpol(token_t *token, ast_node_t **node) {
   return NO_ERR;
 }
 
+// recursively reads entire interpoloid
 err_code_t interpol_part(token_t *token, ast_node_t **node) {
   if (token->type == TOK_LIT_INTERP_STRING_END) {
     return NO_ERR;
@@ -2911,6 +2961,7 @@ err_code_t interpol_part(token_t *token, ast_node_t **node) {
   return interpol_part(token, &(*node)->next);
 }
 
+// handles multi line interpoloids
 err_code_t interpol_m(token_t *token, ast_node_t **node) {
   ast_node_t *expressions = NULL;
   err_code_t ret = interpol_part_m(token, &expressions);
@@ -2948,6 +2999,7 @@ err_code_t interpol_m(token_t *token, ast_node_t **node) {
   return NO_ERR;
 }
 
+// recursively reads entire interpoloid
 err_code_t interpol_part_m(token_t *token, ast_node_t **node) {
   if (token->type == TOK_LIT_INTERP_M_STRING_END) {
     return NO_ERR;
@@ -3030,6 +3082,7 @@ err_code_t interpol_part_m(token_t *token, ast_node_t **node) {
   return interpol_part_m(token, &(*node)->next);
 }
 
+// lambda declaration
 err_code_t lambda(token_t *token, ast_node_t **node) {
   token_clear(token);
   err_code_t ret = lexer_get_token(token, ALLOWED);

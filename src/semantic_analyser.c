@@ -17,12 +17,12 @@
 err_code_t analyse(ast_node_t *root, hashtable_t *symtable,
                    ast_node_t **main_node) {
   if (root == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   err_code_t err = collect_symbols(root, symtable, main_node);
   if (err != NO_ERR) {
-    return err;
+    RETURN_ERR(err);
   }
 
   if (*main_node == NULL) {
@@ -36,7 +36,7 @@ err_code_t analyse(ast_node_t *root, hashtable_t *symtable,
     case AST_FUNCTION_DECLARATION:
       err = analyse_function_declaration(current, symtable);
       if (err != NO_ERR) {
-        return err;
+        RETURN_ERR(err);
       }
       break;
     case AST_EXTENSION_DECLARATION:
@@ -46,7 +46,7 @@ err_code_t analyse(ast_node_t *root, hashtable_t *symtable,
         if (err == NO_ERR) {
           node = node->next;
         } else {
-          return err;
+          RETURN_ERR(err);
         }
       }
       break;
@@ -57,14 +57,14 @@ err_code_t analyse(ast_node_t *root, hashtable_t *symtable,
       err = analyse_class_declaration(current, symtable);
       break;
     default:
-      return OTHER_SEMANTIC_ERR;
+      RETURN_ERR(OTHER_SEMANTIC_ERR);
     }
     if (err == NO_ERR) {
       current = current->next;
     } else {
-      return err;
+      RETURN_ERR(err);
     }
   }
 
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
