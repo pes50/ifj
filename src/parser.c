@@ -57,8 +57,6 @@ err_code_t else_stmt(token_t *token, ast_node_t **node);
 err_code_t else_stmt_tail(token_t *token, ast_node_t **node);
 err_code_t for_loop(token_t *token, ast_node_t **node);
 err_code_t gen(token_t *token, ast_node_t **iterator, ast_node_t **generator);
-err_code_t gen_tail(token_t *token, ast_node_t *expression,
-                    ast_node_t **generator);
 err_code_t guard_list(token_t *token, ast_node_t **node);
 err_code_t for_tail(token_t *token, ast_node_t **node);
 err_code_t while_loop(token_t *token, ast_node_t **node);
@@ -80,6 +78,7 @@ err_code_t interpol_part(token_t *token, ast_node_t **node);
 err_code_t interpol_m(token_t *token, ast_node_t **node);
 err_code_t interpol_part_m(token_t *token, ast_node_t **node);
 err_code_t lambda(token_t *token, ast_node_t **node);
+err_code_t id_gen(token_t *token, ast_node_t **node, ast_node_t *target);
 
 #pragma endregion
 
@@ -1662,7 +1661,7 @@ err_code_t for_loop(token_t *token, ast_node_t **node) {
   return NO_ERR;
 }
 
-// constructs iterator
+// constructs iterator and generator
 err_code_t gen(token_t *token, ast_node_t **iterator, ast_node_t **generator) {
   if (token->type != TOK_IDENTIFIER) {
     return TYPE_COMPAT_ERR;
@@ -1692,126 +1691,12 @@ err_code_t gen(token_t *token, ast_node_t **iterator, ast_node_t **generator) {
     RETURN_ERR(ret);
   }
 
-  ast_node_t *expression = NULL;
-  ret = expr(token, &expression, true);
+  ret = expr(token, generator, false);
   if (ret != NO_ERR) {
     destroy_node(*iterator);
     RETURN_ERR(ret);
   }
-
-  ret = gen_tail(token, expression, generator);
-  if (ret != NO_ERR) {
-    destroy_node(*iterator);
-    RETURN_ERR(ret);
-  }
-
   return NO_ERR;
-}
-
-// handles generators
-err_code_t gen_tail(token_t *token, ast_node_t *expression,
-                    ast_node_t **generator) {
-
-  if (token->type == TOK_KW_DO) {
-    *generator = expression;
-    return NO_ERR;
-  }
-
-  if (token->type == TOK_IDENTIFIER && strcmp(token->value, "to") == 0) {
-
-    token_clear(token);
-    err_code_t ret = lexer_get_token(token, FORBIDDEN);
-    if (ret != NO_ERR) {
-      destroy_node(expression);
-      RETURN_ERR(ret);
-    }
-
-    ast_node_t *to = NULL;
-    ret = expr(token, &to, true);
-    if (ret != NO_ERR) {
-      destroy_node(expression);
-      RETURN_ERR(ret);
-    }
-
-    ast_node_t *arguments = create_argument_list_node(to);
-    if (arguments == NULL) {
-      destroy_node(to);
-      destroy_node(expression);
-      RETURN_ERR(INTERNAL_ERR);
-    }
-    *generator = create_dot_function_call_node("to", expression, arguments);
-    if (*generator == NULL) {
-      destroy_node(arguments);
-      destroy_node(expression);
-      RETURN_ERR(INTERNAL_ERR);
-    }
-
-    if (token->type == TOK_IDENTIFIER && strcmp(token->value, "by") == 0) {
-      token_clear(token);
-      ret = lexer_get_token(token, FORBIDDEN);
-      if (ret != NO_ERR) {
-        destroy_node(*generator);
-        RETURN_ERR(ret);
-      }
-
-      ast_node_t *step = NULL;
-      ret = expr(token, &step, true);
-      if (ret != NO_ERR) {
-        destroy_node(*generator);
-        RETURN_ERR(ret);
-      }
-
-      ast_node_t *arguments = create_argument_list_node(step);
-      if (arguments == NULL) {
-        destroy_node(step);
-        destroy_node(*generator);
-        RETURN_ERR(INTERNAL_ERR);
-      }
-
-      ast_node_t *tmp = *generator;
-      *generator = create_dot_function_call_node("by", tmp, arguments);
-      if (*generator == NULL) {
-        destroy_node(arguments);
-        destroy_node(tmp);
-        RETURN_ERR(INTERNAL_ERR);
-      }
-    }
-    return NO_ERR;
-  }
-
-  if (token->type == TOK_IDENTIFIER && strcmp(token->value, "until") == 0) {
-    token_clear(token);
-    err_code_t ret = lexer_get_token(token, FORBIDDEN);
-    if (ret != NO_ERR) {
-      destroy_node(expression);
-      RETURN_ERR(ret);
-    }
-
-    ast_node_t *until = NULL;
-    ret = expr(token, &until, true);
-    if (ret != NO_ERR) {
-      destroy_node(expression);
-      RETURN_ERR(ret);
-    }
-
-    ast_node_t *arguments = create_argument_list_node(until);
-    if (arguments == NULL) {
-      destroy_node(until);
-      destroy_node(expression);
-      RETURN_ERR(INTERNAL_ERR);
-    }
-
-    *generator = create_dot_function_call_node("until", expression, arguments);
-    if (*generator == NULL) {
-      destroy_node(arguments);
-      destroy_node(expression);
-      RETURN_ERR(INTERNAL_ERR);
-    }
-    return NO_ERR;
-  }
-
-  destroy_node(expression);
-  return SYNTAX_ERR;
 }
 
 // reads all if guards
@@ -2546,16 +2431,44 @@ err_code_t expr_pre_parse(token_t *token, ast_node_t **node,
     return interpol_m(token, node);
 
   case TOK_IDENTIFIER:
-    ret = lexer_peek_token(tmp_token, ALLOWED, 0);
-    if (ret != NO_ERR) {
-      token_free(tmp_token);
-      RETURN_ERR(ret);
-    }
     if (tmp_token->type == TOK_L_PAREN) {
       token_free(tmp_token);
       return fun_call(token, node);
     }
     token_free(tmp_token);
+    if (!(strcmp(token->value, "by") && strcmp(token->value, "until") &&
+          strcmp(token->value, "to"))) {
+      ast_node_t *target = NULL;
+      switch (peek_top_element_type(stack)) {
+      case TOKEN:
+        if (!get_top_element(stack, NULL, &tmp_token)) {
+          return SYNTAX_ERR;
+        }
+        target = create_leaf_node(tmp_token);
+        token_free(tmp_token);
+        if (target == NULL) {
+          return SYNTAX_ERR;
+        }
+
+        ret = id_gen(token, node, target);
+        if (ret != NO_ERR) {
+          destroy_node(target);
+        }
+        RETURN_ERR(ret);
+
+      case NONTERMINAL:
+        if (!get_top_element(stack, &target, NULL)) {
+          return SYNTAX_ERR;
+        }
+        ret = id_gen(token, node, target);
+        if (ret != NO_ERR) {
+          destroy_node(target);
+        }
+        RETURN_ERR(ret);
+      default:
+        RETURN_ERR(SYNTAX_ERR);
+      }
+    }
     return NO_ERR;
 
   case TOK_KW_IF:
@@ -3131,6 +3044,53 @@ err_code_t lambda(token_t *token, ast_node_t **node) {
   if (*node == NULL) {
     destroy_node(parameters);
     destroy_node(body);
+    RETURN_ERR(INTERNAL_ERR);
+  }
+  return NO_ERR;
+}
+
+// handles generators in expressions
+err_code_t id_gen(token_t *token, ast_node_t **node, ast_node_t *target) {
+  if (token->type != TOK_IDENTIFIER) {
+    destroy_node(target);
+    return SYNTAX_ERR;
+  }
+
+  char *name = string_duplicate(token->value);
+  if (name == NULL) {
+    destroy_node(target);
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  token_clear(token);
+  err_code_t ret = lexer_get_token(token, ALLOWED);
+  if (ret != NO_ERR) {
+    destroy_node(target);
+    RETURN_ERR(ret);
+  }
+
+  ast_node_t *expression = NULL;
+  ret = expr(token, &expression, true);
+  if (ret != NO_ERR) {
+    destroy_node(target);
+    free(name);
+    RETURN_ERR(ret);
+  }
+
+  ast_node_t *argument_lists = create_argument_list_node(expression);
+  if (argument_lists == NULL) {
+    destroy_node(target);
+    destroy_node(expression);
+    free(name);
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  *node = create_dot_function_call_node(name, target, argument_lists);
+
+  if (*node == NULL) {
+    destroy_node(target);
+    destroy_node(argument_lists);
+    free(name);
     RETURN_ERR(INTERNAL_ERR);
   }
   return NO_ERR;
