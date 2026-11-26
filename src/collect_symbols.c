@@ -62,37 +62,37 @@ err_code_t collect_function(ast_node_t *node, hashtable_t *symtable,
   if (err != UNDEF_SYMBOL_ERR) {
     // Symbol is in table
     if (data != NULL) {
-      return REDEF_SYMBOL_ERR;
+      RETURN_ERR(REDEF_SYMBOL_ERR);
     }
-    return err;
+    RETURN_ERR(err);
   }
 
   // Check if this is the main function
   if (node->data.function_declaration.is_main) {
     if (*main_node != NULL) {
       // Multiple @main
-      return REDEF_SYMBOL_ERR;
+      RETURN_ERR(REDEF_SYMBOL_ERR);
     }
 
     // Non empty parameter list
     if (node->data.function_declaration.parameter_lists == NULL) {
-      return ARG_MISMATCH_ERR;
+      RETURN_ERR(ARG_MISMATCH_ERR);
     }
 
     // No parameters
     if (node->data.function_declaration.parameter_lists->data.parameter_list
             .parameters != NULL) {
-      return ARG_MISMATCH_ERR;
+      RETURN_ERR(ARG_MISMATCH_ERR);
     }
 
     // Only one parameter list
     if (node->data.function_declaration.parameter_lists->next != NULL) {
-      return ARG_MISMATCH_ERR;
+      RETURN_ERR(ARG_MISMATCH_ERR);
     }
 
     if (!are_data_types_identical(
             &node_unit, node->data.function_declaration.return_type)) {
-      return TYPE_COMPAT_ERR;
+      RETURN_ERR(TYPE_COMPAT_ERR);
     }
 
     *main_node = node;
@@ -100,67 +100,67 @@ err_code_t collect_function(ast_node_t *node, hashtable_t *symtable,
     if (node->data.function_declaration.parameter_lists != NULL &&
         !is_parameter_list_chain(
             node->data.function_declaration.parameter_lists)) {
-      return OTHER_SEMANTIC_ERR;
+      RETURN_ERR(OTHER_SEMANTIC_ERR);
     }
   }
 
   // Define symbol
   if (ht_insert_item(symtable, node->data.function_declaration.name, node) !=
       NO_ERR) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
   ast_node_t *parameter = node->data.extension_declaration.parameter;
 
   if (parameter == NULL) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   if (parameter->type != AST_PARAMETER) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   if (parameter->next != NULL) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   if (parameter->data.parameter.data_type == NULL) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   if (parameter->data.parameter.name == NULL) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   char *first = NULL;
   err_code_t err = type_to_string(parameter->data.parameter.data_type, &first);
   if (err != NO_ERR) {
-    return err;
+    RETURN_ERR(err);
   }
 
   ast_node_t *current = node->data.extension_declaration.function_declarations;
   while (current != NULL) {
     if (current->type != AST_FUNCTION_DECLARATION) {
-      return OTHER_SEMANTIC_ERR;
+      RETURN_ERR(OTHER_SEMANTIC_ERR);
     }
 
     if (current->data.function_declaration.name == NULL) {
-      return INTERNAL_ERR;
+      RETURN_ERR(INTERNAL_ERR);
     }
 
     if (current->data.function_declaration.is_main) {
-      return REDEF_SYMBOL_ERR;
+      RETURN_ERR(REDEF_SYMBOL_ERR);
     }
 
     char *symbol = string_concatenate_dollar(
         first, current->data.function_declaration.name);
     if (symbol == NULL) {
       free(first);
-      return INTERNAL_ERR;
+      RETURN_ERR(INTERNAL_ERR);
     }
 
     // Check if symbol is defined
@@ -171,11 +171,11 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
       if (data != NULL) {
         free(first);
         free(symbol);
-        return REDEF_SYMBOL_ERR;
+        RETURN_ERR(REDEF_SYMBOL_ERR);
       }
       free(first);
       free(symbol);
-      return err;
+      RETURN_ERR(err);
     }
 
     // Insert extension parameter to function parameters
@@ -184,7 +184,7 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
     if (parameter_copy == NULL) {
       free(first);
       free(symbol);
-      return INTERNAL_ERR;
+      RETURN_ERR(INTERNAL_ERR);
     }
 
     if (duplicate_type_node(parameter->data.parameter.data_type,
@@ -193,7 +193,7 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
       free(first);
       free(symbol);
       destroy_node(parameter_copy);
-      return INTERNAL_ERR;
+      RETURN_ERR(INTERNAL_ERR);
     }
 
     ast_node_t *parameter_list_copy =
@@ -202,7 +202,7 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
       free(first);
       free(symbol);
       destroy_node(parameter_copy);
-      return INTERNAL_ERR;
+      RETURN_ERR(INTERNAL_ERR);
     }
 
     ast_node_t *parameter_lists =
@@ -214,7 +214,7 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
         free(first);
         free(symbol);
         destroy_node(parameter_list_copy);
-        return OTHER_SEMANTIC_ERR;
+        RETURN_ERR(OTHER_SEMANTIC_ERR);
       }
       parameter_list_copy->next = parameter_lists;
       current->data.function_declaration.parameter_lists = parameter_list_copy;
@@ -224,7 +224,7 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
     if (ht_insert_item(symtable, symbol, current) != NO_ERR) {
       free(first);
       free(symbol);
-      return INTERNAL_ERR;
+      RETURN_ERR(INTERNAL_ERR);
     }
 
     free(current->data.function_declaration.name);
@@ -234,7 +234,7 @@ err_code_t collect_extension(ast_node_t *node, hashtable_t *symtable) {
   }
   free(first);
 
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 err_code_t collect_type(ast_node_t *node, hashtable_t *symtable) {
@@ -245,23 +245,23 @@ err_code_t collect_type(ast_node_t *node, hashtable_t *symtable) {
   if (err != UNDEF_SYMBOL_ERR) {
     // Symbol is in table
     if (data != NULL) {
-      return REDEF_SYMBOL_ERR;
+      RETURN_ERR(REDEF_SYMBOL_ERR);
     }
-    return err;
+    RETURN_ERR(err);
   }
 
   // Type must be defined
   if (node->data.type_declaration.data_type == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   // Define symbol
   if (ht_insert_item(symtable, node->data.type_declaration.name, node) !=
       NO_ERR) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 err_code_t collect_class(ast_node_t *node, hashtable_t *symtable) {
@@ -272,32 +272,32 @@ err_code_t collect_class(ast_node_t *node, hashtable_t *symtable) {
   if (err != UNDEF_SYMBOL_ERR) {
     // Symbol is in table
     if (data != NULL) {
-      return REDEF_SYMBOL_ERR;
+      RETURN_ERR(REDEF_SYMBOL_ERR);
     }
-    return err;
+    RETURN_ERR(err);
   }
 
   if (!is_parameter_list_chain(node->data.class_declaration.attribute_list)) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   // Define symbol
   if (ht_insert_item(symtable, node->data.class_declaration.name, node) !=
       NO_ERR) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 err_code_t collect_symbols(ast_node_t *root, hashtable_t *symtable,
                            ast_node_t **main_node) {
   if (root == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   if (root->type != AST_BLOCK) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   ast_node_t *current = root->data.block.statement;
@@ -318,14 +318,14 @@ err_code_t collect_symbols(ast_node_t *root, hashtable_t *symtable,
       err = collect_class(current, symtable);
       break;
     default:
-      return OTHER_SEMANTIC_ERR;
+      RETURN_ERR(OTHER_SEMANTIC_ERR);
     }
 
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
     current = current->next;
   }
 
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }

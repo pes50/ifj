@@ -520,7 +520,7 @@ static err_code_t analyse_list_constructor(ast_node_t *node,
   data_type_node_t *list_type = create_list_type_node(list_element_type);
   if (list_type == NULL) {
     destroy_type_node(list_element_type);
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   node->data_type = list_type;
@@ -682,7 +682,7 @@ static err_code_t analyse_real_function_call(ast_node_t *node,
     node->data.dot_function_call.calling = target_node;
   }
 
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 err_code_t analyse_function_call(char *identifier, ast_node_t *node,
@@ -700,7 +700,7 @@ err_code_t analyse_function_call(char *identifier, ast_node_t *node,
   err_code_t err = ht_get_item(symtable, identifier, (void **)&target_node);
   if (err != NO_ERR) {
     // There is no macro because it could be method call on Any type
-    return err;
+    RETURN_ERR(err);
   }
 
   // Decide how to handle () based on target AST type
@@ -729,7 +729,7 @@ err_code_t analyse_if(ast_node_t *node, hashtable_t *symtable,
                       data_type_node_t *explicit_data_type, bool is_last,
                       bool allow_return) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   ast_node_t *condition = node->data.if_statement.condition;
@@ -737,7 +737,7 @@ err_code_t analyse_if(ast_node_t *node, hashtable_t *symtable,
   ast_node_t *false_branch = node->data.if_statement.false_branch;
 
   if (true_branch == NULL) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   // Check expression
@@ -747,7 +747,7 @@ err_code_t analyse_if(ast_node_t *node, hashtable_t *symtable,
   }
 
   if (!are_data_types_identical(condition->data_type, &node_boolean)) {
-    return TYPE_COMPAT_ERR;
+    RETURN_ERR(TYPE_COMPAT_ERR);
   }
 
   // Create new scope
@@ -809,7 +809,7 @@ err_code_t analyse_if(ast_node_t *node, hashtable_t *symtable,
                                    false_branch->data_type) &&
         !are_data_types_compatible(false_branch->data_type,
                                    true_branch->data_type)) {
-      return TYPE_COMPAT_ERR;
+      RETURN_ERR(TYPE_COMPAT_ERR);
     }
 
     // Choose larger type
@@ -825,7 +825,7 @@ err_code_t analyse_if(ast_node_t *node, hashtable_t *symtable,
   // Both branches must have compatible type with the return type
   if (!are_data_types_compatible(true_branch->data_type, explicit_data_type) ||
       !are_data_types_compatible(false_branch->data_type, explicit_data_type)) {
-    return TYPE_COMPAT_ERR;
+    RETURN_ERR(TYPE_COMPAT_ERR);
   }
 
   err = duplicate_type_node(explicit_data_type, &node->data_type);
@@ -834,13 +834,13 @@ err_code_t analyse_if(ast_node_t *node, hashtable_t *symtable,
 
 err_code_t analyse_binary_operation(ast_node_t *node, hashtable_t *symtable) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   ast_node_t *left = node->data.binary_operation.left;
   ast_node_t *right = node->data.binary_operation.right;
   if (left == NULL || right == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   err_code_t err = analyse_expression(left, symtable, NULL, true, false);
@@ -854,7 +854,7 @@ err_code_t analyse_binary_operation(ast_node_t *node, hashtable_t *symtable) {
 
   if (!are_data_types_compatible(left->data_type, right->data_type) &&
       !are_data_types_compatible(right->data_type, left->data_type)) {
-    return TYPE_COMPAT_ERR;
+    RETURN_ERR(TYPE_COMPAT_ERR);
   }
   switch (node->data.binary_operation.op) {
     // Operators
@@ -870,7 +870,7 @@ err_code_t analyse_binary_operation(ast_node_t *node, hashtable_t *symtable) {
 
     if (!are_data_types_compatible(node->data_type, &node_double) &&
         !are_data_types_compatible(node->data_type, &node_string)) {
-      return TYPE_COMPAT_ERR;
+      RETURN_ERR(TYPE_COMPAT_ERR);
     }
     break;
   case TOK_BINARY_MINUS:
@@ -886,7 +886,7 @@ err_code_t analyse_binary_operation(ast_node_t *node, hashtable_t *symtable) {
     }
 
     if (!are_data_types_compatible(node->data_type, &node_double)) {
-      return TYPE_COMPAT_ERR;
+      RETURN_ERR(TYPE_COMPAT_ERR);
     }
     break;
   case TOK_LOWER_T:
@@ -897,7 +897,7 @@ err_code_t analyse_binary_operation(ast_node_t *node, hashtable_t *symtable) {
   case TOK_NOT_EQ:
   case TOK_AND:
   case TOK_OR:
-    return duplicate_type_node(&node_boolean, &node->data_type);
+    RETURN_ERR(duplicate_type_node(&node_boolean, &node->data_type));
   case TOK_CONCAT_LIST:
     if (left->data_type->type != DATA_TYPE_LIST ||
         right->data_type->type != DATA_TYPE_LIST) {
@@ -911,10 +911,10 @@ err_code_t analyse_binary_operation(ast_node_t *node, hashtable_t *symtable) {
     }
     RETURN_ERR(TYPE_COMPAT_ERR);
   default:
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 err_code_t analyse_unary_operation(ast_node_t *node, hashtable_t *symtable) {
@@ -954,18 +954,19 @@ err_code_t analyse_unary_operation(ast_node_t *node, hashtable_t *symtable) {
 err_code_t analyse_match_case_literal(ast_node_t *node, hashtable_t *symtable,
                                       data_type_node_t *match_type) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   if (node->type != AST_LITERAL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   if (!are_data_types_compatible(node->data.literal.data_type, match_type)) {
-    return TYPE_COMPAT_ERR;
+    RETURN_ERR(TYPE_COMPAT_ERR);
   }
 
-  return duplicate_type_node(node->data.literal.data_type, &node->data_type);
+  RETURN_ERR(
+      duplicate_type_node(node->data.literal.data_type, &node->data_type));
 }
 
 err_code_t analyse_match_case_class_constructor(ast_node_t *node,
@@ -1049,23 +1050,23 @@ err_code_t analyse_match_case_class_constructor(ast_node_t *node,
 
   node->data.function_call.calling = table_node;
 
-  return duplicate_type_node(table_node->data_type, &node->data_type);
+  RETURN_ERR(duplicate_type_node(table_node->data_type, &node->data_type));
 }
 
 err_code_t analyse_match_case_parameter(ast_node_t *node,
                                         hashtable_t *symtable) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   if (node->type != AST_PARAMETER) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   char *name = node->data.parameter.name;
   data_type_node_t *data_type = node->data.parameter.data_type;
   if (name == NULL || data_type == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   err_code_t err = analyse_type(data_type, symtable);
@@ -1079,7 +1080,7 @@ err_code_t analyse_match_case_parameter(ast_node_t *node,
     RETURN_ERR(err);
   }
 
-  return duplicate_type_node(data_type, &node->data_type);
+  RETURN_ERR(duplicate_type_node(data_type, &node->data_type));
 }
 
 err_code_t analyse_match_case(ast_node_t *node, hashtable_t *symtable,
@@ -1176,7 +1177,7 @@ err_code_t analyse_match_case(ast_node_t *node, hashtable_t *symtable,
     RETURN_ERR(err);
   }
 
-  return duplicate_type_node(block->data_type, &node->data_type);
+  RETURN_ERR(duplicate_type_node(block->data_type, &node->data_type));
 case_err:
   ht_destruct(&current_scope);
   RETURN_ERR(err);

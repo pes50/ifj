@@ -31,7 +31,7 @@ static err_code_t ht_init_data(hashtable_t *hashtable, size_t item_cnt) {
   hashtable->data = (ht_item_t *)calloc(item_cnt, sizeof(ht_item_t));
   // checks whether allocation have failed
   if (hashtable->data == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   // initializes all hash table items as empty
@@ -41,7 +41,7 @@ static err_code_t ht_init_data(hashtable_t *hashtable, size_t item_cnt) {
     hashtable->data[index].data = NULL;
   }
 
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 /**
@@ -76,7 +76,7 @@ static err_code_t ht_resize(hashtable_t *hashtable, size_t item_cnt) {
   new_table.capacity = item_cnt;
   new_table.item_cnt = 0;
   if (ht_init_data(&new_table, item_cnt) == INTERNAL_ERR) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   // goes through the old array and re-inserts all saved items to the new table
@@ -90,7 +90,7 @@ static err_code_t ht_resize(hashtable_t *hashtable, size_t item_cnt) {
       if (ht_insert_item(&new_table, old_table.data[index].identificator,
                          old_table.data[index].data) == INTERNAL_ERR) {
         ht_data_destruct(&new_table);
-        return INTERNAL_ERR;
+        RETURN_ERR(INTERNAL_ERR);
       }
       // notes that the item has been copied
       old_table.item_cnt--;
@@ -99,7 +99,7 @@ static err_code_t ht_resize(hashtable_t *hashtable, size_t item_cnt) {
   ht_data_destruct(&old_table);
   *hashtable = new_table;
 
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 /**
@@ -120,7 +120,7 @@ static err_code_t ht_find_item(hashtable_t *hashtable,
   // checks for invalid input
   if (identificator == NULL || strlen(identificator) == 0 ||
       hashtable->capacity == 0) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   // project onto <0, table capacity>
@@ -146,7 +146,7 @@ static err_code_t ht_find_item(hashtable_t *hashtable,
   }
   // returns index of the item in hasthable by this pointer
   *item_idx = hash_value;
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 /**
@@ -161,12 +161,12 @@ static err_code_t ht_find_item(hashtable_t *hashtable,
  */
 static err_code_t ht_load_factor(hashtable_t *hashtable, double *load_factor) {
   if (hashtable->capacity == 0 || hashtable->capacity < hashtable->item_cnt) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   *load_factor = (double)hashtable->item_cnt / hashtable->capacity;
 
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 /***************************************\
@@ -178,21 +178,21 @@ err_code_t ht_init(hashtable_t **hashtable, size_t item_cnt) {
   *hashtable = (hashtable_t *)malloc(sizeof(hashtable_t));
   // check whether allocation have failed
   if (*hashtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   // allocate memory for hash table items and initialize them as empty
   if (ht_init_data(*hashtable, item_cnt) == INTERNAL_ERR) {
     free(*hashtable);
     *hashtable = NULL;
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   // initialize hashtable helper data
   (*hashtable)->capacity = item_cnt;
   (*hashtable)->item_cnt = 0;
   (*hashtable)->parent = NULL;
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 void ht_destruct(hashtable_t **hashtable) {
@@ -230,7 +230,7 @@ err_code_t ht_insert_item(hashtable_t *hashtable, const char *identificator,
   // checks for invalid input
   if (identificator == NULL || strlen(identificator) == 0 ||
       hashtable->capacity == 0) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   size_t item_idx_dumpster;
@@ -240,7 +240,7 @@ err_code_t ht_insert_item(hashtable_t *hashtable, const char *identificator,
   // if symbol of same id is already in the table, then redefinition happened
   if (ht_find_item(hashtable, identificator, &item_idx_dumpster) == NO_ERR) {
     hashtable->parent = parent;
-    return REDEF_SYMBOL_ERR;
+    RETURN_ERR(REDEF_SYMBOL_ERR);
   }
   hashtable->parent = parent;
 
@@ -260,14 +260,14 @@ err_code_t ht_insert_item(hashtable_t *hashtable, const char *identificator,
 
   double load_factor;
   if (ht_load_factor(hashtable, &load_factor) == INTERNAL_ERR) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
   if (load_factor > HT_MAX_ALLOWED_LOAD_FACTOR) {
     if (ht_resize(hashtable, hashtable->capacity * 2) == INTERNAL_ERR) {
-      return INTERNAL_ERR;
+      RETURN_ERR(INTERNAL_ERR);
     }
   }
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 err_code_t ht_get_item(hashtable_t *hashtable, const char *identificator,
@@ -280,23 +280,23 @@ err_code_t ht_get_item(hashtable_t *hashtable, const char *identificator,
   // can't proceed if error in the lookup occured
   if (error_code != NO_ERR) {
     if (hashtable->parent != NULL) {
-      return ht_get_item(hashtable->parent, identificator, data);
+      RETURN_ERR(ht_get_item(hashtable->parent, identificator, data));
     }
 
     *data = NULL;
-    return error_code;
+    RETURN_ERR(error_code);
   }
 
   // can't proceed if the item at the found index or the index itself is invalid
   if (hashtable->capacity - 1 < item_idx ||
       hashtable->data[item_idx].state != FULL) {
     *data = NULL;
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   // reads data
   *data = hashtable->data[item_idx].data;
-  return error_code;
+  RETURN_ERR(error_code);
 }
 
 err_code_t ht_delete_item(hashtable_t *hashtable, const char *identificator) {
@@ -305,10 +305,10 @@ err_code_t ht_delete_item(hashtable_t *hashtable, const char *identificator) {
 
   // checks ht_find_item error codes
   if (err_code == INTERNAL_ERR) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
   if (err_code == UNDEF_SYMBOL_ERR) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   // sets the item state as DELETED and corrects hashtable item count
@@ -316,7 +316,7 @@ err_code_t ht_delete_item(hashtable_t *hashtable, const char *identificator) {
   hashtable->data[item_idx].identificator = NULL;
   hashtable->data[item_idx].data = NULL;
   hashtable->item_cnt--;
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 hashtable_t *ht_get_root(hashtable_t *hashtable) {

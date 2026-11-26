@@ -13,19 +13,19 @@ analysis
 
 err_code_t analyse_type_declaration(ast_node_t *node, hashtable_t *symtable) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   if (node->type != AST_TYPE_DECLARATION) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   if (node->data_type != NULL) {
-    return NO_ERR;
+    RETURN_ERR(NO_ERR);
   }
 
   if (node->_visited) {
-    return TYPE_COMPAT_ERR;
+    RETURN_ERR(TYPE_COMPAT_ERR);
   }
 
   node->_visited = true;
@@ -34,16 +34,16 @@ err_code_t analyse_type_declaration(ast_node_t *node, hashtable_t *symtable) {
   node->_visited = false;
 
   if (err != NO_ERR) {
-    return err;
+    RETURN_ERR(err);
   }
 
-  return duplicate_type_node(node->data.type_declaration.data_type,
-                             &node->data_type);
+  RETURN_ERR(duplicate_type_node(node->data.type_declaration.data_type,
+                                 &node->data_type));
 }
 
 err_code_t analyse_class_declaration(ast_node_t *node, hashtable_t *symtable) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   if (node->data_type != NULL) {
@@ -51,22 +51,22 @@ err_code_t analyse_class_declaration(ast_node_t *node, hashtable_t *symtable) {
   }
 
   if (node->type != AST_CLASS_DECLARATION) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   ast_node_t *attribute_list = node->data.class_declaration.attribute_list;
   if (attribute_list == NULL || attribute_list->next != NULL ||
       attribute_list->type != AST_PARAMETER_LIST ||
       attribute_list->data.parameter_list.parameters == NULL) {
-    return OTHER_SEMANTIC_ERR;
+    RETURN_ERR(OTHER_SEMANTIC_ERR);
   }
 
   if (node->data_type != NULL) {
-    return NO_ERR;
+    RETURN_ERR(NO_ERR);
   }
 
   if (node->_visited) {
-    return TYPE_COMPAT_ERR;
+    RETURN_ERR(TYPE_COMPAT_ERR);
   }
 
   node->_visited = true;
@@ -76,13 +76,13 @@ err_code_t analyse_class_declaration(ast_node_t *node, hashtable_t *symtable) {
   while (attribute != NULL && err == NO_ERR) {
     err = analyse_type(attribute->data.parameter.data_type, symtable);
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
 
     err = duplicate_type_node(attribute->data.parameter.data_type,
                               &attribute->data_type);
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
 
     attribute = attribute->next;
@@ -94,23 +94,23 @@ err_code_t analyse_class_declaration(ast_node_t *node, hashtable_t *symtable) {
   err = duplicate_type_node(&node_unit, &attribute_list->data_type);
 
   if (err != NO_ERR) {
-    return err;
+    RETURN_ERR(err);
   }
 
   data_type_node_t *data_type =
       create_class_type_node(node->data.class_declaration.name, node);
   if (data_type == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   node->data_type = data_type;
 
-  return NO_ERR;
+  RETURN_ERR(NO_ERR);
 }
 
 err_code_t analyse_type(data_type_node_t *node, hashtable_t *symtable) {
   if (node == NULL || symtable == NULL) {
-    return INTERNAL_ERR;
+    RETURN_ERR(INTERNAL_ERR);
   }
 
   err_code_t err = NO_ERR;
@@ -121,32 +121,32 @@ err_code_t analyse_type(data_type_node_t *node, hashtable_t *symtable) {
     err = ht_get_item(ht_get_root(symtable), node->data.class_type.name,
                       (void **)&table_node);
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
     if (table_node->type == AST_CLASS_DECLARATION) {
       err = analyse_class_declaration(table_node, symtable);
       if (err != NO_ERR) {
-        return err;
+        RETURN_ERR(err);
       }
       break;
     }
 
     if (table_node->type != AST_TYPE_DECLARATION) {
-      return OTHER_SEMANTIC_ERR;
+      RETURN_ERR(OTHER_SEMANTIC_ERR);
     }
 
     if (table_node->data_type == NULL) {
       err = analyse_type_declaration(table_node, symtable);
     }
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
 
     data_type_node_t *copy = NULL;
     err =
         duplicate_type_node(table_node->data.type_declaration.data_type, &copy);
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
 
     free(node->data.class_type.name);
@@ -156,21 +156,21 @@ err_code_t analyse_type(data_type_node_t *node, hashtable_t *symtable) {
 
     free(copy);
 
-    return analyse_type(node, symtable);
+    RETURN_ERR(analyse_type(node, symtable));
   case DATA_TYPE_LAMBDA:
     err = analyse_type(node->data.lambda_type.parameter_types, symtable);
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
     err = analyse_type(node->data.lambda_type.return_type, symtable);
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
     break;
   case DATA_TYPE_LIST:
     err = analyse_type(node->data.list_type.elements_type, symtable);
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
     break;
   case DATA_TYPE_PRIMITIVE:
@@ -178,7 +178,7 @@ err_code_t analyse_type(data_type_node_t *node, hashtable_t *symtable) {
   case DATA_TYPE_UNION:
     err = analyse_type(node->data.union_type.types, symtable);
     if (err != NO_ERR) {
-      return err;
+      RETURN_ERR(err);
     }
     break;
   case DATA_TYPE_GENERIC:
@@ -190,8 +190,8 @@ err_code_t analyse_type(data_type_node_t *node, hashtable_t *symtable) {
   }
 
   if (node->next == NULL) {
-    return NO_ERR;
+    RETURN_ERR(NO_ERR);
   }
 
-  return analyse_type(node->next, symtable);
+  RETURN_ERR(analyse_type(node->next, symtable));
 }
