@@ -411,6 +411,10 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         break;
 
       case ')':
+        if (token_prev_type == TOK_COMMA) {
+          return SYNTAX_ERR;
+        }
+
         if (bracket_depth > 0) {
           bracket_depth--;
         }
@@ -425,6 +429,10 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         break;
 
       case ']':
+        if (token_prev_type == TOK_COMMA) {
+          return SYNTAX_ERR;
+        }
+
         if (bracket_depth > 0) {
           bracket_depth--;
         }
