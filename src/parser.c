@@ -984,6 +984,11 @@ err_code_t fun_body(token_t *token, ast_node_t **node, bool is_lambda) {
         destroy_node(body);
         RETURN_ERR(SYNTAX_ERR);
       }
+      *node = create_block_node(body);
+      if (*node == NULL) {
+        destroy_node(body);
+        RETURN_ERR(INTERNAL_ERR);
+      }
       return NO_ERR;
     }
 
