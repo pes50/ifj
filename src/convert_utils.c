@@ -88,16 +88,13 @@ char *create_unique_label(context_t *context, const char *identifier) {
 
 err_code_t discard_stack_top(context_t *context) {
   inner_symbol_t trash_var = create_var_symbol(TRASH);
-  inner_symbol_t empty_sym = create_empty_symbol();
 
-  RETURN_ERR(
-      append_statement(context, INNER_POPS, trash_var, empty_sym, empty_sym));
+  RETURN_ERR(append_statement(context, INNER_POPS, trash_var, empty_symbol(),
+                              empty_symbol()));
 }
 
 err_code_t create_helper_variable(context_t *context,
                                   inner_symbol_t *out_identifier) {
-  inner_symbol_t empty_sym = create_empty_symbol();
-
   char *helper_var_identifier = create_unique_variable(context, "helper");
   if (helper_var_identifier == NULL) {
     RETURN_ERR(INTERNAL_ERR);
@@ -107,11 +104,11 @@ err_code_t create_helper_variable(context_t *context,
   inner_symbol_t owning_sym = non_owning_sym;
   owning_sym.owns_identifier = true;
 
-  err_code_t err = insert_at_function_start(context, INNER_DEFVAR, empty_sym,
-                                            owning_sym, empty_sym);
+  err_code_t err = insert_at_function_start(
+      context, INNER_DEFVAR, empty_symbol(), owning_sym, empty_symbol());
   if (err != NO_ERR) {
     free(helper_var_identifier);
-    *out_identifier = create_empty_symbol();
+    *out_identifier = empty_symbol();
     RETURN_ERR(err);
   }
 
@@ -273,9 +270,8 @@ err_code_t retype_if_needed(context_t *context, ast_node_t *examined_operand,
   if (are_data_types_identical(&node_int, examined_operand->data_type) &&
       are_data_types_identical(&node_double, other_operand->data_type) &&
       context->tail->operation != INNER_RETURN) {
-    inner_symbol_t empty_sym = create_empty_symbol();
-    RETURN_ERR(append_statement(context, INNER_INT2FLOATS, empty_sym, empty_sym,
-                                empty_sym));
+    RETURN_ERR(append_statement(context, INNER_INT2FLOATS, empty_symbol(),
+                                empty_symbol(), empty_symbol()));
   }
 
   RETURN_ERR(NO_ERR);

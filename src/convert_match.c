@@ -33,7 +33,6 @@ static err_code_t create_runtime_type_check(context_t *context,
                                             inner_symbol_t value_var,
                                             char *expected_type,
                                             inner_symbol_t fail_label) {
-  inner_symbol_t empty_sym = create_empty_symbol();
   inner_symbol_t type_var;
   err_code_t err = create_helper_variable(context, &type_var);
   if (err != NO_ERR) {
@@ -41,7 +40,8 @@ static err_code_t create_runtime_type_check(context_t *context,
   }
 
   // Save type to variable
-  err = append_statement(context, INNER_TYPE, type_var, value_var, empty_sym);
+  err = append_statement(context, INNER_TYPE, type_var, value_var,
+                         empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -105,8 +105,6 @@ static err_code_t create_type_check(context_t *context,
   if (target_type == NULL) {
     RETURN_ERR(INTERNAL_ERR);
   }
-
-  inner_symbol_t empty_sym = create_empty_symbol();
 
   switch (target_type->type) {
   case DATA_TYPE_ANY:
@@ -180,8 +178,8 @@ static err_code_t create_type_check(context_t *context,
       }
 
       // Type matched, jump to the end of union check
-      err = append_statement(context, INNER_JUMP, matched_label, empty_sym,
-                             empty_sym);
+      err = append_statement(context, INNER_JUMP, matched_label, empty_symbol(),
+                             empty_symbol());
       if (err != NO_ERR) {
         free(next_name);
         free(matched_name);
@@ -189,8 +187,8 @@ static err_code_t create_type_check(context_t *context,
       }
 
       // Label for next union type
-      err = append_statement(context, INNER_LABEL, empty_sym, next_label_owned,
-                             empty_sym);
+      err = append_statement(context, INNER_LABEL, empty_symbol(),
+                             next_label_owned, empty_symbol());
       if (err != NO_ERR) {
         free(next_name);
         free(matched_name);
@@ -200,8 +198,8 @@ static err_code_t create_type_check(context_t *context,
       type = type->next;
     }
 
-    err_code_t err = append_statement(context, INNER_LABEL, empty_sym,
-                                      matched_owned, empty_sym);
+    err_code_t err = append_statement(context, INNER_LABEL, empty_symbol(),
+                                      matched_owned, empty_symbol());
     if (err != NO_ERR) {
       free(matched_name);
       RETURN_ERR(err);
@@ -219,7 +217,7 @@ static err_code_t create_literal_check(context_t *context,
                                        inner_symbol_t value_var,
                                        ast_node_t *pattern,
                                        inner_symbol_t fail_label) {
-  inner_symbol_t lit_sym = create_empty_symbol();
+  inner_symbol_t lit_sym = empty_symbol();
   err_code_t err = create_literal_symbol(pattern, &lit_sym);
   if (err != NO_ERR) {
     RETURN_ERR(err);
@@ -260,10 +258,9 @@ static err_code_t bind_pattern_variable(context_t *context, ast_node_t *binding,
   free(binding->data.parameter.name);
   binding->data.parameter.name = unique_name;
 
-  inner_symbol_t empty_sym = create_empty_symbol();
   inner_symbol_t var_sym = create_var_symbol(unique_name);
-  err_code_t err = insert_at_function_start(context, INNER_DEFVAR, empty_sym,
-                                            var_sym, empty_sym);
+  err_code_t err = insert_at_function_start(
+      context, INNER_DEFVAR, empty_symbol(), var_sym, empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -279,8 +276,6 @@ static err_code_t create_pattern_match(context_t *context,
   if (is_wildcard_node(pattern)) {
     RETURN_ERR(NO_ERR);
   }
-
-  inner_symbol_t empty_sym = create_empty_symbol();
 
   // Literal
   if (pattern->type == AST_LITERAL) {
@@ -304,7 +299,7 @@ static err_code_t create_pattern_match(context_t *context,
       RETURN_ERR(err);
     }
     err = append_statement(context, INNER_MOVE, bound_var, matched_variable,
-                           empty_sym);
+                           empty_symbol());
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
@@ -371,8 +366,6 @@ static err_code_t convert_match_case(context_t *context, ast_node_t *node,
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  inner_symbol_t empty_sym = create_empty_symbol();
-
   //  _ => ...
   if (is_wildcard_node(node->data.match_case.pattern)) {
     err_code_t err = convert_statement_list(context, block, true);
@@ -409,15 +402,15 @@ static err_code_t convert_match_case(context_t *context, ast_node_t *node,
 
     inner_value_t true_val = {.inner_bool = true};
     inner_symbol_t true_sym = create_const_symbol(INNER_BOOL, true_val);
-    err =
-        append_statement(context, INNER_PUSHS, empty_sym, true_sym, empty_sym);
+    err = append_statement(context, INNER_PUSHS, empty_symbol(), true_sym,
+                           empty_symbol());
     if (err != NO_ERR) {
       free(next_label_name);
       RETURN_ERR(err);
     }
 
-    err = append_statement(context, INNER_JUMPIFNEQS, next_label, empty_sym,
-                           empty_sym);
+    err = append_statement(context, INNER_JUMPIFNEQS, next_label,
+                           empty_symbol(), empty_symbol());
     if (err != NO_ERR) {
       free(next_label_name);
       RETURN_ERR(err);
@@ -439,15 +432,16 @@ static err_code_t convert_match_case(context_t *context, ast_node_t *node,
   }
 
   // Jump to end
-  err = append_statement(context, INNER_JUMP, end_label, empty_sym, empty_sym);
+  err = append_statement(context, INNER_JUMP, end_label, empty_symbol(),
+                         empty_symbol());
   if (err != NO_ERR) {
     free(next_label_name);
     RETURN_ERR(err);
   }
 
   // Label of next match case
-  err = append_statement(context, INNER_LABEL, empty_sym, next_label_owned,
-                         empty_sym);
+  err = append_statement(context, INNER_LABEL, empty_symbol(), next_label_owned,
+                         empty_symbol());
   if (err != NO_ERR) {
     free(next_label_name);
     RETURN_ERR(err);
@@ -467,8 +461,6 @@ err_code_t convert_match(context_t *context, ast_node_t *node) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  inner_symbol_t empty_sym = create_empty_symbol();
-
   // Evaluate matched expression
   err_code_t err =
       convert_expression_on_stack(context, node->data.match.expression);
@@ -482,8 +474,8 @@ err_code_t convert_match(context_t *context, ast_node_t *node) {
     RETURN_ERR(err);
   }
 
-  err = append_statement(context, INNER_POPS, matched_variable, empty_sym,
-                         empty_sym);
+  err = append_statement(context, INNER_POPS, matched_variable, empty_symbol(),
+                         empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -514,8 +506,8 @@ err_code_t convert_match(context_t *context, ast_node_t *node) {
     current_case = current_case->next;
   }
 
-  err = append_statement(context, INNER_LABEL, empty_sym, end_label_owned,
-                         empty_sym);
+  err = append_statement(context, INNER_LABEL, empty_symbol(), end_label_owned,
+                         empty_symbol());
   if (err != NO_ERR) {
     free(end_label_name);
     RETURN_ERR(err);

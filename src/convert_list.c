@@ -40,7 +40,6 @@ err_code_t convert_list_constructor_inline(context_t *context,
     current = current->next;
   }
 
-  inner_symbol_t empty_sym = create_empty_symbol();
   inner_symbol_t zero_sym =
       create_const_symbol(INNER_INT, (inner_value_t){.inner_int = 0});
   inner_symbol_t one_sym =
@@ -54,7 +53,7 @@ err_code_t convert_list_constructor_inline(context_t *context,
     RETURN_ERR(err);
   }
 
-  inner_symbol_t temp_val = create_empty_symbol();
+  inner_symbol_t temp_val = empty_symbol();
   if (count > 0) {
     err = create_helper_variable(context, &temp_val);
     if (err != NO_ERR) {
@@ -64,7 +63,7 @@ err_code_t convert_list_constructor_inline(context_t *context,
 
   // NEWARRAY list_var int@{count + 2}
   err = append_statement(context, INNER_NEWARRAY, list_var, total_size_sym,
-                         empty_sym);
+                         empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -93,7 +92,8 @@ err_code_t convert_list_constructor_inline(context_t *context,
     }
 
     // Move argument to temporary variable
-    err = append_statement(context, INNER_POPS, temp_val, empty_sym, empty_sym);
+    err = append_statement(context, INNER_POPS, temp_val, empty_symbol(),
+                           empty_symbol());
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
@@ -112,8 +112,8 @@ err_code_t convert_list_constructor_inline(context_t *context,
   }
 
   // Push list
-  RETURN_ERR(
-      append_statement(context, INNER_PUSHS, empty_sym, list_var, empty_sym));
+  RETURN_ERR(append_statement(context, INNER_PUSHS, empty_symbol(), list_var,
+                              empty_symbol()));
 }
 
 err_code_t convert_list_access(context_t *context, ast_node_t *node) {
@@ -139,7 +139,6 @@ err_code_t convert_list_access(context_t *context, ast_node_t *node) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  inner_symbol_t empty_sym = create_empty_symbol();
   inner_symbol_t zero_sym =
       create_const_symbol(INNER_INT, (inner_value_t){.inner_int = 0});
   inner_symbol_t one_sym =
@@ -164,24 +163,24 @@ err_code_t convert_list_access(context_t *context, ast_node_t *node) {
   // Evaluate target expression
   if (is_dot_call) {
     // Target expression is already evaluated at the stack
-    err = append_statement(context, INNER_POPS, target_helper, empty_sym,
-                           empty_sym);
+    err = append_statement(context, INNER_POPS, target_helper, empty_symbol(),
+                           empty_symbol());
   } else if (calling->type == AST_VARIABLE_DECLARATION) {
     err = append_statement(
         context, INNER_MOVE, target_helper,
         create_var_symbol(calling->data.variable_declaration.unique_id),
-        empty_sym);
+        empty_symbol());
   } else if (calling->type == AST_PARAMETER) {
     err = append_statement(context, INNER_MOVE, target_helper,
                            create_var_symbol(calling->data.parameter.name),
-                           empty_sym);
+                           empty_symbol());
   } else {
     err = convert_expression_on_stack(context, calling);
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
-    err = append_statement(context, INNER_POPS, target_helper, empty_sym,
-                           empty_sym);
+    err = append_statement(context, INNER_POPS, target_helper, empty_symbol(),
+                           empty_symbol());
   }
   if (err != NO_ERR) {
     RETURN_ERR(err);
@@ -194,7 +193,8 @@ err_code_t convert_list_access(context_t *context, ast_node_t *node) {
   }
 
   // Pop to variable
-  err = append_statement(context, INNER_POPS, idx_var, empty_sym, empty_sym);
+  err = append_statement(context, INNER_POPS, idx_var, empty_symbol(),
+                         empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -259,8 +259,8 @@ err_code_t convert_list_access(context_t *context, ast_node_t *node) {
     RETURN_ERR(err);
   }
 
-  err = append_statement(context, INNER_LABEL, empty_sym, err_label_owned,
-                         empty_sym);
+  err = append_statement(context, INNER_LABEL, empty_symbol(), err_label_owned,
+                         empty_symbol());
   if (err != NO_ERR) {
     free(err_label_str);
     free(ok_label_str);
@@ -270,15 +270,15 @@ err_code_t convert_list_access(context_t *context, ast_node_t *node) {
   inner_symbol_t exit_code_sym =
       create_const_symbol(INNER_INT, (inner_value_t){.inner_int = RUNTIME_ERR});
 
-  err = append_statement(context, INNER_EXIT, empty_sym, exit_code_sym,
-                         empty_sym);
+  err = append_statement(context, INNER_EXIT, empty_symbol(), exit_code_sym,
+                         empty_symbol());
   if (err != NO_ERR) {
     free(ok_label_str);
     RETURN_ERR(err);
   }
 
-  err = append_statement(context, INNER_LABEL, empty_sym, ok_label_owned,
-                         empty_sym);
+  err = append_statement(context, INNER_LABEL, empty_symbol(), ok_label_owned,
+                         empty_symbol());
   if (err != NO_ERR) {
     free(ok_label_str);
     RETURN_ERR(err);
@@ -290,15 +290,14 @@ err_code_t convert_list_access(context_t *context, ast_node_t *node) {
     RETURN_ERR(err);
   }
 
-  RETURN_ERR(append_statement(context, INNER_PUSHS, empty_sym, target_helper,
-                              empty_sym));
+  RETURN_ERR(append_statement(context, INNER_PUSHS, empty_symbol(),
+                              target_helper, empty_symbol()));
 }
 
 static err_code_t
 create_list_copy_loop(context_t *context, inner_symbol_t src_list,
                       inner_symbol_t src_size, inner_symbol_t dst_list,
                       inner_symbol_t dst_idx, bool int_to_float) {
-  inner_symbol_t empty_sym = create_empty_symbol();
   inner_symbol_t one_sym =
       create_const_symbol(INNER_INT, (inner_value_t){.inner_int = 1});
   inner_symbol_t two_sym =
@@ -339,7 +338,7 @@ create_list_copy_loop(context_t *context, inner_symbol_t src_list,
   end_label_owned.owns_identifier = true;
 
   // src_idx = 2
-  err = append_statement(context, INNER_MOVE, src_idx, two_sym, empty_sym);
+  err = append_statement(context, INNER_MOVE, src_idx, two_sym, empty_symbol());
   if (err != NO_ERR) {
     free(loop_label_str);
     free(end_label_str);
@@ -347,8 +346,8 @@ create_list_copy_loop(context_t *context, inner_symbol_t src_list,
   }
 
   // LABEL loop
-  err = append_statement(context, INNER_LABEL, empty_sym, loop_label_owned,
-                         empty_sym);
+  err = append_statement(context, INNER_LABEL, empty_symbol(), loop_label_owned,
+                         empty_symbol());
   if (err != NO_ERR) {
     free(loop_label_str);
     free(end_label_str);
@@ -378,7 +377,7 @@ create_list_copy_loop(context_t *context, inner_symbol_t src_list,
 
   if (int_to_float) {
     err = append_statement(context, INNER_INT2FLOAT, element_var, element_var,
-                           empty_sym);
+                           empty_symbol());
     if (err != NO_ERR) {
       free(end_label_str);
       RETURN_ERR(err);
@@ -407,14 +406,15 @@ create_list_copy_loop(context_t *context, inner_symbol_t src_list,
     RETURN_ERR(err);
   }
 
-  err = append_statement(context, INNER_JUMP, loop_label, empty_sym, empty_sym);
+  err = append_statement(context, INNER_JUMP, loop_label, empty_symbol(),
+                         empty_symbol());
   if (err != NO_ERR) {
     free(end_label_str);
     RETURN_ERR(err);
   }
 
-  err = append_statement(context, INNER_LABEL, empty_sym, end_label_owned,
-                         empty_sym);
+  err = append_statement(context, INNER_LABEL, empty_symbol(), end_label_owned,
+                         empty_symbol());
   if (err != NO_ERR) {
     free(end_label_str);
     RETURN_ERR(err);
@@ -450,7 +450,6 @@ err_code_t convert_list_concat_expression(context_t *context,
     RETURN_ERR(err);
   }
 
-  inner_symbol_t empty_sym = create_empty_symbol();
   inner_symbol_t zero_sym =
       create_const_symbol(INNER_INT, (inner_value_t){.inner_int = 0});
   inner_symbol_t one_sym =
@@ -477,11 +476,13 @@ err_code_t convert_list_concat_expression(context_t *context,
   }
 
   // Pop operands
-  err = append_statement(context, INNER_POPS, right_list, empty_sym, empty_sym);
+  err = append_statement(context, INNER_POPS, right_list, empty_symbol(),
+                         empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
-  err = append_statement(context, INNER_POPS, left_list, empty_sym, empty_sym);
+  err = append_statement(context, INNER_POPS, left_list, empty_symbol(),
+                         empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -510,7 +511,7 @@ err_code_t convert_list_concat_expression(context_t *context,
 
   // Initialize dst_list
   err = append_statement(context, INNER_NEWARRAY, dst_list, total_size,
-                         empty_sym);
+                         empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -535,7 +536,7 @@ err_code_t convert_list_concat_expression(context_t *context,
         &node_int, right_operand->data_type->data.list_type.elements_type);
   }
 
-  err = append_statement(context, INNER_MOVE, dst_idx, two_sym, empty_sym);
+  err = append_statement(context, INNER_MOVE, dst_idx, two_sym, empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -554,6 +555,6 @@ err_code_t convert_list_concat_expression(context_t *context,
     RETURN_ERR(err);
   }
 
-  RETURN_ERR(
-      append_statement(context, INNER_PUSHS, empty_sym, dst_list, empty_sym));
+  RETURN_ERR(append_statement(context, INNER_PUSHS, empty_symbol(), dst_list,
+                              empty_symbol()));
 }
