@@ -1362,3 +1362,16 @@ TEST_F(LexerFixture, commaInsideParensBeforeClosingParen) {
   expect_get(TOK_COMMA);
   expect_err(SYNTAX_ERR);
 }
+
+TEST_F(LexerFixture, parensNotClosed) {
+  feed("val x = (1 + 2\n");
+
+  expect_get(TOK_KW_VAL);
+  expect_get(TOK_IDENTIFIER, "x");
+  expect_get(TOK_ASSIGN);
+  expect_get(TOK_L_PAREN);
+  expect_get(TOK_LIT_INT, "1");
+  expect_get(TOK_BINARY_PLUS);
+  expect_get(TOK_LIT_INT, "2");
+  expect_err(SYNTAX_ERR);
+}
