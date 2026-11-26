@@ -2,6 +2,7 @@
  *
  * @file convert_node.h
  *
+ * @author Roman Skoupý     (xskoupr00)
  * @author Tomáš Peňás      (xpenast00)
  *
  * @brief Interface of AST node to 3AC statement conversion
@@ -13,17 +14,6 @@
 #define CONVERT_NODE_H
 
 #include "ast_convert.h"
-
-/**
- * @brief Converts every node in AST node chain
- * @param context Context structure of the operation
- * @param node A pointer to the first AST node
- * @param keep_last If true keep last evaluated statement on stack
- *
- * @return NO_ERR on success
- */
-err_code_t convert_statement_list(context_t *context, ast_node_t *node,
-                                  bool keep_last);
 
 /**
  * @brief Appends statement into the context list of statements

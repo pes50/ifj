@@ -11,10 +11,11 @@
  * statement constructor calls in this file and files related to AST to 3AC
  * conversion (convert_*.c)
  *
- \*****************************************************************************/
+\*****************************************************************************/
 
 #include "ast_convert.h"
 #include "convert_node.h"
+#include "convert_statements.h"
 #include "convert_utils.h"
 #include <stdio.h>
 #include <string.h>
@@ -24,7 +25,7 @@
 #pragma region Pop parameter lists
 
 /**
- * @brief Creates variable identifier with LF@ (local frame) prefix
+ * @brief Creates variable identifier with LF@ prefix
  *
  * @param identifier Identifier of the variable
  *
@@ -47,42 +48,60 @@ static char *alloc_lf_var_name(const char *identifier) {
 
 /**
  * @brief Defines LF parameter variables and pops incoming arguments in reverse
- *        order from the data stack (top of stack holds the rightmost argument)
+ *        order from the data stack
+ *
+ * @param context   Context structure
+ * @param parameter A pointer to an AST parameter node
+ *
+ * @return NO_ERR on success
  */
-err_code_t pop_parameter_list_reverse(context_t *context, ast_node_t *param) {
-  if (param == NULL) {
+static err_code_t pop_parameter_list_reverse(context_t *context,
+                                             ast_node_t *parameter) {
+  // Do nothing
+  if (parameter == NULL) {
     RETURN_ERR(NO_ERR);
   }
-  if (param->type != AST_PARAMETER || param->data.parameter.name == NULL) {
+
+  if (parameter->type != AST_PARAMETER ||
+      parameter->data.parameter.name == NULL) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  char *lf_name = alloc_lf_var_name(param->data.parameter.name);
+  // Create variable for the parameter
+  char *lf_name = alloc_lf_var_name(parameter->data.parameter.name);
   if (lf_name == NULL) {
     RETURN_ERR(INTERNAL_ERR);
   }
-  free(param->data.parameter.name);
-  param->data.parameter.name = lf_name;
+  // Update reference
+  free(parameter->data.parameter.name);
+  parameter->data.parameter.name = lf_name;
 
-  inner_symbol_t empty_sym = create_empty_symbol();
-
-  err_code_t err = append_statement(context, INNER_DEFVAR, empty_sym,
-                                    create_var_symbol(lf_name), empty_sym);
+  err_code_t err = append_statement(context, INNER_DEFVAR, empty_symbol(),
+                                    create_var_symbol(lf_name), empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
-  err = pop_parameter_list_reverse(context, param->next);
+  err = pop_parameter_list_reverse(context, parameter->next);
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
   RETURN_ERR(append_statement(context, INNER_POPS, create_var_symbol(lf_name),
-                              empty_sym, empty_sym));
+                              empty_symbol(), empty_symbol()));
 }
 
-err_code_t pop_parameter_lists_reverse(context_t *context,
-                                       ast_node_t *param_list) {
+/**
+ * @brief Recursively processes all parameter lists and pops incoming arguments
+ *        in reverse order from the data stack
+ *
+ * @param context    Context structure
+ * @param param_list A pointer to an AST parameter list node
+ *
+ * @return NO_ERR on success
+ */
+static err_code_t pop_parameter_lists_reverse(context_t *context,
+                                              ast_node_t *param_list) {
   if (param_list == NULL) {
     RETURN_ERR(NO_ERR);
   }
@@ -109,26 +128,26 @@ err_code_t pop_parameter_lists_reverse(context_t *context,
  *
  * @return NO_ERR if everything ok
  */
-err_code_t append_main_call(context_t *context, ast_node_t *node) {
+static err_code_t append_main_call(context_t *context, ast_node_t *node) {
   err_code_t err = NO_ERR;
-  inner_symbol_t empty_sym = create_empty_symbol();
-
   inner_symbol_t main_label =
       create_label_symbol(node->data.function_declaration.name);
-  err = append_statement(context, INNER_CALL, empty_sym, main_label, empty_sym);
+  err = append_statement(context, INNER_CALL, empty_symbol(), main_label,
+                         empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
-  err =
-      append_statement(context, INNER_CLEARS, empty_sym, empty_sym, empty_sym);
+  err = append_statement(context, INNER_CLEARS, empty_symbol(), empty_symbol(),
+                         empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
   inner_value_t zero = {.inner_int = 0};
   inner_symbol_t zero_const = create_const_symbol(INNER_INT, zero);
-  err = append_statement(context, INNER_EXIT, empty_sym, zero_const, empty_sym);
+  err = append_statement(context, INNER_EXIT, empty_symbol(), zero_const,
+                         empty_symbol());
 
   RETURN_ERR(err);
 }
@@ -141,7 +160,8 @@ err_code_t append_main_call(context_t *context, ast_node_t *node) {
  *
  * @return NO_ERR if everything ok
  */
-err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
+static err_code_t convert_function_declaration(context_t *context,
+                                               ast_node_t *node) {
   // check for invalid inputs
   if (context == NULL || node == NULL ||
       node->type != AST_FUNCTION_DECLARATION) {
@@ -190,22 +210,22 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
   }
 
   // label
-  inner_symbol_t empty_sym = create_empty_symbol();
   err_code_t err = append_statement(
-      context, INNER_LABEL, empty_sym,
-      create_label_symbol(node->data.function_declaration.name), empty_sym);
+      context, INNER_LABEL, empty_symbol(),
+      create_label_symbol(node->data.function_declaration.name),
+      empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
-  err = append_statement(context, INNER_CREATEFRAME, empty_sym, empty_sym,
-                         empty_sym);
+  err = append_statement(context, INNER_CREATEFRAME, empty_symbol(),
+                         empty_symbol(), empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
-  err = append_statement(context, INNER_PUSHFRAME, empty_sym, empty_sym,
-                         empty_sym);
+  err = append_statement(context, INNER_PUSHFRAME, empty_symbol(),
+                         empty_symbol(), empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -235,21 +255,21 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
     if (is_unit) {
       inner_value_t nil_val = {.inner_nil = NULL};
       inner_symbol_t nil_sym = create_const_symbol(INNER_NIL, nil_val);
-      err =
-          append_statement(context, INNER_PUSHS, empty_sym, nil_sym, empty_sym);
+      err = append_statement(context, INNER_PUSHS, empty_symbol(), nil_sym,
+                             empty_symbol());
       if (err != NO_ERR) {
         RETURN_ERR(err);
       }
     }
 
-    err = append_statement(context, INNER_POPFRAME, empty_sym, empty_sym,
-                           empty_sym);
+    err = append_statement(context, INNER_POPFRAME, empty_symbol(),
+                           empty_symbol(), empty_symbol());
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
 
-    err = append_statement(context, INNER_RETURN, empty_sym, empty_sym,
-                           empty_sym);
+    err = append_statement(context, INNER_RETURN, empty_symbol(),
+                           empty_symbol(), empty_symbol());
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
@@ -258,7 +278,16 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
   RETURN_ERR(NO_ERR);
 }
 
-err_code_t convert_class_constructor(context_t *context, ast_node_t *node) {
+/**
+ * @brief Converts class constructor definition to 3AC
+ *
+ * @param context Context structure
+ * @param node    AST node containing the class declaration
+ *
+ * @return NO_ERR on success
+ */
+static err_code_t convert_class_constructor(context_t *context,
+                                            ast_node_t *node) {
   if (context == NULL || node == NULL || node->type != AST_CLASS_DECLARATION) {
     RETURN_ERR(INTERNAL_ERR);
   }
@@ -275,25 +304,24 @@ err_code_t convert_class_constructor(context_t *context, ast_node_t *node) {
   }
 
   size_t attr_count = node->data.class_declaration.attribute_count;
-  inner_symbol_t empty_sym = create_empty_symbol();
 
   // LABEL {class_name}
-  err = append_statement(context, INNER_LABEL, empty_sym,
-                         create_label_symbol(class_name), empty_sym);
+  err = append_statement(context, INNER_LABEL, empty_symbol(),
+                         create_label_symbol(class_name), empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
   // CREATEFRAME
-  err = append_statement(context, INNER_CREATEFRAME, empty_sym, empty_sym,
-                         empty_sym);
+  err = append_statement(context, INNER_CREATEFRAME, empty_symbol(),
+                         empty_symbol(), empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
   // PUSHFRAME
-  err = append_statement(context, INNER_PUSHFRAME, empty_sym, empty_sym,
-                         empty_sym);
+  err = append_statement(context, INNER_PUSHFRAME, empty_symbol(),
+                         empty_symbol(), empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -306,7 +334,7 @@ err_code_t convert_class_constructor(context_t *context, ast_node_t *node) {
     RETURN_ERR(err);
   }
 
-  inner_symbol_t temp_variable = create_empty_symbol();
+  inner_symbol_t temp_variable = empty_symbol();
   if (attr_count > 0) {
     err = create_helper_variable(context, &temp_variable);
     if (err != NO_ERR) {
@@ -318,7 +346,7 @@ err_code_t convert_class_constructor(context_t *context, ast_node_t *node) {
   inner_value_t size_val = {.inner_int = (long long)(attr_count + 1)};
   inner_symbol_t size_sym = create_const_symbol(INNER_INT, size_val);
   err = append_statement(context, INNER_NEWARRAY, instance_variable, size_sym,
-                         empty_sym);
+                         empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -338,8 +366,8 @@ err_code_t convert_class_constructor(context_t *context, ast_node_t *node) {
   // Pop arguments to class
   for (size_t i = attr_count; i >= 1; i--) {
     // Get value from stack
-    err = append_statement(context, INNER_POPS, temp_variable, empty_sym,
-                           empty_sym);
+    err = append_statement(context, INNER_POPS, temp_variable, empty_symbol(),
+                           empty_symbol());
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
@@ -355,26 +383,35 @@ err_code_t convert_class_constructor(context_t *context, ast_node_t *node) {
   }
 
   // PUSHS {instance_variable}
-  err = append_statement(context, INNER_PUSHS, empty_sym, instance_variable,
-                         empty_sym);
+  err = append_statement(context, INNER_PUSHS, empty_symbol(),
+                         instance_variable, empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
   // POPFRAME
-  err = append_statement(context, INNER_POPFRAME, empty_sym, empty_sym,
-                         empty_sym);
+  err = append_statement(context, INNER_POPFRAME, empty_symbol(),
+                         empty_symbol(), empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
   // RETURN
-  err =
-      append_statement(context, INNER_RETURN, empty_sym, empty_sym, empty_sym);
+  err = append_statement(context, INNER_RETURN, empty_symbol(), empty_symbol(),
+                         empty_symbol());
   RETURN_ERR(err);
 }
 
-err_code_t convert_lambda_declaration(context_t *context, ast_node_t *node) {
+/**
+ * @brief Converts lambda function definition to 3AC
+ *
+ * @param context Context structure
+ * @param node    AST node containing the lambda declaration
+ *
+ * @return NO_ERR on success
+ */
+static err_code_t convert_lambda_declaration(context_t *context,
+                                             ast_node_t *node) {
   if (context == NULL || node == NULL || node->type != AST_LAMBDA_DECLARATION ||
       node->data_type == NULL || node->data_type->type != DATA_TYPE_LAMBDA ||
       node->data_type->data.lambda_type.return_type == NULL) {
@@ -387,26 +424,24 @@ err_code_t convert_lambda_declaration(context_t *context, ast_node_t *node) {
     RETURN_ERR(INTERNAL_ERR);
   }
 
-  inner_symbol_t empty_sym = create_empty_symbol();
-
   // LABEL {lambda_name}
   err_code_t err =
-      append_statement(context, INNER_LABEL, empty_sym,
-                       create_label_symbol(lambda_name), empty_sym);
+      append_statement(context, INNER_LABEL, empty_symbol(),
+                       create_label_symbol(lambda_name), empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
   // CREATEFRAME
-  err = append_statement(context, INNER_CREATEFRAME, empty_sym, empty_sym,
-                         empty_sym);
+  err = append_statement(context, INNER_CREATEFRAME, empty_symbol(),
+                         empty_symbol(), empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
 
   // PUSHFRAME
-  err = append_statement(context, INNER_PUSHFRAME, empty_sym, empty_sym,
-                         empty_sym);
+  err = append_statement(context, INNER_PUSHFRAME, empty_symbol(),
+                         empty_symbol(), empty_symbol());
   if (err != NO_ERR) {
     RETURN_ERR(err);
   }
@@ -432,21 +467,21 @@ err_code_t convert_lambda_declaration(context_t *context, ast_node_t *node) {
     if (is_unit) {
       inner_value_t nil_val = {.inner_nil = NULL};
       inner_symbol_t nil_sym = create_const_symbol(INNER_NIL, nil_val);
-      err =
-          append_statement(context, INNER_PUSHS, empty_sym, nil_sym, empty_sym);
+      err = append_statement(context, INNER_PUSHS, empty_symbol(), nil_sym,
+                             empty_symbol());
       if (err != NO_ERR) {
         RETURN_ERR(err);
       }
     }
 
-    err = append_statement(context, INNER_POPFRAME, empty_sym, empty_sym,
-                           empty_sym);
+    err = append_statement(context, INNER_POPFRAME, empty_symbol(),
+                           empty_symbol(), empty_symbol());
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }
 
-    err = append_statement(context, INNER_RETURN, empty_sym, empty_sym,
-                           empty_sym);
+    err = append_statement(context, INNER_RETURN, empty_symbol(),
+                           empty_symbol(), empty_symbol());
     if (err != NO_ERR) {
       RETURN_ERR(err);
     }

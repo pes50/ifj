@@ -28,7 +28,7 @@ inner_statement_t *allocate_statement() {
  * Inner code interface implementation *
 \***************************************/
 
-inner_symbol_t create_empty_symbol() {
+inner_symbol_t empty_symbol() {
   inner_symbol_t empty;
   empty.type = INNER_SYM_EMPTY;
   empty.data.identificator = NULL;

@@ -195,7 +195,7 @@ typedef struct inner_statement {
  *
  * @return Returns the empty symbol
  */
-inner_symbol_t create_empty_symbol();
+inner_symbol_t empty_symbol();
 
 /**
  * @brief Creates variable symbol with given parameters
