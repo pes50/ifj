@@ -677,7 +677,7 @@ def f(x Int): Int = x
                     R"(import ifj26.*
 @main def main(): Unit =
   val x = 1
-  + 2
+  * 2
 )",
                     {2}),
       E2ECompileErr("ErrSyn_MultilineParenInsufficientIndent",
