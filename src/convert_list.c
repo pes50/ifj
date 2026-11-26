@@ -15,6 +15,150 @@
 #include <stdio.h>
 #include <string.h>
 
+/**
+ * Copies elements from src_list to dst_list (casts int to float if needed).
+ *
+ * move src_idx, 2
+ * label list_concat_loop
+ * lt cond, src_idx, src_size
+ * jumpifneq list_concat_end, cond, true
+ * arrayget elem, src_list, src_idx
+ * [int2float elem, elem]
+ * arrayset dst_list, dst_idx, elem
+ * add src_idx, src_idx, 1
+ * add dst_idx, dst_idx, 1
+ * jump list_concat_loop
+ * label list_concat_end
+ */
+static err_code_t
+create_list_copy_loop(context_t *context, inner_symbol_t src_list,
+                      inner_symbol_t src_size, inner_symbol_t dst_list,
+                      inner_symbol_t dst_idx, bool int_to_float) {
+  inner_symbol_t one_sym =
+      create_const_symbol(INNER_INT, (inner_value_t){.inner_int = 1});
+  inner_symbol_t two_sym =
+      create_const_symbol(INNER_INT, (inner_value_t){.inner_int = 2});
+  inner_symbol_t true_sym =
+      create_const_symbol(INNER_BOOL, (inner_value_t){.inner_bool = true});
+
+  inner_symbol_t src_idx;
+  inner_symbol_t condition_var;
+  inner_symbol_t element_var;
+  err_code_t err = create_helper_variable(context, &src_idx);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+  err = create_helper_variable(context, &condition_var);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+  err = create_helper_variable(context, &element_var);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  char *loop_label_str = create_unique_label(context, "list_concat_loop");
+  char *end_label_str = create_unique_label(context, "list_concat_end");
+  if (loop_label_str == NULL || end_label_str == NULL) {
+    free(loop_label_str);
+    free(end_label_str);
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_symbol_t loop_label = create_label_symbol(loop_label_str);
+  inner_symbol_t loop_label_owned = loop_label;
+  loop_label_owned.owns_identifier = true;
+
+  inner_symbol_t end_label = create_label_symbol(end_label_str);
+  inner_symbol_t end_label_owned = end_label;
+  end_label_owned.owns_identifier = true;
+
+  // src_idx = 2
+  err = append_statement(context, INNER_MOVE, src_idx, two_sym, empty_symbol());
+  if (err != NO_ERR) {
+    free(loop_label_str);
+    free(end_label_str);
+    RETURN_ERR(err);
+  }
+
+  // LABEL loop
+  err = append_statement(context, INNER_LABEL, empty_symbol(), loop_label_owned,
+                         empty_symbol());
+  if (err != NO_ERR) {
+    free(loop_label_str);
+    free(end_label_str);
+    RETURN_ERR(err);
+  }
+
+  // if (!(src_idx < src_size)) jump end
+  err = append_statement(context, INNER_LT, condition_var, src_idx, src_size);
+  if (err != NO_ERR) {
+    free(end_label_str);
+    RETURN_ERR(err);
+  }
+  err = append_statement(context, INNER_JUMPIFNEQ, end_label, condition_var,
+                         true_sym);
+  if (err != NO_ERR) {
+    free(end_label_str);
+    RETURN_ERR(err);
+  }
+
+  // element = src_list[src_idx]
+  err =
+      append_statement(context, INNER_ARRAYGET, element_var, src_list, src_idx);
+  if (err != NO_ERR) {
+    free(end_label_str);
+    RETURN_ERR(err);
+  }
+
+  if (int_to_float) {
+    err = append_statement(context, INNER_INT2FLOAT, element_var, element_var,
+                           empty_symbol());
+    if (err != NO_ERR) {
+      free(end_label_str);
+      RETURN_ERR(err);
+    }
+  }
+
+  // dst_list[dst_idx] = element
+  err =
+      append_statement(context, INNER_ARRAYSET, dst_list, dst_idx, element_var);
+  if (err != NO_ERR) {
+    free(end_label_str);
+    RETURN_ERR(err);
+  }
+
+  // src_idx++
+  err = append_statement(context, INNER_ADD, src_idx, src_idx, one_sym);
+  if (err != NO_ERR) {
+    free(end_label_str);
+    RETURN_ERR(err);
+  }
+
+  // dst_idx++
+  err = append_statement(context, INNER_ADD, dst_idx, dst_idx, one_sym);
+  if (err != NO_ERR) {
+    free(end_label_str);
+    RETURN_ERR(err);
+  }
+
+  err = append_statement(context, INNER_JUMP, loop_label, empty_symbol(),
+                         empty_symbol());
+  if (err != NO_ERR) {
+    free(end_label_str);
+    RETURN_ERR(err);
+  }
+
+  err = append_statement(context, INNER_LABEL, empty_symbol(), end_label_owned,
+                         empty_symbol());
+  if (err != NO_ERR) {
+    free(end_label_str);
+    RETURN_ERR(err);
+  }
+
+  return NO_ERR;
+}
+
 err_code_t convert_list_constructor_inline(context_t *context,
                                            ast_node_t *node) {
   if (context == NULL || node == NULL || node->type != AST_FUNCTION_CALL) {
@@ -292,135 +436,6 @@ err_code_t convert_list_access(context_t *context, ast_node_t *node) {
 
   RETURN_ERR(append_statement(context, INNER_PUSHS, empty_symbol(),
                               target_helper, empty_symbol()));
-}
-
-static err_code_t
-create_list_copy_loop(context_t *context, inner_symbol_t src_list,
-                      inner_symbol_t src_size, inner_symbol_t dst_list,
-                      inner_symbol_t dst_idx, bool int_to_float) {
-  inner_symbol_t one_sym =
-      create_const_symbol(INNER_INT, (inner_value_t){.inner_int = 1});
-  inner_symbol_t two_sym =
-      create_const_symbol(INNER_INT, (inner_value_t){.inner_int = 2});
-  inner_symbol_t true_sym =
-      create_const_symbol(INNER_BOOL, (inner_value_t){.inner_bool = true});
-
-  inner_symbol_t src_idx;
-  inner_symbol_t condition_var;
-  inner_symbol_t element_var;
-  err_code_t err = create_helper_variable(context, &src_idx);
-  if (err != NO_ERR) {
-    RETURN_ERR(err);
-  }
-  err = create_helper_variable(context, &condition_var);
-  if (err != NO_ERR) {
-    RETURN_ERR(err);
-  }
-  err = create_helper_variable(context, &element_var);
-  if (err != NO_ERR) {
-    RETURN_ERR(err);
-  }
-
-  char *loop_label_str = create_unique_label(context, "list_concat_loop");
-  char *end_label_str = create_unique_label(context, "list_concat_end");
-  if (loop_label_str == NULL || end_label_str == NULL) {
-    free(loop_label_str);
-    free(end_label_str);
-    RETURN_ERR(INTERNAL_ERR);
-  }
-
-  inner_symbol_t loop_label = create_label_symbol(loop_label_str);
-  inner_symbol_t loop_label_owned = loop_label;
-  loop_label_owned.owns_identifier = true;
-
-  inner_symbol_t end_label = create_label_symbol(end_label_str);
-  inner_symbol_t end_label_owned = end_label;
-  end_label_owned.owns_identifier = true;
-
-  // src_idx = 2
-  err = append_statement(context, INNER_MOVE, src_idx, two_sym, empty_symbol());
-  if (err != NO_ERR) {
-    free(loop_label_str);
-    free(end_label_str);
-    RETURN_ERR(err);
-  }
-
-  // LABEL loop
-  err = append_statement(context, INNER_LABEL, empty_symbol(), loop_label_owned,
-                         empty_symbol());
-  if (err != NO_ERR) {
-    free(loop_label_str);
-    free(end_label_str);
-    RETURN_ERR(err);
-  }
-
-  // if (!(src_idx < src_size)) jump end
-  err = append_statement(context, INNER_LT, condition_var, src_idx, src_size);
-  if (err != NO_ERR) {
-    free(end_label_str);
-    RETURN_ERR(err);
-  }
-  err = append_statement(context, INNER_JUMPIFNEQ, end_label, condition_var,
-                         true_sym);
-  if (err != NO_ERR) {
-    free(end_label_str);
-    RETURN_ERR(err);
-  }
-
-  // element = src_list[src_idx]
-  err =
-      append_statement(context, INNER_ARRAYGET, element_var, src_list, src_idx);
-  if (err != NO_ERR) {
-    free(end_label_str);
-    RETURN_ERR(err);
-  }
-
-  if (int_to_float) {
-    err = append_statement(context, INNER_INT2FLOAT, element_var, element_var,
-                           empty_symbol());
-    if (err != NO_ERR) {
-      free(end_label_str);
-      RETURN_ERR(err);
-    }
-  }
-
-  // dst_list[dst_idx] = element
-  err =
-      append_statement(context, INNER_ARRAYSET, dst_list, dst_idx, element_var);
-  if (err != NO_ERR) {
-    free(end_label_str);
-    RETURN_ERR(err);
-  }
-
-  // src_idx++
-  err = append_statement(context, INNER_ADD, src_idx, src_idx, one_sym);
-  if (err != NO_ERR) {
-    free(end_label_str);
-    RETURN_ERR(err);
-  }
-
-  // dst_idx++
-  err = append_statement(context, INNER_ADD, dst_idx, dst_idx, one_sym);
-  if (err != NO_ERR) {
-    free(end_label_str);
-    RETURN_ERR(err);
-  }
-
-  err = append_statement(context, INNER_JUMP, loop_label, empty_symbol(),
-                         empty_symbol());
-  if (err != NO_ERR) {
-    free(end_label_str);
-    RETURN_ERR(err);
-  }
-
-  err = append_statement(context, INNER_LABEL, empty_symbol(), end_label_owned,
-                         empty_symbol());
-  if (err != NO_ERR) {
-    free(end_label_str);
-    RETURN_ERR(err);
-  }
-
-  return NO_ERR;
 }
 
 err_code_t convert_list_concat_expression(context_t *context,

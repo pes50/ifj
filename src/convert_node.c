@@ -2,6 +2,7 @@
  *
  * @file convert_node.c
  *
+ * @author Roman Skoupý     (xskoupr00)
  * @author Tomáš Peňás      (xpenast00)
  *
  * @brief Implementation of AST node to 3AC statement conversion

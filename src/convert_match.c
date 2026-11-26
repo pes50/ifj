@@ -29,6 +29,10 @@ static bool is_wildcard_node(ast_node_t *node) {
   return node->data_type->type == DATA_TYPE_ANY;
 }
 
+/**
+ * type type_var, value_var
+ * jumpifneq fail_label, type_var, expected_type
+ */
 static err_code_t create_runtime_type_check(context_t *context,
                                             inner_symbol_t value_var,
                                             char *expected_type,
@@ -53,6 +57,11 @@ static err_code_t create_runtime_type_check(context_t *context,
                               exp_sym));
 }
 
+/**
+ * create_runtime_type_check(value_var, "array", fail_label)
+ * arrayget id_var, value_var, 0
+ * jumpifneq fail_label, id_var, expected_id
+ */
 static err_code_t create_array_id_check(context_t *context,
                                         inner_symbol_t value_var,
                                         size_t expected_id,
@@ -84,6 +93,9 @@ static err_code_t create_array_id_check(context_t *context,
       append_statement(context, INNER_JUMPIFNEQ, fail_label, id_var, id_sym));
 }
 
+/**
+ * create_array_id_check(value_var, class_id, fail_label)
+ */
 static err_code_t create_class_id_check(context_t *context,
                                         inner_symbol_t value_var,
                                         ast_node_t *class_declaration,
@@ -213,6 +225,10 @@ static err_code_t create_type_check(context_t *context,
   }
 }
 
+/**
+ * create_type_check(value_var, literal_type, fail_label)
+ * jumpifneq fail_label, value_var, lit_sym
+ */
 static err_code_t create_literal_check(context_t *context,
                                        inner_symbol_t value_var,
                                        ast_node_t *pattern,
@@ -233,6 +249,10 @@ static err_code_t create_literal_check(context_t *context,
                               lit_sym));
 }
 
+/**
+ * // Inserted at function start:
+ * defvar unique_var
+ */
 static err_code_t bind_pattern_variable(context_t *context, ast_node_t *binding,
                                         inner_symbol_t *out_variable) {
   if (context == NULL || binding == NULL || out_variable == NULL) {

@@ -11,10 +11,11 @@
  * statement constructor calls in this file and files related to AST to 3AC
  * conversion (convert_*.c)
  *
- \*****************************************************************************/
+\*****************************************************************************/
 
 #include "ast_convert.h"
 #include "convert_node.h"
+#include "convert_statements.h"
 #include "convert_utils.h"
 #include <stdio.h>
 #include <string.h>
@@ -49,13 +50,13 @@ static char *alloc_lf_var_name(const char *identifier) {
  * @brief Defines LF parameter variables and pops incoming arguments in reverse
  *        order from the data stack
  *
- * @param context Context structure
+ * @param context   Context structure
  * @param parameter A pointer to an AST parameter node
  *
  * @return NO_ERR on success
  */
-err_code_t pop_parameter_list_reverse(context_t *context,
-                                      ast_node_t *parameter) {
+static err_code_t pop_parameter_list_reverse(context_t *context,
+                                             ast_node_t *parameter) {
   // Do nothing
   if (parameter == NULL) {
     RETURN_ERR(NO_ERR);
@@ -90,8 +91,17 @@ err_code_t pop_parameter_list_reverse(context_t *context,
                               empty_symbol(), empty_symbol()));
 }
 
-err_code_t pop_parameter_lists_reverse(context_t *context,
-                                       ast_node_t *param_list) {
+/**
+ * @brief Recursively processes all parameter lists and pops incoming arguments
+ *        in reverse order from the data stack
+ *
+ * @param context    Context structure
+ * @param param_list A pointer to an AST parameter list node
+ *
+ * @return NO_ERR on success
+ */
+static err_code_t pop_parameter_lists_reverse(context_t *context,
+                                              ast_node_t *param_list) {
   if (param_list == NULL) {
     RETURN_ERR(NO_ERR);
   }
@@ -118,7 +128,7 @@ err_code_t pop_parameter_lists_reverse(context_t *context,
  *
  * @return NO_ERR if everything ok
  */
-err_code_t append_main_call(context_t *context, ast_node_t *node) {
+static err_code_t append_main_call(context_t *context, ast_node_t *node) {
   err_code_t err = NO_ERR;
   inner_symbol_t main_label =
       create_label_symbol(node->data.function_declaration.name);
@@ -150,7 +160,8 @@ err_code_t append_main_call(context_t *context, ast_node_t *node) {
  *
  * @return NO_ERR if everything ok
  */
-err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
+static err_code_t convert_function_declaration(context_t *context,
+                                               ast_node_t *node) {
   // check for invalid inputs
   if (context == NULL || node == NULL ||
       node->type != AST_FUNCTION_DECLARATION) {
@@ -267,7 +278,16 @@ err_code_t convert_function_declaration(context_t *context, ast_node_t *node) {
   RETURN_ERR(NO_ERR);
 }
 
-err_code_t convert_class_constructor(context_t *context, ast_node_t *node) {
+/**
+ * @brief Converts class constructor definition to 3AC
+ *
+ * @param context Context structure
+ * @param node    AST node containing the class declaration
+ *
+ * @return NO_ERR on success
+ */
+static err_code_t convert_class_constructor(context_t *context,
+                                            ast_node_t *node) {
   if (context == NULL || node == NULL || node->type != AST_CLASS_DECLARATION) {
     RETURN_ERR(INTERNAL_ERR);
   }
@@ -382,7 +402,16 @@ err_code_t convert_class_constructor(context_t *context, ast_node_t *node) {
   RETURN_ERR(err);
 }
 
-err_code_t convert_lambda_declaration(context_t *context, ast_node_t *node) {
+/**
+ * @brief Converts lambda function definition to 3AC
+ *
+ * @param context Context structure
+ * @param node    AST node containing the lambda declaration
+ *
+ * @return NO_ERR on success
+ */
+static err_code_t convert_lambda_declaration(context_t *context,
+                                             ast_node_t *node) {
   if (context == NULL || node == NULL || node->type != AST_LAMBDA_DECLARATION ||
       node->data_type == NULL || node->data_type->type != DATA_TYPE_LAMBDA ||
       node->data_type->data.lambda_type.return_type == NULL) {

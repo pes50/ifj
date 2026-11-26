@@ -15,6 +15,47 @@
 #include <stdlib.h>
 #include <string.h>
 
+/**
+ * @brief Removes '_', 'd' and 'D' characters from numeric literals
+ *
+ * @param raw String form of the literal
+ * @param strip_d_suffix Bool to inform that the type is double -> 'd' or 'D'
+ *                       should be removed from the end of the literal
+ *
+ * @return A pointer to a sanitized literal or NULL if failed
+ */
+static char *clean_numeric_literal(const char *raw, bool strip_d_suffix) {
+  if (raw == NULL) {
+    return NULL;
+  }
+
+  size_t len = strlen(raw);
+  char *clean = malloc(len + 1);
+  if (clean == NULL) {
+    return NULL;
+  }
+
+  size_t j = 0;
+  for (size_t i = 0; i < len; i++) {
+    // Skip underscores
+    if (raw[i] == '_') {
+      continue;
+    }
+
+    if (strip_d_suffix && i == len - 1 &&   // Is last
+        (raw[i] == 'd' || raw[i] == 'D')) { // Suffix 'd' or 'D'
+      break;
+    }
+
+    clean[j++] = raw[i];
+  }
+
+  // Add terminator
+  clean[j] = '\0';
+
+  return clean;
+}
+
 err_code_t insert_at_function_start(context_t *context,
                                     inner_statement_operation_t op,
                                     inner_symbol_t dest, inner_symbol_t src1,
@@ -114,47 +155,6 @@ err_code_t create_helper_variable(context_t *context,
 
   *out_identifier = non_owning_sym;
   RETURN_ERR(NO_ERR);
-}
-
-/**
- * @brief Removes '_', 'd' and 'D' characters from numeric literals
- *
- * @param raw String form of the literal
- * @param strip_d_suffix Bool to inform that the type is double -> 'd' or 'D'
- *                       should be removed from the end of the literal
- *
- * @return A pointer to a sanitized literal or NULL if failed
- */
-static char *clean_numeric_literal(const char *raw, bool strip_d_suffix) {
-  if (raw == NULL) {
-    return NULL;
-  }
-
-  size_t len = strlen(raw);
-  char *clean = malloc(len + 1);
-  if (clean == NULL) {
-    return NULL;
-  }
-
-  size_t j = 0;
-  for (size_t i = 0; i < len; i++) {
-    // Skip underscores
-    if (raw[i] == '_') {
-      continue;
-    }
-
-    if (strip_d_suffix && i == len - 1 &&   // Is last
-        (raw[i] == 'd' || raw[i] == 'D')) { // Suffix 'd' or 'D'
-      break;
-    }
-
-    clean[j++] = raw[i];
-  }
-
-  // Add terminator
-  clean[j] = '\0';
-
-  return clean;
 }
 
 err_code_t create_literal_symbol(ast_node_t *node,

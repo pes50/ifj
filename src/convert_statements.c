@@ -42,6 +42,393 @@ static bool is_expression_node(ast_node_t *node) {
 
 #pragma endregion
 
+/**
+ * // Inserted at function start:
+ * defvar unique_name
+ */
+static err_code_t init_for_iterator(context_t *context, ast_node_t *iterator,
+                                    inner_symbol_t *out_iter_var) {
+  if (context == NULL || iterator == NULL || iterator->type != AST_PARAMETER ||
+      iterator->data.parameter.name == NULL || out_iter_var == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  char *unique_name =
+      create_unique_variable(context, iterator->data.parameter.name);
+  if (unique_name == NULL) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  free(iterator->data.parameter.name);
+  iterator->data.parameter.name = unique_name;
+  *out_iter_var = create_var_symbol(unique_name);
+
+  RETURN_ERR(insert_at_function_start(context, INNER_DEFVAR, empty_symbol(),
+                                      *out_iter_var, empty_symbol()));
+}
+
+/**
+ * while (curr_guard) {
+ *   expression_on_stack(guard)
+ *   pushs true
+ *   jumpifneqs continue_label
+ * }
+ */
+static err_code_t convert_for_guards(context_t *context, ast_node_t *guards,
+                                     inner_symbol_t continue_label) {
+  inner_value_t val = {0};
+  val.inner_bool = true;
+  inner_symbol_t true_sym = create_const_symbol(INNER_BOOL, val);
+
+  for (ast_node_t *guard = guards; guard != NULL; guard = guard->next) {
+    err_code_t err = convert_expression_on_stack(context, guard);
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+    err = append_statement(context, INNER_PUSHS, empty_symbol(), true_sym,
+                           empty_symbol());
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+    err = append_statement(context, INNER_JUMPIFNEQS, continue_label,
+                           empty_symbol(), empty_symbol());
+    if (err != NO_ERR) {
+      RETURN_ERR(err);
+    }
+  }
+
+  RETURN_ERR(NO_ERR);
+}
+
+/**
+ * expression_on_stack(generator)
+ * pops list_var
+ * arrayget size_var, list_var, 1
+ * move idx_var, 2
+ * label for_list_start
+ * jumpifeq for_list_end, idx_var, size_var
+ * arrayget iterator_var, list_var, idx_var
+ * convert_for_guards(guards, for_list_cont)
+ * convert_statement_list(body, false)
+ * label for_list_cont
+ * add idx_var, idx_var, 1
+ * jump for_list_start
+ * label for_list_end
+ */
+static err_code_t convert_for_list(context_t *context, ast_node_t *node,
+                                   inner_symbol_t iterator_var) {
+  inner_symbol_t list_var, size_var, idx_var;
+
+  if (create_helper_variable(context, &list_var) != NO_ERR ||
+      create_helper_variable(context, &size_var) != NO_ERR ||
+      create_helper_variable(context, &idx_var) != NO_ERR) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_value_t val = {0};
+  val.inner_int = 1;
+  inner_symbol_t sym_1 = create_const_symbol(INNER_INT, val);
+  val.inner_int = 2;
+  inner_symbol_t sym_2 = create_const_symbol(INNER_INT, val);
+
+  err_code_t err =
+      convert_expression_on_stack(context, node->data.for_do.generator);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  if ((err = append_statement(context, INNER_POPS, list_var, empty_symbol(),
+                              empty_symbol())) != NO_ERR ||
+      (err = append_statement(context, INNER_ARRAYGET, size_var, list_var,
+                              sym_1)) != NO_ERR ||
+      (err = append_statement(context, INNER_MOVE, idx_var, sym_2,
+                              empty_symbol())) != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  char *start_label_name = create_unique_label(context, "for_list_start");
+  char *continue_label_name = create_unique_label(context, "for_list_cont");
+  char *end_label_name = create_unique_label(context, "for_list_end");
+  if (start_label_name == NULL || continue_label_name == NULL ||
+      end_label_name == NULL) {
+    free(start_label_name);
+    free(continue_label_name);
+    free(end_label_name);
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_symbol_t start_label = create_label_symbol(start_label_name);
+  inner_symbol_t start_label_owned = start_label;
+  start_label_owned.owns_identifier = true;
+
+  inner_symbol_t cont_label = create_label_symbol(continue_label_name);
+  inner_symbol_t cont_label_owned = cont_label;
+  cont_label_owned.owns_identifier = true;
+
+  inner_symbol_t end_label = create_label_symbol(end_label_name);
+  inner_symbol_t end_label_owned = end_label;
+  end_label_owned.owns_identifier = true;
+
+  // LABEL for_list_start
+  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
+                              start_label_owned, empty_symbol())) != NO_ERR) {
+    free(start_label_name);
+    free(continue_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  if ((err = append_statement(context, INNER_JUMPIFEQ, end_label, idx_var,
+                              size_var)) != NO_ERR ||
+      (err = append_statement(context, INNER_ARRAYGET, iterator_var, list_var,
+                              idx_var)) != NO_ERR ||
+      (err = convert_for_guards(context, node->data.for_do.guards,
+                                cont_label)) != NO_ERR ||
+      (err = convert_statement_list(context, node->data.for_do.body, false)) !=
+          NO_ERR) {
+    free(continue_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // LABEL for_list_continue
+  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
+                              cont_label_owned, empty_symbol())) != NO_ERR) {
+    free(continue_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  if ((err = append_statement(context, INNER_ADD, idx_var, idx_var, sym_1)) !=
+          NO_ERR ||
+      (err = append_statement(context, INNER_JUMP, start_label, empty_symbol(),
+                              empty_symbol())) != NO_ERR) {
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // LABEL for_list_end
+  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
+                              end_label_owned, empty_symbol())) != NO_ERR) {
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  RETURN_ERR(NO_ERR);
+}
+
+/**
+ * expression_on_stack(generator)
+ * pops range_var
+ * arrayget iterator_var, range_var, 0
+ * arrayget end_var, range_var, 1
+ * arrayget step_var, range_var, 2
+ * arrayget incl_var, range_var, 3
+ * label for_range_start
+ * lt cond_var, step_var, 0
+ * jumpifeq for_neg_step, cond_var, true
+ * gt cond_var, iterator_var, end_var
+ * jumpifeq for_range_end, cond_var, true
+ * jumpifneq for_range_body, iterator_var, end_var
+ * jumpifeq for_range_end, incl_var, false
+ * jump for_range_body
+ * label for_neg_step
+ * lt cond_var, iterator_var, end_var
+ * jumpifeq for_range_end, cond_var, true
+ * jumpifneq for_range_body, iterator_var, end_var
+ * jumpifeq for_range_end, incl_var, false
+ * label for_range_body
+ * convert_for_guards(guards, for_range_continue)
+ * convert_statement_list(body, false)
+ * label for_range_continue
+ * add iterator_var, iterator_var, step_var
+ * jump for_range_start
+ * label for_range_end
+ */
+static err_code_t convert_for_range(context_t *context, ast_node_t *node,
+                                    inner_symbol_t iterator_var) {
+  inner_symbol_t range_var, end_var, step_var, incl_var, cond_var;
+
+  if (create_helper_variable(context, &range_var) != NO_ERR ||
+      create_helper_variable(context, &end_var) != NO_ERR ||
+      create_helper_variable(context, &step_var) != NO_ERR ||
+      create_helper_variable(context, &incl_var) != NO_ERR ||
+      create_helper_variable(context, &cond_var) != NO_ERR) {
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_value_t val = {0};
+  val.inner_int = 0;
+  inner_symbol_t sym_0 = create_const_symbol(INNER_INT, val);
+  val.inner_int = 1;
+  inner_symbol_t sym_1 = create_const_symbol(INNER_INT, val);
+  val.inner_int = 2;
+  inner_symbol_t sym_2 = create_const_symbol(INNER_INT, val);
+  val.inner_int = 3;
+  inner_symbol_t sym_3 = create_const_symbol(INNER_INT, val);
+
+  val.inner_bool = true;
+  inner_symbol_t true_sym = create_const_symbol(INNER_BOOL, val);
+  val.inner_bool = false;
+  inner_symbol_t false_sym = create_const_symbol(INNER_BOOL, val);
+
+  err_code_t err =
+      convert_expression_on_stack(context, node->data.for_do.generator);
+  if (err != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  if ((err = append_statement(context, INNER_POPS, range_var, empty_symbol(),
+                              empty_symbol())) != NO_ERR ||
+      (err = append_statement(context, INNER_ARRAYGET, iterator_var, range_var,
+                              sym_0)) != NO_ERR ||
+      (err = append_statement(context, INNER_ARRAYGET, end_var, range_var,
+                              sym_1)) != NO_ERR ||
+      (err = append_statement(context, INNER_ARRAYGET, step_var, range_var,
+                              sym_2)) != NO_ERR ||
+      (err = append_statement(context, INNER_ARRAYGET, incl_var, range_var,
+                              sym_3)) != NO_ERR) {
+    RETURN_ERR(err);
+  }
+
+  char *start_label_name = create_unique_label(context, "for_range_start");
+  char *neg_label_name = create_unique_label(context, "for_neg_step");
+  char *body_label_name = create_unique_label(context, "for_range_body");
+  char *continue_label_name =
+      create_unique_label(context, "for_range_continue");
+  char *end_label_name = create_unique_label(context, "for_range_end");
+  if (start_label_name == NULL || neg_label_name == NULL ||
+      body_label_name == NULL || continue_label_name == NULL ||
+      end_label_name == NULL) {
+    free(start_label_name);
+    free(neg_label_name);
+    free(body_label_name);
+    free(continue_label_name);
+    free(end_label_name);
+    RETURN_ERR(INTERNAL_ERR);
+  }
+
+  inner_symbol_t start_label = create_label_symbol(start_label_name);
+  inner_symbol_t start_label_owned = start_label;
+  start_label_owned.owns_identifier = true;
+
+  inner_symbol_t neg_label = create_label_symbol(neg_label_name);
+  inner_symbol_t neg_label_owned = neg_label;
+  neg_label_owned.owns_identifier = true;
+
+  inner_symbol_t body_label = create_label_symbol(body_label_name);
+  inner_symbol_t body_label_owned = body_label;
+  body_label_owned.owns_identifier = true;
+
+  inner_symbol_t cont_label = create_label_symbol(continue_label_name);
+  inner_symbol_t cont_label_owned = cont_label;
+  cont_label_owned.owns_identifier = true;
+
+  inner_symbol_t end_label = create_label_symbol(end_label_name);
+  inner_symbol_t end_label_owned = end_label;
+  end_label_owned.owns_identifier = true;
+
+  // LABEL for_range_start
+  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
+                              start_label_owned, empty_symbol())) != NO_ERR) {
+    free(start_label_name);
+    free(neg_label_name);
+    free(body_label_name);
+    free(continue_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // step > 0
+  if ((err = append_statement(context, INNER_LT, cond_var, step_var, sym_0)) !=
+          NO_ERR ||
+      (err = append_statement(context, INNER_JUMPIFEQ, neg_label, cond_var,
+                              true_sym)) != NO_ERR ||
+      (err = append_statement(context, INNER_GT, cond_var, iterator_var,
+                              end_var)) != NO_ERR ||
+      (err = append_statement(context, INNER_JUMPIFEQ, end_label, cond_var,
+                              true_sym)) != NO_ERR ||
+      (err = append_statement(context, INNER_JUMPIFNEQ, body_label,
+                              iterator_var, end_var)) != NO_ERR ||
+      (err = append_statement(context, INNER_JUMPIFEQ, end_label, incl_var,
+                              false_sym)) != NO_ERR ||
+      (err = append_statement(context, INNER_JUMP, body_label, empty_symbol(),
+                              empty_symbol())) != NO_ERR) {
+    free(neg_label_name);
+    free(body_label_name);
+    free(continue_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // LABEL for_neg_step (step < 0)
+  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
+                              neg_label_owned, empty_symbol())) != NO_ERR) {
+    free(neg_label_name);
+    free(body_label_name);
+    free(continue_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  if ((err = append_statement(context, INNER_LT, cond_var, iterator_var,
+                              end_var)) != NO_ERR ||
+      (err = append_statement(context, INNER_JUMPIFEQ, end_label, cond_var,
+                              true_sym)) != NO_ERR ||
+      (err = append_statement(context, INNER_JUMPIFNEQ, body_label,
+                              iterator_var, end_var)) != NO_ERR ||
+      (err = append_statement(context, INNER_JUMPIFEQ, end_label, incl_var,
+                              false_sym)) != NO_ERR) {
+    free(body_label_name);
+    free(continue_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // LABEL for_range_body
+  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
+                              body_label_owned, empty_symbol())) != NO_ERR) {
+    free(body_label_name);
+    free(continue_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  if ((err = convert_for_guards(context, node->data.for_do.guards,
+                                cont_label)) != NO_ERR ||
+      (err = convert_statement_list(context, node->data.for_do.body, false)) !=
+          NO_ERR) {
+    free(continue_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // LABEL for_range_continue
+  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
+                              cont_label_owned, empty_symbol())) != NO_ERR) {
+    free(continue_label_name);
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  if ((err = append_statement(context, INNER_ADD, iterator_var, iterator_var,
+                              step_var)) != NO_ERR ||
+      (err = append_statement(context, INNER_JUMP, start_label, empty_symbol(),
+                              empty_symbol())) != NO_ERR) {
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  // LABEL for_range_end
+  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
+                              end_label_owned, empty_symbol())) != NO_ERR) {
+    free(end_label_name);
+    RETURN_ERR(err);
+  }
+
+  RETURN_ERR(NO_ERR);
+}
+
 err_code_t convert_statement_list(context_t *context, ast_node_t *node,
                                   bool keep_last) {
   if (context == NULL || node == NULL) {
@@ -335,339 +722,6 @@ err_code_t convert_return(context_t *context, ast_node_t *node) {
 
   RETURN_ERR(append_statement(context, INNER_RETURN, empty_symbol(),
                               empty_symbol(), empty_symbol()));
-}
-
-static err_code_t init_for_iterator(context_t *context, ast_node_t *iterator,
-                                    inner_symbol_t *out_iter_var) {
-  if (context == NULL || iterator == NULL || iterator->type != AST_PARAMETER ||
-      iterator->data.parameter.name == NULL || out_iter_var == NULL) {
-    RETURN_ERR(INTERNAL_ERR);
-  }
-
-  char *unique_name =
-      create_unique_variable(context, iterator->data.parameter.name);
-  if (unique_name == NULL) {
-    RETURN_ERR(INTERNAL_ERR);
-  }
-
-  free(iterator->data.parameter.name);
-  iterator->data.parameter.name = unique_name;
-  *out_iter_var = create_var_symbol(unique_name);
-
-  RETURN_ERR(insert_at_function_start(context, INNER_DEFVAR, empty_symbol(),
-                                      *out_iter_var, empty_symbol()));
-}
-
-static err_code_t convert_for_guards(context_t *context, ast_node_t *guards,
-                                     inner_symbol_t continue_label) {
-  inner_value_t val = {0};
-  val.inner_bool = true;
-  inner_symbol_t true_sym = create_const_symbol(INNER_BOOL, val);
-
-  for (ast_node_t *guard = guards; guard != NULL; guard = guard->next) {
-    err_code_t err = convert_expression_on_stack(context, guard);
-    if (err != NO_ERR) {
-      RETURN_ERR(err);
-    }
-    err = append_statement(context, INNER_PUSHS, empty_symbol(), true_sym,
-                           empty_symbol());
-    if (err != NO_ERR) {
-      RETURN_ERR(err);
-    }
-    err = append_statement(context, INNER_JUMPIFNEQS, continue_label,
-                           empty_symbol(), empty_symbol());
-    if (err != NO_ERR) {
-      RETURN_ERR(err);
-    }
-  }
-
-  RETURN_ERR(NO_ERR);
-}
-
-static err_code_t convert_for_list(context_t *context, ast_node_t *node,
-                                   inner_symbol_t iterator_var) {
-  inner_symbol_t list_var, size_var, idx_var;
-
-  if (create_helper_variable(context, &list_var) != NO_ERR ||
-      create_helper_variable(context, &size_var) != NO_ERR ||
-      create_helper_variable(context, &idx_var) != NO_ERR) {
-    RETURN_ERR(INTERNAL_ERR);
-  }
-
-  inner_value_t val = {0};
-  val.inner_int = 1;
-  inner_symbol_t sym_1 = create_const_symbol(INNER_INT, val);
-  val.inner_int = 2;
-  inner_symbol_t sym_2 = create_const_symbol(INNER_INT, val);
-
-  err_code_t err =
-      convert_expression_on_stack(context, node->data.for_do.generator);
-  if (err != NO_ERR) {
-    RETURN_ERR(err);
-  }
-
-  if ((err = append_statement(context, INNER_POPS, list_var, empty_symbol(),
-                              empty_symbol())) != NO_ERR ||
-      (err = append_statement(context, INNER_ARRAYGET, size_var, list_var,
-                              sym_1)) != NO_ERR ||
-      (err = append_statement(context, INNER_MOVE, idx_var, sym_2,
-                              empty_symbol())) != NO_ERR) {
-    RETURN_ERR(err);
-  }
-
-  char *start_label_name = create_unique_label(context, "for_list_start");
-  char *continue_label_name = create_unique_label(context, "for_list_cont");
-  char *end_label_name = create_unique_label(context, "for_list_end");
-  if (start_label_name == NULL || continue_label_name == NULL ||
-      end_label_name == NULL) {
-    free(start_label_name);
-    free(continue_label_name);
-    free(end_label_name);
-    RETURN_ERR(INTERNAL_ERR);
-  }
-
-  inner_symbol_t start_label = create_label_symbol(start_label_name);
-  inner_symbol_t start_label_owned = start_label;
-  start_label_owned.owns_identifier = true;
-
-  inner_symbol_t cont_label = create_label_symbol(continue_label_name);
-  inner_symbol_t cont_label_owned = cont_label;
-  cont_label_owned.owns_identifier = true;
-
-  inner_symbol_t end_label = create_label_symbol(end_label_name);
-  inner_symbol_t end_label_owned = end_label;
-  end_label_owned.owns_identifier = true;
-
-  // LABEL for_list_start
-  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
-                              start_label_owned, empty_symbol())) != NO_ERR) {
-    free(start_label_name);
-    free(continue_label_name);
-    free(end_label_name);
-    RETURN_ERR(err);
-  }
-
-  if ((err = append_statement(context, INNER_JUMPIFEQ, end_label, idx_var,
-                              size_var)) != NO_ERR ||
-      (err = append_statement(context, INNER_ARRAYGET, iterator_var, list_var,
-                              idx_var)) != NO_ERR ||
-      (err = convert_for_guards(context, node->data.for_do.guards,
-                                cont_label)) != NO_ERR ||
-      (err = convert_statement_list(context, node->data.for_do.body, false)) !=
-          NO_ERR) {
-    free(continue_label_name);
-    free(end_label_name);
-    RETURN_ERR(err);
-  }
-
-  // LABEL for_list_continue
-  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
-                              cont_label_owned, empty_symbol())) != NO_ERR) {
-    free(continue_label_name);
-    free(end_label_name);
-    RETURN_ERR(err);
-  }
-
-  if ((err = append_statement(context, INNER_ADD, idx_var, idx_var, sym_1)) !=
-          NO_ERR ||
-      (err = append_statement(context, INNER_JUMP, start_label, empty_symbol(),
-                              empty_symbol())) != NO_ERR) {
-    free(end_label_name);
-    RETURN_ERR(err);
-  }
-
-  // LABEL for_list_end
-  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
-                              end_label_owned, empty_symbol())) != NO_ERR) {
-    free(end_label_name);
-    RETURN_ERR(err);
-  }
-
-  RETURN_ERR(NO_ERR);
-}
-
-static err_code_t convert_for_range(context_t *context, ast_node_t *node,
-                                    inner_symbol_t iterator_var) {
-  inner_symbol_t range_var, end_var, step_var, incl_var, cond_var;
-
-  if (create_helper_variable(context, &range_var) != NO_ERR ||
-      create_helper_variable(context, &end_var) != NO_ERR ||
-      create_helper_variable(context, &step_var) != NO_ERR ||
-      create_helper_variable(context, &incl_var) != NO_ERR ||
-      create_helper_variable(context, &cond_var) != NO_ERR) {
-    RETURN_ERR(INTERNAL_ERR);
-  }
-
-  inner_value_t val = {0};
-  val.inner_int = 0;
-  inner_symbol_t sym_0 = create_const_symbol(INNER_INT, val);
-  val.inner_int = 1;
-  inner_symbol_t sym_1 = create_const_symbol(INNER_INT, val);
-  val.inner_int = 2;
-  inner_symbol_t sym_2 = create_const_symbol(INNER_INT, val);
-  val.inner_int = 3;
-  inner_symbol_t sym_3 = create_const_symbol(INNER_INT, val);
-
-  val.inner_bool = true;
-  inner_symbol_t true_sym = create_const_symbol(INNER_BOOL, val);
-  val.inner_bool = false;
-  inner_symbol_t false_sym = create_const_symbol(INNER_BOOL, val);
-
-  err_code_t err =
-      convert_expression_on_stack(context, node->data.for_do.generator);
-  if (err != NO_ERR) {
-    RETURN_ERR(err);
-  }
-
-  if ((err = append_statement(context, INNER_POPS, range_var, empty_symbol(),
-                              empty_symbol())) != NO_ERR ||
-      (err = append_statement(context, INNER_ARRAYGET, iterator_var, range_var,
-                              sym_0)) != NO_ERR ||
-      (err = append_statement(context, INNER_ARRAYGET, end_var, range_var,
-                              sym_1)) != NO_ERR ||
-      (err = append_statement(context, INNER_ARRAYGET, step_var, range_var,
-                              sym_2)) != NO_ERR ||
-      (err = append_statement(context, INNER_ARRAYGET, incl_var, range_var,
-                              sym_3)) != NO_ERR) {
-    RETURN_ERR(err);
-  }
-
-  char *start_label_name = create_unique_label(context, "for_range_start");
-  char *neg_label_name = create_unique_label(context, "for_neg_step");
-  char *body_label_name = create_unique_label(context, "for_range_body");
-  char *continue_label_name =
-      create_unique_label(context, "for_range_continue");
-  char *end_label_name = create_unique_label(context, "for_range_end");
-  if (start_label_name == NULL || neg_label_name == NULL ||
-      body_label_name == NULL || continue_label_name == NULL ||
-      end_label_name == NULL) {
-    free(start_label_name);
-    free(neg_label_name);
-    free(body_label_name);
-    free(continue_label_name);
-    free(end_label_name);
-    RETURN_ERR(INTERNAL_ERR);
-  }
-
-  inner_symbol_t start_label = create_label_symbol(start_label_name);
-  inner_symbol_t start_label_owned = start_label;
-  start_label_owned.owns_identifier = true;
-
-  inner_symbol_t neg_label = create_label_symbol(neg_label_name);
-  inner_symbol_t neg_label_owned = neg_label;
-  neg_label_owned.owns_identifier = true;
-
-  inner_symbol_t body_label = create_label_symbol(body_label_name);
-  inner_symbol_t body_label_owned = body_label;
-  body_label_owned.owns_identifier = true;
-
-  inner_symbol_t cont_label = create_label_symbol(continue_label_name);
-  inner_symbol_t cont_label_owned = cont_label;
-  cont_label_owned.owns_identifier = true;
-
-  inner_symbol_t end_label = create_label_symbol(end_label_name);
-  inner_symbol_t end_label_owned = end_label;
-  end_label_owned.owns_identifier = true;
-
-  // LABEL for_range_start
-  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
-                              start_label_owned, empty_symbol())) != NO_ERR) {
-    free(start_label_name);
-    free(neg_label_name);
-    free(body_label_name);
-    free(continue_label_name);
-    free(end_label_name);
-    RETURN_ERR(err);
-  }
-
-  // step > 0
-  if ((err = append_statement(context, INNER_LT, cond_var, step_var, sym_0)) !=
-          NO_ERR ||
-      (err = append_statement(context, INNER_JUMPIFEQ, neg_label, cond_var,
-                              true_sym)) != NO_ERR ||
-      (err = append_statement(context, INNER_GT, cond_var, iterator_var,
-                              end_var)) != NO_ERR ||
-      (err = append_statement(context, INNER_JUMPIFEQ, end_label, cond_var,
-                              true_sym)) != NO_ERR ||
-      (err = append_statement(context, INNER_JUMPIFNEQ, body_label,
-                              iterator_var, end_var)) != NO_ERR ||
-      (err = append_statement(context, INNER_JUMPIFEQ, end_label, incl_var,
-                              false_sym)) != NO_ERR ||
-      (err = append_statement(context, INNER_JUMP, body_label, empty_symbol(),
-                              empty_symbol())) != NO_ERR) {
-    free(neg_label_name);
-    free(body_label_name);
-    free(continue_label_name);
-    free(end_label_name);
-    RETURN_ERR(err);
-  }
-
-  // LABEL for_neg_step (step < 0)
-  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
-                              neg_label_owned, empty_symbol())) != NO_ERR) {
-    free(neg_label_name);
-    free(body_label_name);
-    free(continue_label_name);
-    free(end_label_name);
-    RETURN_ERR(err);
-  }
-
-  if ((err = append_statement(context, INNER_LT, cond_var, iterator_var,
-                              end_var)) != NO_ERR ||
-      (err = append_statement(context, INNER_JUMPIFEQ, end_label, cond_var,
-                              true_sym)) != NO_ERR ||
-      (err = append_statement(context, INNER_JUMPIFNEQ, body_label,
-                              iterator_var, end_var)) != NO_ERR ||
-      (err = append_statement(context, INNER_JUMPIFEQ, end_label, incl_var,
-                              false_sym)) != NO_ERR) {
-    free(body_label_name);
-    free(continue_label_name);
-    free(end_label_name);
-    RETURN_ERR(err);
-  }
-
-  // LABEL for_range_body
-  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
-                              body_label_owned, empty_symbol())) != NO_ERR) {
-    free(body_label_name);
-    free(continue_label_name);
-    free(end_label_name);
-    RETURN_ERR(err);
-  }
-
-  if ((err = convert_for_guards(context, node->data.for_do.guards,
-                                cont_label)) != NO_ERR ||
-      (err = convert_statement_list(context, node->data.for_do.body, false)) !=
-          NO_ERR) {
-    free(continue_label_name);
-    free(end_label_name);
-    RETURN_ERR(err);
-  }
-
-  // LABEL for_range_continue
-  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
-                              cont_label_owned, empty_symbol())) != NO_ERR) {
-    free(continue_label_name);
-    free(end_label_name);
-    RETURN_ERR(err);
-  }
-
-  if ((err = append_statement(context, INNER_ADD, iterator_var, iterator_var,
-                              step_var)) != NO_ERR ||
-      (err = append_statement(context, INNER_JUMP, start_label, empty_symbol(),
-                              empty_symbol())) != NO_ERR) {
-    free(end_label_name);
-    RETURN_ERR(err);
-  }
-
-  // LABEL for_range_end
-  if ((err = append_statement(context, INNER_LABEL, empty_symbol(),
-                              end_label_owned, empty_symbol())) != NO_ERR) {
-    free(end_label_name);
-    RETURN_ERR(err);
-  }
-
-  RETURN_ERR(NO_ERR);
 }
 
 err_code_t convert_for_do(context_t *context, ast_node_t *node) {
