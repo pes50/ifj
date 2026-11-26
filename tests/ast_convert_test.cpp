@@ -2376,6 +2376,522 @@ ast_node_t *test_ext_extkw_multi_paramlist_and_bool_tostring() {
 
 #pragma endregion
 
+#pragma region Extension MIX: Combined Multi-Extension Tests
+
+// case class Item(name: String, price: Int)
+// extension (s: String)
+//   def wrap(left: String)(right: String): String = s"$left$s$right"
+// def totalExpensive(items: List[Item], minPrice: Int): Int = {
+//   var total = 0
+//   for it <- items do {
+//     val addVal = it match {
+//       case Item(n, p) if p >= minPrice => p
+//       case _ => 0
+//     }
+//     total = total + addVal
+//   }
+//   total
+// }
+// @main def main(): Unit = {
+//   val items = List(Item("pen", 10), Item("book", 50), Item("bag", 120))
+//   val sum = totalExpensive(items, 40)
+//   val label = "total".wrap("[")("]")
+//   print(s"$label=$sum")
+// } -> "[total]=170"
+ast_node_t *test_ext_mix_case_class_list_match_for_interpolated_and_ext() {
+  ast_node_t *cc_decl = create_class_declaration_node(
+      const_cast<char *>("Item"), create_parameter_list_node(chain_nodes({
+                                      param("name", &node_string),
+                                      param("price", &node_int),
+                                  })));
+
+  ast_node_t *wrap_plists = chain_nodes({
+      create_parameter_list_node(param("left", &node_string)),
+      create_parameter_list_node(param("right", &node_string)),
+  });
+  ast_node_t *wrap_body = create_interpolated_string_node(chain_nodes({
+      id("left"),
+      id("s"),
+      id("right"),
+  }));
+  ast_node_t *fn_wrap = create_function_declaration_node(
+      const_cast<char *>("wrap"), wrap_plists, create_block_node(wrap_body),
+      &node_string, false);
+  ast_node_t *ext_decl =
+      create_extension_declaration_node(param("s", &node_string), fn_wrap);
+
+  ast_node_t *items =
+      call("List", {
+                       call("Item", {lit_str("pen"), lit_int("10")}),
+                       call("Item", {lit_str("book"), lit_int("50")}),
+                       call("Item", {lit_str("bag"), lit_int("120")}),
+                   });
+
+  ast_node_t *c_item = create_match_case_node(
+      call("Item", {id("n"), id("p")}),
+      create_binary_operation_node(TOK_LOWER_EQ, id("minPrice"), id("p")),
+      create_block_node(id("p")));
+  ast_node_t *c_default = create_match_case_node(
+      underscore(), nullptr, create_block_node(lit_int("0")));
+  ast_node_t *m = create_match_node(id("it"), chain_nodes({c_item, c_default}));
+
+  ast_node_t *loop = create_for_do_node(
+      param("it"), id("items"), nullptr,
+      create_block_node(chain_nodes({
+          val_decl("addVal", m),
+          assign("sum", create_binary_operation_node(TOK_BINARY_PLUS, id("sum"),
+                                                     id("addVal"))),
+      })));
+
+  ast_node_t *wrap_args = chain_nodes({
+      create_argument_list_node(lit_str("[")),
+      create_argument_list_node(lit_str("]")),
+  });
+  ast_node_t *label_expr = create_dot_function_call_node(
+      const_cast<char *>("wrap"), lit_str("total"), wrap_args);
+
+  ast_node_t *out_interp = create_interpolated_string_node(chain_nodes({
+      id("label"),
+      lit_str("="),
+      id("sum"),
+  }));
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          val_decl("items", items),
+          val_decl("minPrice", lit_int("40")),
+          var_decl("sum", lit_int("0")),
+          loop,
+          val_decl("label", label_expr),
+          print_call(out_interp),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({cc_decl, ext_decl, fn_main}));
+}
+
+// @main def main(): Unit = {
+//   val matrix = List(List(10, 20, 30), List(40, 50, 60), List(70, 80, 90))
+//   val cube = List(List(List(1, 2), List(3, 4)), List(List(5, 6), List(7, 8)))
+//   print(matrix(1)(2)); print("|"); print(cube(1)(0)(1))
+// } -> "60|6"
+ast_node_t *test_ext_mix_nested_list_indexing() {
+  ast_node_t *matrix = call(
+      "List", {
+                  call("List", {lit_int("10"), lit_int("20"), lit_int("30")}),
+                  call("List", {lit_int("40"), lit_int("50"), lit_int("60")}),
+                  call("List", {lit_int("70"), lit_int("80"), lit_int("90")}),
+              });
+
+  ast_node_t *cube =
+      call("List", {
+                       call("List",
+                            {
+                                call("List", {lit_int("1"), lit_int("2")}),
+                                call("List", {lit_int("3"), lit_int("4")}),
+                            }),
+                       call("List",
+                            {
+                                call("List", {lit_int("5"), lit_int("6")}),
+                                call("List", {lit_int("7"), lit_int("8")}),
+                            }),
+                   });
+
+  return wrap_main({
+      val_decl("matrix", matrix),
+      val_decl("cube", cube),
+      print_call(multi_call("matrix", {{lit_int("1")}, {lit_int("2")}})),
+      print_call(lit_str("|")),
+      print_call(
+          multi_call("cube", {{lit_int("1")}, {lit_int("0")}, {lit_int("1")}})),
+  });
+}
+
+// @main def main(): Unit = {
+//   val makeAdder = (a: Int) => (b: Int) => b * 10
+//   val ops = List((x: Int) => x + 1, (x: Int) => x * 10, (x: Int) => x - 3)
+//   val handlers = List(
+//     List((x: Int) => x + 2, (x: Int) => x * 3),
+//     List((x: Int) => x - 1, (x: Int) => x * 5)
+//   )
+//   print(makeAdder(4)(6)); print("|"); print(ops(1)(5)); print("|");
+//   print(handlers(1)(1)(4))
+// } -> "60|50|20"
+ast_node_t *test_ext_mix_curried_and_list_of_lambdas() {
+  auto make_int_op = [](token_type_t op, const char *rhs) {
+    return create_lambda_declaration_node(
+        param("x", &node_int), create_block_node(create_binary_operation_node(
+                                   op, id("x"), lit_int(rhs))));
+  };
+
+  ast_node_t *inner_adder = create_lambda_declaration_node(
+      param("b", &node_int), create_block_node(create_binary_operation_node(
+                                 TOK_MUL, id("b"), lit_int("10"))));
+  ast_node_t *make_adder = create_lambda_declaration_node(
+      param("a", &node_int), create_block_node(inner_adder));
+
+  ast_node_t *ops = call("List", {
+                                     make_int_op(TOK_BINARY_PLUS, "1"),
+                                     make_int_op(TOK_MUL, "10"),
+                                     make_int_op(TOK_BINARY_MINUS, "3"),
+                                 });
+
+  ast_node_t *handlers =
+      call("List", {
+                       call("List",
+                            {
+                                make_int_op(TOK_BINARY_PLUS, "2"),
+                                make_int_op(TOK_MUL, "3"),
+                            }),
+                       call("List",
+                            {
+                                make_int_op(TOK_BINARY_MINUS, "1"),
+                                make_int_op(TOK_MUL, "5"),
+                            }),
+                   });
+
+  return wrap_main({
+      val_decl("makeAdder", make_adder),
+      val_decl("ops", ops),
+      val_decl("handlers", handlers),
+      print_call(multi_call("makeAdder", {{lit_int("4")}, {lit_int("6")}})),
+      print_call(lit_str("|")),
+      print_call(multi_call("ops", {{lit_int("1")}, {lit_int("5")}})),
+      print_call(lit_str("|")),
+      print_call(multi_call("handlers",
+                            {{lit_int("1")}, {lit_int("1")}, {lit_int("4")}})),
+  });
+}
+
+// @main def main(): Unit = {
+//   val makeList = (n: Int) => List(n, n * 10)
+//   val gridOfCurried = List(List((a: Int) => (b: Int) => b + 7))
+//   print(makeList(3)(1)); print("|"); print(gridOfCurried(0)(0)(3)(4))
+// } -> "30|11"
+ast_node_t *test_ext_mix_lambda_returning_list_and_nested_curried() {
+  ast_node_t *make_list = create_lambda_declaration_node(
+      param("n", &node_int),
+      create_block_node(call("List", {
+                                         id("n"),
+                                         create_binary_operation_node(
+                                             TOK_MUL, id("n"), lit_int("10")),
+                                     })));
+
+  ast_node_t *curried_add = create_lambda_declaration_node(
+      param("a", &node_int),
+      create_block_node(create_lambda_declaration_node(
+          param("b", &node_int),
+          create_block_node(create_binary_operation_node(
+              TOK_BINARY_PLUS, id("b"), lit_int("7"))))));
+
+  ast_node_t *grid = call("List", {call("List", {curried_add})});
+
+  return wrap_main({
+      val_decl("makeList", make_list),
+      val_decl("gridOfCurried", grid),
+      print_call(multi_call("makeList", {{lit_int("3")}, {lit_int("1")}})),
+      print_call(lit_str("|")),
+      print_call(multi_call(
+          "gridOfCurried",
+          {{lit_int("0")}, {lit_int("0")}, {lit_int("3")}, {lit_int("4")}})),
+  });
+}
+
+// Runtime error 40: out-of-bounds second index in nested list
+// @main def main(): Unit = {
+//   val matrix = List(List(1, 2), List(3, 4))
+//   print(matrix(1)(2))
+// }
+ast_node_t *test_ext_mix_err_nested_list_second_index_oob() {
+  ast_node_t *matrix =
+      call("List", {
+                       call("List", {lit_int("1"), lit_int("2")}),
+                       call("List", {lit_int("3"), lit_int("4")}),
+                   });
+
+  return wrap_main({
+      val_decl("matrix", matrix),
+      print_call(multi_call("matrix", {{lit_int("1")}, {lit_int("2")}})),
+  });
+}
+
+// def makeMatrix(r0: Int)(r1: Int): List[List[Int]] =
+//   List(List(r0, r0 + 1), List(r1, r1 + 10))
+// @main def main(): Unit = print(makeMatrix(3)(7)(1)(1)) -> "17"
+ast_node_t *test_ext_mix_multi_paramlist_returning_nested_list() {
+  auto make_list_list_int = []() {
+    return create_list_type_node(
+        create_list_type_node(create_primitive_type_node(PRIMITIVE_INT)));
+  };
+
+  ast_node_t *plists = chain_nodes({
+      create_parameter_list_node(param("r0", &node_int)),
+      create_parameter_list_node(param("r1", &node_int)),
+  });
+
+  ast_node_t *row0 =
+      call("List", {id("r0"), create_binary_operation_node(
+                                  TOK_BINARY_PLUS, id("r0"), lit_int("1"))});
+  ast_node_t *row1 =
+      call("List", {id("r1"), create_binary_operation_node(
+                                  TOK_BINARY_PLUS, id("r1"), lit_int("10"))});
+
+  ast_node_t *fn_matrix = create_function_declaration_node(
+      const_cast<char *>("makeMatrix"), plists,
+      create_block_node(call("List", {row0, row1})), make_list_list_int(),
+      false);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(print_call(multi_call(
+          "makeMatrix",
+          {{lit_int("3")}, {lit_int("7")}, {lit_int("1")}, {lit_int("1")}}))),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_matrix, fn_main}));
+}
+
+// def pickScaler(mode: Int)(unused: Int): (Int) => (Int) => Int =
+//   if mode == 1 then (a: Int) => (b: Int) => b * 10
+//   else (a: Int) => (b: Int) => b + 100
+// @main def main(): Unit = {
+//   print(pickScaler(1)(0)(9)(4)); print("|"); print(pickScaler(2)(0)(9)(4))
+// } -> "40|104"
+ast_node_t *test_ext_mix_multi_paramlist_returning_curried_lambda() {
+  auto make_curried_type = []() {
+    return create_lambda_type_node(
+        create_primitive_type_node(PRIMITIVE_INT),
+        create_lambda_type_node(create_primitive_type_node(PRIMITIVE_INT),
+                                &node_int));
+  };
+
+  auto make_curried_lam = [](token_type_t op, const char *rhs) {
+    return create_lambda_declaration_node(
+        param("a", &node_int),
+        create_block_node(create_lambda_declaration_node(
+            param("b", &node_int),
+            create_block_node(
+                create_binary_operation_node(op, id("b"), lit_int(rhs))))));
+  };
+
+  ast_node_t *plists = chain_nodes({
+      create_parameter_list_node(param("mode", &node_int)),
+      create_parameter_list_node(param("unused", &node_int)),
+  });
+
+  ast_node_t *cond =
+      create_binary_operation_node(TOK_EQUAL, id("mode"), lit_int("1"));
+  ast_node_t *body = create_if_node(
+      cond, create_block_node(make_curried_lam(TOK_MUL, "10")),
+      create_block_node(make_curried_lam(TOK_BINARY_PLUS, "100")));
+
+  ast_node_t *fn_pick = create_function_declaration_node(
+      const_cast<char *>("pickScaler"), plists, create_block_node(body),
+      make_curried_type(), false);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          print_call(multi_call("pickScaler", {{lit_int("1")},
+                                               {lit_int("0")},
+                                               {lit_int("9")},
+                                               {lit_int("4")}})),
+          print_call(lit_str("|")),
+          print_call(multi_call("pickScaler", {{lit_int("2")},
+                                               {lit_int("0")},
+                                               {lit_int("9")},
+                                               {lit_int("4")}})),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_pick, fn_main}));
+}
+
+// def makeAdder(): (Int) => Int = (x: Int) => x + 10
+// def defaultPair(): List[Int] = List(42, 99)
+// @main def main(): Unit = {
+//   print(makeAdder()(5)); print("|"); print(defaultPair()(1))
+// } -> "15|99"
+ast_node_t *test_ext_mix_zero_arg_def_chained_calls() {
+  ast_node_t *adder_lam = create_lambda_declaration_node(
+      param("x", &node_int), create_block_node(create_binary_operation_node(
+                                 TOK_BINARY_PLUS, id("x"), lit_int("10"))));
+  data_type_node_t *adder_type = create_lambda_type_node(
+      create_primitive_type_node(PRIMITIVE_INT), &node_int);
+  ast_node_t *fn_adder = create_function_declaration_node(
+      const_cast<char *>("makeAdder"), create_parameter_list_node(nullptr),
+      create_block_node(adder_lam), adder_type, false);
+
+  data_type_node_t *list_int =
+      create_list_type_node(create_primitive_type_node(PRIMITIVE_INT));
+  ast_node_t *fn_pair = create_function_declaration_node(
+      const_cast<char *>("defaultPair"), create_parameter_list_node(nullptr),
+      create_block_node(call("List", {lit_int("42"), lit_int("99")})), list_int,
+      false);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          print_call(multi_call("makeAdder", {{}, {lit_int("5")}})),
+          print_call(lit_str("|")),
+          print_call(multi_call("defaultPair", {{}, {lit_int("1")}})),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_adder, fn_pair, fn_main}));
+}
+
+// def nums: List[Int] = List(10, 20, 30)
+// def op: (Int) => Int = (x: Int) => x * 3
+// @main def main(): Unit = {
+//   print(nums(1)); print("|"); print(op(6))
+// } -> "20|18"
+ast_node_t *test_ext_mix_parameterless_def_chained_calls() {
+  data_type_node_t *list_int =
+      create_list_type_node(create_primitive_type_node(PRIMITIVE_INT));
+  ast_node_t *fn_nums = create_function_declaration_node(
+      const_cast<char *>("nums"), nullptr,
+      create_block_node(
+          call("List", {lit_int("10"), lit_int("20"), lit_int("30")})),
+      list_int, false);
+
+  ast_node_t *mul_lam = create_lambda_declaration_node(
+      param("x", &node_int), create_block_node(create_binary_operation_node(
+                                 TOK_MUL, id("x"), lit_int("3"))));
+  data_type_node_t *op_type = create_lambda_type_node(
+      create_primitive_type_node(PRIMITIVE_INT), &node_int);
+  ast_node_t *fn_op = create_function_declaration_node(
+      const_cast<char *>("op"), nullptr, create_block_node(mul_lam), op_type,
+      false);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          print_call(call("nums", {lit_int("1")})),
+          print_call(lit_str("|")),
+          print_call(call("op", {lit_int("6")})),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_nums, fn_op, fn_main}));
+}
+
+// def evalParams(m: List[List[Int]], f: (Int) => (Int) => Int): Int =
+//   m(1)(0) + f(2)(5)
+// @main def main(): Unit = {
+//   val mat = List(List(1, 2), List(30, 40))
+//   val fn = (a: Int) => (b: Int) => b * 3
+//   print(evalParams(mat, fn))
+// } -> "45"
+ast_node_t *test_ext_mix_nested_list_and_curried_lambda_params() {
+  data_type_node_t *mat_type = create_list_type_node(
+      create_list_type_node(create_primitive_type_node(PRIMITIVE_INT)));
+  data_type_node_t *curried_type = create_lambda_type_node(
+      create_primitive_type_node(PRIMITIVE_INT),
+      create_lambda_type_node(create_primitive_type_node(PRIMITIVE_INT),
+                              &node_int));
+
+  ast_node_t *fn_eval = create_function_declaration_node(
+      const_cast<char *>("evalParams"),
+      create_parameter_list_node(chain_nodes({
+          param("m", mat_type),
+          param("f", curried_type),
+      })),
+      create_block_node(create_binary_operation_node(
+          TOK_BINARY_PLUS, multi_call("m", {{lit_int("1")}, {lit_int("0")}}),
+          multi_call("f", {{lit_int("2")}, {lit_int("5")}}))),
+      &node_int, false);
+
+  ast_node_t *mat_val =
+      call("List", {
+                       call("List", {lit_int("1"), lit_int("2")}),
+                       call("List", {lit_int("30"), lit_int("40")}),
+                   });
+  ast_node_t *fn_val = create_lambda_declaration_node(
+      param("a", &node_int),
+      create_block_node(create_lambda_declaration_node(
+          param("b", &node_int), create_block_node(create_binary_operation_node(
+                                     TOK_MUL, id("b"), lit_int("3"))))));
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(chain_nodes({
+          val_decl("mat", mat_val),
+          val_decl("fn", fn_val),
+          print_call(call("evalParams", {id("mat"), id("fn")})),
+      })),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_eval, fn_main}));
+}
+
+// extension (s: String)
+//   def makeSeq(a: Int)(b: Int): List[Int] = List(s.length + a, s.length + b)
+// @main def main(): Unit = print("ab".makeSeq(10)(20)(1)) -> "22"
+ast_node_t *test_ext_mix_ext_multi_paramlist_returning_list() {
+  data_type_node_t *list_int =
+      create_list_type_node(create_primitive_type_node(PRIMITIVE_INT));
+
+  ast_node_t *plists = chain_nodes({
+      create_parameter_list_node(param("a", &node_int)),
+      create_parameter_list_node(param("b", &node_int)),
+  });
+
+  ast_node_t *body = call(
+      "List", {
+                  create_binary_operation_node(
+                      TOK_BINARY_PLUS, dot_member(id("s"), "length"), id("a")),
+                  create_binary_operation_node(
+                      TOK_BINARY_PLUS, dot_member(id("s"), "length"), id("b")),
+              });
+
+  ast_node_t *fn_seq = create_function_declaration_node(
+      const_cast<char *>("makeSeq"), plists, create_block_node(body), list_int,
+      false);
+  ast_node_t *ext_decl =
+      create_extension_declaration_node(param("s", &node_string), fn_seq);
+
+  ast_node_t *arg_lists = chain_nodes({
+      create_argument_list_node(lit_int("10")),
+      create_argument_list_node(lit_int("20")),
+      create_argument_list_node(lit_int("1")),
+  });
+  ast_node_t *call_expr = create_dot_function_call_node(
+      const_cast<char *>("makeSeq"), lit_str("ab"), arg_lists);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(print_call(call_expr)), &node_unit, true);
+
+  return create_block_node(chain_nodes({ext_decl, fn_main}));
+}
+
+// Runtime error 40: out-of-bounds index on a List returned by multi-param-list
+// def makeRow(a: Int)(b: Int): List[Int] = List(a, b)
+// @main def main(): Unit = print(makeRow(1)(2)(5))
+ast_node_t *test_ext_mix_err_multi_paramlist_returned_list_oob() {
+  data_type_node_t *list_int =
+      create_list_type_node(create_primitive_type_node(PRIMITIVE_INT));
+  ast_node_t *plists = chain_nodes({
+      create_parameter_list_node(param("a", &node_int)),
+      create_parameter_list_node(param("b", &node_int)),
+  });
+  ast_node_t *fn_row = create_function_declaration_node(
+      const_cast<char *>("makeRow"), plists,
+      create_block_node(call("List", {id("a"), id("b")})), list_int, false);
+
+  ast_node_t *fn_main = create_function_declaration_node(
+      const_cast<char *>("main"), create_parameter_list_node(nullptr),
+      create_block_node(print_call(multi_call(
+          "makeRow", {{lit_int("1")}, {lit_int("2")}, {lit_int("5")}}))),
+      &node_unit, true);
+
+  return create_block_node(chain_nodes({fn_row, fn_main}));
+}
+
+#pragma endregion
+
 #pragma region Test Runner & Registration
 
 TEST_P(CodegenParamTest, MatchesExpectedOutput) {
@@ -2727,7 +3243,41 @@ INSTANTIATE_TEST_SUITE_P(
                         "7|30|7"},
         CodegenTestCase{"ExtExtkw_MultiParamlistAndBoolToString",
                         test_ext_extkw_multi_paramlist_and_bool_tostring,
-                        "[IFJ]|true"}),
+                        "[IFJ]|true"},
+
+        // Extension MIX: Combined Multi-Extension Tests
+        CodegenTestCase{
+            "ExtMix_CaseClassListMatchForInterpolatedAndExt",
+            test_ext_mix_case_class_list_match_for_interpolated_and_ext,
+            "[total]=170"},
+        CodegenTestCase{"ExtMix_NestedListIndexing",
+                        test_ext_mix_nested_list_indexing, "60|6"},
+        CodegenTestCase{"ExtMix_CurriedAndListOfLambdas",
+                        test_ext_mix_curried_and_list_of_lambdas, "60|50|20"},
+        CodegenTestCase{"ExtMix_LambdaReturningListAndNestedCurried",
+                        test_ext_mix_lambda_returning_list_and_nested_curried,
+                        "30|11"},
+        CodegenTestCase{"ExtMix_ErrNestedListSecondIndexOOB",
+                        test_ext_mix_err_nested_list_second_index_oob, "", "",
+                        RUNTIME_ERR},
+        CodegenTestCase{"ExtMix_MultiParamlistReturningNestedList",
+                        test_ext_mix_multi_paramlist_returning_nested_list,
+                        "17"},
+        CodegenTestCase{"ExtMix_MultiParamlistReturningCurriedLambda",
+                        test_ext_mix_multi_paramlist_returning_curried_lambda,
+                        "40|104"},
+        CodegenTestCase{"ExtMix_ZeroArgDefChainedCalls",
+                        test_ext_mix_zero_arg_def_chained_calls, "15|99"},
+        CodegenTestCase{"ExtMix_ParameterlessDefChainedCalls",
+                        test_ext_mix_parameterless_def_chained_calls, "20|18"},
+        CodegenTestCase{"ExtMix_NestedListAndCurriedLambdaParams",
+                        test_ext_mix_nested_list_and_curried_lambda_params,
+                        "45"},
+        CodegenTestCase{"ExtMix_ExtMultiParamlistReturningList",
+                        test_ext_mix_ext_multi_paramlist_returning_list, "22"},
+        CodegenTestCase{"ExtMix_ErrMultiParamlistReturnedListOOB",
+                        test_ext_mix_err_multi_paramlist_returned_list_oob, "",
+                        "", RUNTIME_ERR}),
     [](const ::testing::TestParamInfo<CodegenTestCase> &info) {
       return info.param.name;
     });
