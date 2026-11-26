@@ -21,6 +21,9 @@
 
 #pragma region Helpers
 
+/**
+ * Checks if given AST node represents '_'
+ */
 static bool is_wildcard_node(ast_node_t *node) {
   if (node == NULL || node->data_type == NULL || node->type != AST_LITERAL) {
     return false;
@@ -110,6 +113,20 @@ static err_code_t create_class_id_check(context_t *context,
   RETURN_ERR(create_array_id_check(context, value_var, class_id, fail_label));
 }
 
+/**
+ * Compares runtime type of value_var with target_type
+ *
+ * Based on target_type, following instructions are generated:
+ * ANY: nothing
+ * UNION: A | B | ... | Z
+ *  create_type_check(value_var, A, union_next_1)
+ *  jump union_ok
+ *  label union_next_1
+ *  ...
+ *  create_type_check(value_var, Z, fail_label)
+ *  label union_ok
+ * other: create_*_check(value_var, ..., fail_label)
+ */
 static err_code_t create_type_check(context_t *context,
                                     inner_symbol_t value_var,
                                     data_type_node_t *target_type,
@@ -289,6 +306,36 @@ static err_code_t bind_pattern_variable(context_t *context, ast_node_t *binding,
   RETURN_ERR(NO_ERR);
 }
 
+/**
+ * Converts an AST node representing a pattern to 3AC and binds pattern
+ * variables
+ *
+ * '_': nothing
+ *
+ * // Literal:
+ * create_literal_check(matched_variable, pattern, fail_label);
+ *
+ * // Identifier: Type:
+ * create_type_check(matched_variable,
+ * pattern->data.parameter.data_type, fail_label);
+ * // Inserted at function start:
+ * defvar bound_var
+ * move bound_var, matched_variable
+ *
+ * // Class(arg_0, arg_1, ..., arg_n):
+ * create_class_id_check(matched_variable, pattern->data.function_call.calling,
+ * fail_label);
+ * // Inserted at function start:
+ * defvar field_var_0
+ * arrayget field_var_0, matched_variable, 1
+ * // Inserted at function start:
+ * defvar field_var_1
+ * arrayget field_var_1, matched_variable, 2
+ * ...
+ * // Inserted at function start:
+ * defvar field_var_n
+ * arrayget field_var_n, matched_variable, n + 1
+ */
 static err_code_t create_pattern_match(context_t *context,
                                        inner_symbol_t matched_variable,
                                        ast_node_t *pattern,
@@ -373,6 +420,25 @@ static err_code_t create_pattern_match(context_t *context,
   RETURN_ERR(INTERNAL_ERR);
 }
 
+/**
+ * Converts an AST match case node to 3AC
+ *
+ * // '_ => ...':
+ * convert_statement_list(node->data.match_case.block, true);
+ * retype_if_needed(node->data.match_case.block, match_node);
+ *
+ * // Other patterns:
+ * create_pattern_match(matched_variable, node->data.match_case.pattern,
+ * match_next);
+ * // If node->data.match_case.guard != NULL:
+ * convert_expression_on_stack(node->data.match_case.guard);
+ * pushs true
+ * jumpifneqs match_next
+ * convert_statement_list(node->data.match_case.block, true);
+ * retype_if_needed(node->data.match_case.block, match_node);
+ * jump end_label
+ * label match_next
+ */
 static err_code_t convert_match_case(context_t *context, ast_node_t *node,
                                      ast_node_t *match_node,
                                      inner_symbol_t matched_variable,
@@ -474,6 +540,20 @@ static err_code_t convert_match_case(context_t *context, ast_node_t *node,
 
 #pragma region Interface implementation
 
+/**
+ * Converts an AST match node to 3AC
+ *
+ * convert_expression_on_stack(node->data.match.expression);
+ * // Inserted at function start:
+ * defvar matched_variable
+ * pops matched_variable
+ * convert_match_case(case_0, node, matched_variable, match_end);
+ * convert_match_case(case_1, node, matched_variable, match_end);
+ * ...
+ * // Stops if '_' is reached
+ * convert_match_case(case_n, node, matched_variable, match_end);
+ * label match_end
+ */
 err_code_t convert_match(context_t *context, ast_node_t *node) {
   if (context == NULL || node == NULL || node->type != AST_MATCH ||
       node->data.match.expression == NULL || node->data.match.cases == NULL ||
