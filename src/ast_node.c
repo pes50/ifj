@@ -563,6 +563,7 @@ ast_node_t *create_leaf_node(token_t *token) {
     node->data.literal.raw = string_duplicate(token->value);
     break;
   case TOK_LIT_STRING:
+  case TOK_LIT_M_STRING:
   case TOK_LIT_INTERP_STRING_PART:
   case TOK_LIT_INTERP_M_STRING_PART:
   case TOK_LIT_INTERP_STRING_END:
