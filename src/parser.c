@@ -1135,6 +1135,12 @@ err_code_t stmt(token_t *token, ast_node_t **node) {
       RETURN_ERR(ret);
     }
 
+    ret = expr_tail(token, &expression, &expression);
+    if (ret != NO_ERR) {
+      destroy_node(expression);
+      RETURN_ERR(ret);
+    }
+
     *node = create_return_node(expression);
     if (*node == NULL) {
       destroy_node(expression);
@@ -1142,8 +1148,19 @@ err_code_t stmt(token_t *token, ast_node_t **node) {
     }
     return NO_ERR;
 
-  default:
-    return expr(token, node, false);
+  default: {
+    ast_node_t *expression = NULL;
+    ret = expr(token, &expression, false);
+    if (ret != NO_ERR) {
+      RETURN_ERR(ret);
+    }
+
+    ret = expr_tail(token, node, &expression);
+    if (ret != NO_ERR) {
+      destroy_node(expression);
+    }
+    RETURN_ERR(ret);
+  }
   }
 }
 
@@ -1365,6 +1382,13 @@ err_code_t id_stmt(token_t *token, ast_node_t **node) {
       RETURN_ERR(ret);
     }
 
+    ret = expr_tail(token, &expression, &expression);
+    if (ret != NO_ERR) {
+      free(name);
+      destroy_node(expression);
+      RETURN_ERR(ret);
+    }
+
     *node = create_assignment_node(name, expression);
     free(name);
     if (*node == NULL) {
@@ -1436,6 +1460,14 @@ err_code_t var_dec(token_t *token, ast_node_t **node, bool is_const) {
   if (ret != NO_ERR) {
     free(name);
     destroy_type_node(data_type);
+    RETURN_ERR(ret);
+  }
+
+  ret = expr_tail(token, &expression, &expression);
+  if (ret != NO_ERR) {
+    free(name);
+    destroy_type_node(data_type);
+    destroy_node(expression);
     RETURN_ERR(ret);
   }
 
@@ -2134,6 +2166,10 @@ err_code_t args_tail(token_t *token, ast_node_t **node) {
     RETURN_ERR(ret);
   }
 
+  if (token->type == TOK_R_PAREN) {
+    return NO_ERR;
+  }
+
   ret = expr(token, node, false);
   if (ret != NO_ERR) {
     RETURN_ERR(ret);
@@ -2292,7 +2328,7 @@ err_code_t expr(token_t *token, ast_node_t **node, bool in_gen) {
   *node = return_final_node(stack);
   destroy_token_stack(stack);
   if (*node == NULL) {
-    RETURN_ERR(INTERNAL_ERR);
+    RETURN_ERR(SYNTAX_ERR);
   }
   return NO_ERR;
 }
