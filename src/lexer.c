@@ -300,6 +300,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
   next_state = S_START;
   bool lexer_run = true;
   bool has_newline = false;
+  bool newline_seen = false;
   bool tab_on_line = false;
   bool comment_seen = false;
   size_t comment_depth_cnt = 0;
@@ -399,6 +400,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
 
         indent_level = 0;
         if (bracket_depth > 0) {
+          newline_seen = true;
           state = S_LINE_START;
           break;
         }
@@ -415,7 +417,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         break;
 
       case ')':
-        if (token_prev_type == TOK_COMMA) {
+        if (token_prev_type == TOK_COMMA && !newline_seen) {
           return SYNTAX_ERR;
         }
 
@@ -433,7 +435,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         break;
 
       case ']':
-        if (token_prev_type == TOK_COMMA) {
+        if (token_prev_type == TOK_COMMA && !newline_seen) {
           return SYNTAX_ERR;
         }
 
@@ -1001,6 +1003,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         indent_level = 0;
 
         if (bracket_depth > 0 && character == '\n') {
+          newline_seen = true;
           state = S_LINE_START;
         } else {
           *type = TOK_EOL;
@@ -1057,6 +1060,7 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         indent_level = 0;
 
         if (bracket_depth > 0) {
+          newline_seen = true;
           state = S_LINE_START;
         } else {
           *type = TOK_EOL;
@@ -1481,11 +1485,8 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
         }
         state = S_LINE_START;
       } else if (bracket_depth > 0) {
-        if (tab_on_line) {
+        if (tab_on_line || indent_level < bracket_start_indent + 1) {
           return LEXICAL_ERR;
-        }
-        if (indent_level < bracket_start_indent + 1) {
-          return SYNTAX_ERR;
         }
         ungetc(character, input_stream);
         *type = TOK_DIV;
@@ -1500,12 +1501,19 @@ static err_code_t lexer_scan_automat(dynstr_t *output_val, token_type_t *type) {
       ungetc(character, input_stream);
 
       if (bracket_depth > 0) {
-        bool is_closing = (bool)(character == ')') || (bool)(character == ']');
-        size_t min_indent =
-            is_closing ? bracket_start_indent : bracket_start_indent + 1;
-
-        if (character == EOF || indent_level < min_indent) {
+        if (character == EOF) {
           return SYNTAX_ERR;
+        }
+
+        size_t min_indent = bracket_start_indent + 1;
+        if (character == ')') {
+          min_indent = bracket_start_indent;
+        } else if (character == ']') {
+          min_indent = bracket_start_indent;
+        }
+
+        if (indent_level < min_indent) {
+          return LEXICAL_ERR;
         }
         state = S_START;
         continue;
