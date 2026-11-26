@@ -1,6 +1,6 @@
 # Implementace překladače imperativního jazyka IFJ26
 
-Překladač z jazyka IFJ26 do jazyka IFJcode26
+Překladač z jazyka IFJ26 do jazyka IFJcode26. Technická dokumentace projektu je dostupná v souboru [dokumentace.pdf](./dokumentace.pdf).
 
 # Autoři
 
